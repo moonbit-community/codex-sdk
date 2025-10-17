@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex/iterator"
+
+// Values
+
+// Errors
+pub suberror Return
+
+pub suberror Running
+
+// Types and methods
+type AsyncIterator[T]
+fn[T] AsyncIterator::new(async (async (T) -> Unit) -> Unit) -> Self[T]
+async fn[T] AsyncIterator::next(Self[T]) -> T?
+async fn[T] AsyncIterator::returns(Self[T]) -> T?
+async fn[T] AsyncIterator::throws(Self[T], Error) -> T?
+
+// Type aliases
+
+// Traits
+
