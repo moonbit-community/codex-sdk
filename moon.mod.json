@@ -1,14 +1,14 @@
 {
   "name": "peter-jerry-ye/codex",
-  "version": "0.1.0",
+  "version": "0.46.0",
   "deps": {
     "moonbitlang/async": "0.9.0",
     "moonbitlang/x": "0.4.34"
   },
   "readme": "README.mbt.md",
-  "repository": "",
+  "repository": "https://github.com/moonbit-community/codex-sdk",
   "license": "Apache-2.0",
-  "keywords": [],
+  "keywords": ["AI"],
   "description": "",
   "preferred-target": "native"
 }
