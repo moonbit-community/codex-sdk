@@ -13,14 +13,25 @@
 // limitations under the License.
 
 ///|
+/// Suspends the current async computation and invokes the callback with resolve and reject functions.
+/// The callback must call resolve with a value of type T or reject with an error of type E.
+/// This function resumes the computation when the callback completes.
 async fn[T, E : Error] async_suspend(
   cb : ((T) -> Unit, (E) -> Unit) -> Unit,
 ) -> T raise E = "%async.suspend"
 
 ///|
+/// Runs an async function that returns Unit and does not raise errors.
+/// This is the entry point for executing async computations.
 fn run_async(f : async () -> Unit noraise) = "%async.run"
 
 ///|
+/// Asynchronous generator producing values of type T.
+/// 
+/// Similar to JavaScript's async generators, but with explicit
+/// handling of return and throw.
+/// 
+/// The generator must be drained to completion to avoid resource leaks.
 struct AsyncGenerator[T] {
   mut consumer : ((Result[T?, Error]) -> Unit)?
   mut ok_cont : (Unit) -> Unit
@@ -40,6 +51,8 @@ pub async fn[T] AsyncGenerator::next(self : AsyncGenerator[T]) -> T? {
 }
 
 ///|
+/// Throws an error into the async generator, allowing it to handle exceptions.
+/// Returns the next value or None if the generator completes.
 pub async fn[T] AsyncGenerator::throws(
   self : AsyncGenerator[T],
   e : Error,
@@ -55,6 +68,8 @@ pub async fn[T] AsyncGenerator::throws(
 }
 
 ///|
+/// Signals the async generator to return, indicating normal completion.
+/// Returns the next value or None if the generator completes.
 pub async fn[T] AsyncGenerator::returns(self : AsyncGenerator[T]) -> T? {
   guard self.consumer is None else { raise Running }
   async_suspend((resolve, reject) => {
@@ -67,12 +82,17 @@ pub async fn[T] AsyncGenerator::returns(self : AsyncGenerator[T]) -> T? {
 }
 
 ///|
+/// Error indicating that the async generator has returned normally.
 pub suberror Return
 
 ///|
+/// Error indicating that the async generator is already running and cannot accept new operations.
 pub suberror Running
 
 ///|
+/// Creates a new AsyncGenerator from an async function that takes a yield function.
+/// The yield function is used to produce values asynchronously.
+/// The generator must be fully consumed to avoid resource leaks.
 pub fn[T] AsyncGenerator::new(
   f : async (async (T) -> Unit) -> Unit,
 ) -> AsyncGenerator[T] {
