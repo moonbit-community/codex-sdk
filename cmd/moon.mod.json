@@ -1,0 +1,19 @@
+{
+  "name": "peter-jerry-ye/codex-example",
+  "deps": {
+    "moonbitlang/async": "0.10.0",
+    "peter-jerry-ye/codex": {
+      "path": ".."
+    },
+    "TheWaWaR/clap": "0.2.5",
+    "moonbitlang/x": "0.4.34"
+  },
+  "readme": "README.mbt.md",
+  "repository": "https://github.com/moonbit-community/codex-sdk",
+  "license": "Apache-2.0",
+  "keywords": [
+    "AI"
+  ],
+  "description": "",
+  "preferred-target": "native"
+}
