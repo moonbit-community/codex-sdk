@@ -205,7 +205,7 @@ fn CodexExec::run(
 
 ///|
 /// Convert SandboxMode to its string representation for CLI arguments.
-fn to_string(self : SandboxMode) -> String {
+fn SandboxMode::to_string(self : SandboxMode) -> String {
   match self {
     ReadOnly => "read-only"
     WorkspaceWrite => "workspace-write"

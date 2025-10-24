@@ -48,7 +48,7 @@ pub fn Codex::new(
 ///
 /// # Returns
 /// A new thread instance
-pub fn start_thread(
+pub fn Codex::start_thread(
   self : Codex,
   options? : ThreadOptions = ThreadOptions::{
     model: None,
@@ -70,7 +70,7 @@ pub fn start_thread(
 ///
 /// # Returns
 /// A new thread instance
-pub fn resume_thread(
+pub fn Codex::resume_thread(
   self : Codex,
   id : String,
   options? : ThreadOptions = ThreadOptions::{
