@@ -2,8 +2,8 @@
   "name": "peter-jerry-ye/codex",
   "version": "0.46.0",
   "deps": {
-    "moonbitlang/async": "0.10.2",
-    "moonbitlang/x": "0.4.34"
+    "moonbitlang/async": "0.10.3",
+    "moonbitlang/x": "0.4.36"
   },
   "readme": "README.mbt.md",
   "repository": "https://github.com/moonbit-community/codex-sdk",

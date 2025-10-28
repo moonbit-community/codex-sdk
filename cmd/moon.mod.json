@@ -1,12 +1,12 @@
 {
   "name": "peter-jerry-ye/codex-example",
   "deps": {
-    "moonbitlang/async": "0.10.0",
+    "moonbitlang/async": "0.10.3",
     "peter-jerry-ye/codex": {
       "path": ".."
     },
     "TheWaWaR/clap": "0.2.5",
-    "moonbitlang/x": "0.4.34"
+    "moonbitlang/x": "0.4.36"
   },
   "readme": "README.mbt.md",
   "repository": "https://github.com/moonbit-community/codex-sdk",

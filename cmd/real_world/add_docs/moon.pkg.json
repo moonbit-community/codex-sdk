@@ -9,7 +9,8 @@
     "moonbitlang/x/sys",
     "moonbitlang/async/process",
     "moonbitlang/async/pipe",
-    "moonbitlang/async/io"
+    "moonbitlang/async/io",
+    "moonbitlang/async/stdio"
   ],
   "link": {
     "native": {
