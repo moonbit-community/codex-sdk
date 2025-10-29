@@ -161,12 +161,7 @@ async fn visit(codex : @codex.Codex, repo : Repo, pkg : Package) -> Unit {
         @stdio.stdout.write(
           "info [\{pkg.path}] - [\{thread.id()}] - Successfully added docs and created PR for package at \{pkg.path}\n",
         )
-        @process.run(
-          "git",
-          ["worktree", "remove", tmp_path, "--force"],
-          cwd=pkg.mod.root,
-        )
-        |> ignore
+        repo.remove_work_tree(tmp_path, force=true) |> ignore
         return
       } else {
         @stdio.stdout.write(
@@ -180,12 +175,7 @@ async fn visit(codex : @codex.Codex, repo : Repo, pkg : Package) -> Unit {
     }
   } catch {
     e => {
-      @process.run(
-        "git",
-        ["worktree", "remove", tmp_path, "--force"],
-        cwd=pkg.mod.root,
-      )
-      |> ignore
+      repo.remove_work_tree(tmp_path, force=true) |> ignore
       let err_message = "error [\{pkg.path}] - [\{thread.id()}] - Exception while adding docs: \{e}\n"
       @stdio.stderr.write(err_message)
       fail(err_message)
