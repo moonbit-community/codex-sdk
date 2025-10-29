@@ -52,27 +52,19 @@ async fn main {
     if Repo::at(argument.path) is Some(repo) {
       repo
     } else {
-      fail("error - No git repository found at \{argument.path}\n")
+      fail("No git repository found at \{argument.path}\n")
     }
   } catch {
-    e => {
-      @stdio.stderr.write(
-        "error - Failed to open git repository at \{argument.path}\n",
-      )
-      raise e
-    }
+    e => fail_with("Failed to open git repository", e)
   }
   let project = try {
     if Module::at(argument.path) is Some(project) {
       project
     } else {
-      fail("error - No Moon module found at \{argument.path}\n")
+      fail("No Moon module found at \{argument.path}\n")
     }
   } catch {
-    e => {
-      @stdio.stderr.write("error - Failed to read module at \{argument.path}\n")
-      raise e
-    }
+    e => fail_with("Failed to read Moon module", e)
   }
 
   // Start visiting packages
@@ -178,7 +170,7 @@ async fn visit(codex : @codex.Codex, repo : Repo, pkg : Package) -> Unit {
       repo.remove_work_tree(tmp_path, force=true) |> ignore
       let err_message = "error [\{pkg.path}] - [\{thread.id()}] - Exception while adding docs: \{e}\n"
       @stdio.stderr.write(err_message)
-      fail(err_message)
+      fail_with(err_message, e)
     }
   }
 }
