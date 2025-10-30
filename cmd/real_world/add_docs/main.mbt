@@ -77,7 +77,12 @@ async fn main {
           "info [\{pkg.path}] - Acquired semaphore, starting documentation addition...\n",
         )
         defer semaphore.release()
-        visit(codex, repo, pkg)
+        try visit(codex, repo, pkg) catch {
+          e => @stdio.stderr.write("error [\{pkg.path}] - Task failed: \{e}\n")
+        } noraise {
+          _ =>
+            @stdio.stdout.write("info [\{pkg.path}] - Task finished normally\n")
+        }
       })
     }
   })
@@ -90,7 +95,6 @@ extern "C" fn random() -> UInt = "arc4random"
 async fn visit(codex : @codex.Codex, repo : Repo, pkg : Package) -> Unit {
   // Add documentation to the package at the given path
   // Create git worktree
-
   let tmp_path = "/tmp/moon_add_docs_\{random()}/"
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(
@@ -121,45 +125,74 @@ async fn visit(codex : @codex.Codex, repo : Repo, pkg : Package) -> Unit {
     @stdio.stdout.write(
       "info [\{pkg.path}] - Created git worktree at \{tmp_path} \n",
     )
-    for _ in 0..<2 {
-      let response = thread.run(
-        (
-          $|Generate documentation for the MoonBit package in the directory \{pkg.path} only.
-          #|
-          #|[Task Description]
-          #|You will need to generate comments for all public functions, structs, enums, and modules in the package.
-          #|You will also need to update the `README.mbt.md` file in the package.
-          #|
-          #|Remember that all the code block within the `README.mbt.md` file and the doc comments will be type checked and executed.
-          #|When you have finished generating the documentation, commit the changes with a meaningful commit message, push the changes to the remote repository, and create a pull request for the changes.
-          #|
-          #|[Requirements]
-          #|You must ensure that the generated documentation is accurate and up-to-date with the code. The `moon check` and `moon test` commands must pass. The build process on GitHub must also pass.
-          #|Do not modify any code outside of the package directory.
-          #|
-          #|[Note]
-          #|You have the MCP for GitHub enabled and access to the shell.
-          #|Review the commits between the current branch and the main branch (if there are any) to understand what documentation has been changed.
-          #|Review the GitHub Pull Request associated with this branch (if there is already one) to see if the build have all passed and if there are any comments from reviewers.
-          #|
-          #|Remember to cleanup any temporary files you created during this process. Since this is a Git repository, do not fear the loss of tracked files.
-          #|
-          #|DO NOT STOP UNTIL YOU HAVE COMPLETED THE TASK.
-          #|
-          #|IF YOU HAVE FINISHED THE TASK, RESPOND WITH "TASK COMPLETED".
-        ),
+    let mut response = thread.run(
+      (
+        $|Generate documentation for the MoonBit package in the directory \{pkg.path} only.
+        #|
+        #|[Task Description]
+        #|You will need to generate comments for all public functions, structs, enums, and modules in the package.
+        #|You will also need to update the `README.mbt.md` file in the package.
+        #|
+        #|Remember that all the code block within the `README.mbt.md` file and the doc comments will be type checked and executed.
+        #|When you have finished generating the documentation, commit the changes with a meaningful commit message, push the changes to the remote repository, and create a pull request for the changes.
+        #|
+        #|[Requirements]
+        #|You must ensure that the generated documentation is accurate and up-to-date with the code. The `moon check` and `moon test` commands must pass. The build process on GitHub must also pass.
+        #|Create clean pull request, namely ones that only contain changes related to documentation. No other changes (such as backup files) should be included.
+        #|
+        #|[Note]
+        #|Rebase the branch onto the main branch first and fix any merge conflicts if necessary.
+        #|You have the MCP for GitHub enabled and access to the shell.
+        #|Review the commits between the current branch and the main branch (if there are any) to understand what documentation has been changed.
+        #|Revert the commits if necessary to create a clean pull request.
+        #|Review the GitHub Pull Request associated with this branch (if there is already one) to see if the build have all passed and if there are any comments from reviewers.
+        #|
+        #|DO NOT STOP UNTIL YOU HAVE COMPLETED THE TASK.
+        #|
+        #|Here are the knowledge of MoonBit:
+        #|
+        $|\{background}
+      ),
+    )
+    for i in 0..<3 {
+      @stdio.stdout.write(
+        "info [\{pkg.path}] - [\{thread.id()}] - Finished attempt \{i}\n",
       )
-      if response.final_response.contains("TASK COMPLETED") {
-        @stdio.stdout.write(
-          "info [\{pkg.path}] - [\{thread.id()}] - Successfully added docs and created PR for package at \{pkg.path}\n",
-        )
-        repo.remove_work_tree(tmp_path, force=true) |> ignore
-        return
-      } else {
+      if !response.final_response.contains("TASK COMPLETED") {
         @stdio.stdout.write(
           "info [\{pkg.path}] - [\{thread.id()}] - Codex response did not indicate completion, retrying...\n",
         )
+        response = thread.run(
+          "If you have finished the task, please respond with 'TASK COMPLETED'. If not, please continue working on it.",
+        )
+        continue
       }
+      @stdio.stdout.write(
+        "info [\{pkg.path}] - [\{thread.id()}] - AI declared fin for package at \{pkg.path}\n",
+      )
+      // verify and cleanup
+      if pkg.mod.check().status != 0 || pkg.mod.test_().status != 0 {
+        let err_message = "error [\{pkg.path}] - [\{thread.id()}] - moon check or test failed after adding docs\n"
+        @stdio.stderr.write(err_message)
+        response = thread.run(
+          "The build checks have failed after adding documentation. Please fix the issues so that `moon check` and `moon test` both pass.",
+        )
+        continue
+      }
+      if pkg.mod.format().status != 0 || pkg.mod.update_info().status != 0 {
+        fail(
+          "error [\{pkg.path}] - [\{thread.id()}] - moon format or update_info modified files after adding docs\n",
+        )
+      }
+      if !repo.remove_work_tree(tmp_path) {
+        let err_message = "error [\{pkg.path}] - [\{thread.id()}] - Failed to remove git worktree at \{tmp_path}\n"
+        @stdio.stderr.write(err_message)
+        response = thread.run(
+          "Looks like there are changes remaining in the worktree that prevent its removal. Please either reject them or commit them properly.",
+        )
+        continue
+      }
+      return
     } else {
       let err_message = "error [\{pkg.path}] - [\{thread.id()}] - Codex failed to add documentation after multiple attempts\n"
       @stdio.stderr.write(err_message)
