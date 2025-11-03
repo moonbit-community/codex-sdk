@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex/x/tasks"
+
+import(
+  "peter-jerry-ye/codex"
+  "peter-jerry-ye/codex/x/moon"
+)
+
+// Values
+async fn for_each_package(String, async (@moon.Package) -> Unit) -> Unit
+
+async fn run_simple_task(String, String, model? : String) -> @codex.Turn
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

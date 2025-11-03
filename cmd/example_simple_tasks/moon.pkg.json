@@ -1,0 +1,8 @@
+{
+  "is-main": true,
+  "import": [
+    "moonbitlang/async",
+    "peter-jerry-ye/codex/x/moon",
+    "peter-jerry-ye/codex/x/git"
+  ]
+}

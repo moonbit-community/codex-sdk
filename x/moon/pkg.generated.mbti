@@ -1,0 +1,43 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex/x/moon"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct MoonProject {
+  root : String
+  name : String
+}
+async fn MoonProject::check(Self) -> ValidationResult
+async fn MoonProject::discover(String) -> Self?
+async fn MoonProject::format(Self) -> ValidationResult
+async fn MoonProject::packages(Self) -> Array[Package]
+async fn MoonProject::test_(Self) -> ValidationResult
+async fn MoonProject::update_info(Self) -> ValidationResult
+
+pub struct Package {
+  project : MoonProject
+  path : String
+}
+
+pub struct ValidationResult {
+  passed : Bool
+  stdout : String
+  stderr : String
+  exit_code : Int
+}
+
+pub(all) enum Validator {
+  MoonCheck
+  MoonTest
+  MoonFormat
+  GitClean
+  Custom((String) -> Bool)
+}
+
+// Type aliases
+
+// Traits
+

@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex/iterator"
+package "peter-jerry-ye/codex/generator"
 
 // Values
 
@@ -9,11 +9,11 @@ pub suberror Return
 pub suberror Running
 
 // Types and methods
-type AsyncIterator[T]
-fn[T] AsyncIterator::new(async (async (T) -> Unit) -> Unit) -> Self[T]
-async fn[T] AsyncIterator::next(Self[T]) -> T?
-async fn[T] AsyncIterator::returns(Self[T]) -> T?
-async fn[T] AsyncIterator::throws(Self[T], Error) -> T?
+type AsyncGenerator[T]
+fn[T] AsyncGenerator::new(async (async (T) -> Unit) -> Unit) -> Self[T]
+async fn[T] AsyncGenerator::next(Self[T]) -> T?
+async fn[T] AsyncGenerator::returns(Self[T]) -> T?
+async fn[T] AsyncGenerator::throws(Self[T], Error) -> T?
 
 // Type aliases
 

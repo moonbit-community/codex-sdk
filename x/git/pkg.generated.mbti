@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex/x/git"
+
+// Values
+async fn[T] with_workspace(GitRepo, String, String, create_branch? : Bool, async (IsolatedWorkspace) -> T) -> T
+
+// Errors
+
+// Types and methods
+pub struct GitRepo {
+  path : String
+}
+async fn GitRepo::create_workspace(Self, String, String, create_branch? : Bool) -> IsolatedWorkspace?
+async fn GitRepo::discover(String) -> Self?
+async fn GitRepo::existing_branches(Self) -> Array[String]
+async fn GitRepo::is_clean(Self) -> Bool
+
+pub struct IsolatedWorkspace {
+  path : String
+  branch : String
+  repo : GitRepo
+}
+async fn IsolatedWorkspace::cleanup(Self) -> Unit
+
+// Type aliases
+
+// Traits
+
