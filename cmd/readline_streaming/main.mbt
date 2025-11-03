@@ -20,9 +20,9 @@ async fn main {
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(model="anthropic/claude-sonnet-4"),
   )
-  let reader = @io.BufferedReader::new(@pipe.stdin)
+  let reader = @io.BufferedReader::new(@stdio.stdin)
   while true {
-    @pipe.stdout.write(b"\x1b]133;A\x07> \x1b]133;B\x07")
+    @stdio.stdout.write(b"\x1b]133;A\x07> \x1b]133;B\x07")
     try {
       let length = reader.find(b"\n")
       let line = @encoding/utf8.decode(reader[:length])
@@ -30,51 +30,51 @@ async fn main {
       if line.trim_space().is_empty() {
         continue
       }
-      @pipe.stdout.write(b"\x1b]133;C\x07")
+      @stdio.stdout.write(b"\x1b]133;C\x07")
       let turn = thread.run_streamed(line)
       try {
         while turn.events.next() is Some(event) {
           match event {
-            TurnStarted => @pipe.stdout.write("info:: Turn started\n")
+            TurnStarted => @stdio.stdout.write("info:: Turn started\n")
             TurnCompleted(usage) =>
-              @pipe.stdout.write(
+              @stdio.stdout.write(
                 "info:: Turn completed. Usage: \{usage.to_json().stringify()}\n",
               )
             ItemStarted(item) =>
               if item is @codex.ThreadItem::CommandExecutionItem(command~, ..) {
-                @pipe.stdout.write("info:: Command ")
+                @stdio.stdout.write("info:: Command ")
                 // store cursor position
-                @pipe.stdout.write("\u{1b}[s")
-                @pipe.stdout.write("started: \{command}\n")
+                @stdio.stdout.write("\u{1b}[s")
+                @stdio.stdout.write("started: \{command}\n")
               }
             ItemCompleted(item) =>
               if item is @codex.ThreadItem::CommandExecutionItem(status~, ..) {
                 // restore cursor position
-                @pipe.stdout.write("\u{1b}[u")
+                @stdio.stdout.write("\u{1b}[u")
                 // remove `started`, which is 7 characters
-                @pipe.stdout.write("\u{1b}[7P")
+                @stdio.stdout.write("\u{1b}[7P")
                 if status is Completed {
                   // insert spaces, which is 9 characters
-                  @pipe.stdout.write("\u{1b}[9@")
-                  @pipe.stdout.write("completed")
+                  @stdio.stdout.write("\u{1b}[9@")
+                  @stdio.stdout.write("completed")
                 } else {
                   // insert spaces, which is 6 characters
-                  @pipe.stdout.write("\u{1b}[6@")
-                  @pipe.stdout.write("failed")
+                  @stdio.stdout.write("\u{1b}[6@")
+                  @stdio.stdout.write("failed")
                 }
                 // move cursor to the next line
-                @pipe.stdout.write("\u{1b}[E")
+                @stdio.stdout.write("\u{1b}[E")
               } else if item is @codex.AgentMessageItem(text~, ..) {
-                @pipe.stdout.write("info:: Agent message completed\n")
-                @pipe.stdout.write(text)
-                @pipe.stdout.write("\n")
+                @stdio.stdout.write("info:: Agent message completed\n")
+                @stdio.stdout.write(text)
+                @stdio.stdout.write("\n")
               }
             TurnFailed(e) => {
-              @pipe.stderr.write("error:: \{e.message}")
+              @stdio.stderr.write("error:: \{e.message}")
               fail(e.message)
             }
             ThreadErrorEvent(e) => {
-              @pipe.stderr.write("error:: \{e}")
+              @stdio.stderr.write("error:: \{e}")
               fail(e)
             }
             ThreadStarted(..) => ()
@@ -89,14 +89,14 @@ async fn main {
           raise e
         }
       }
-      @pipe.stdout.write(b"\x1b]133;D;0\x07")
+      @stdio.stdout.write(b"\x1b]133;D;0\x07")
     } catch {
       @io.ReaderClosed => {
         let line = reader.read_all().text()
         if !line.trim_space().is_empty() {
           let turn = thread.run(line)
-          @pipe.stdout.write(turn.final_response)
-          @pipe.stdout.write("\n")
+          @stdio.stdout.write(turn.final_response)
+          @stdio.stdout.write("\n")
         }
         break
       }

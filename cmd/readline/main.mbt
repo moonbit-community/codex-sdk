@@ -20,9 +20,9 @@ async fn main {
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(model="anthropic/claude-sonnet-4"),
   )
-  let reader = @io.BufferedReader::new(@pipe.stdin)
+  let reader = @io.BufferedReader::new(@stdio.stdin)
   while true {
-    @pipe.stdout.write(b"> ")
+    @stdio.stdout.write(b"> ")
     try {
       let length = reader.find(b"\n")
       let line = @encoding/utf8.decode(reader[:length])
@@ -31,31 +31,31 @@ async fn main {
         continue
       }
       let turn = @async.with_task_group(taskgroup => {
-        taskgroup.add_defer(() => @pipe.stdout.write(b"\r"))
+        taskgroup.add_defer(() => @stdio.stdout.write(b"\r"))
         taskgroup.spawn_bg(
           () => while true {
             @async.sleep(500)
-            @pipe.stdout.write(b"\r\\")
+            @stdio.stdout.write(b"\r\\")
             @async.sleep(500)
-            @pipe.stdout.write(b"\r|")
+            @stdio.stdout.write(b"\r|")
             @async.sleep(500)
-            @pipe.stdout.write(b"\r/")
+            @stdio.stdout.write(b"\r/")
             @async.sleep(500)
-            @pipe.stdout.write(b"\r-")
+            @stdio.stdout.write(b"\r-")
           },
           no_wait=true,
         )
         thread.run(line)
       })
-      @pipe.stdout.write(turn.final_response)
-      @pipe.stdout.write("\n")
+      @stdio.stdout.write(turn.final_response)
+      @stdio.stdout.write("\n")
     } catch {
       @io.ReaderClosed => {
         let line = reader.read_all().text()
         if !line.trim_space().is_empty() {
           let turn = thread.run(line)
-          @pipe.stdout.write(turn.final_response)
-          @pipe.stdout.write("\n")
+          @stdio.stdout.write(turn.final_response)
+          @stdio.stdout.write("\n")
         }
         break
       }
