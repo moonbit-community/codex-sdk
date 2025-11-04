@@ -21,41 +21,41 @@ async fn main {
   // Discover the project
   match @moon.MoonProject::discover(".") {
     Some(project) => {
-      println("Found project: \{project.name} at \{project.root}")
+      @stdio.stdout.write("Found project: \{project.name} at \{project.root}")
 
       // Get all packages
       let packages = project.packages()
-      println("Found \{packages.length()} packages:")
+      @stdio.stdout.write("Found \{packages.length()} packages:")
       for pkg in packages {
-        println("  - \{pkg.path}")
+        @stdio.stdout.write("  - \{pkg.path}")
       }
 
       // Run validation
-      println("\nRunning validation...")
+      @stdio.stdout.write("\nRunning validation...")
       let check_result = project.check()
       if check_result.passed {
-        println("✓ moon check passed")
+        @stdio.stdout.write("✓ moon check passed")
       } else {
-        println("✗ moon check failed:")
-        println(check_result.stderr)
+        @stdio.stdout.write("✗ moon check failed:")
+        @stdio.stdout.write(check_result.stderr)
       }
 
       // Check git status
       match @git.GitRepo::discover(project.root) {
         Some(repo) => {
-          println("\nGit repository found")
+          @stdio.stdout.write("\nGit repository found")
           let branches = repo.existing_branches()
-          println("Branches: \{branches.length()}")
+          @stdio.stdout.write("Branches: \{branches.length()}")
           let is_clean = repo.is_clean()
           if is_clean {
-            println("✓ Working tree is clean")
+            @stdio.stdout.write("✓ Working tree is clean")
           } else {
-            println("⚠ Working tree has uncommitted changes")
+            @stdio.stdout.write("⚠ Working tree has uncommitted changes")
           }
         }
-        None => println("No git repository found")
+        None => @stdio.stdout.write("No git repository found")
       }
     }
-    None => println("No MoonBit project found in current directory")
+    None => @stdio.stdout.write("No MoonBit project found in current directory")
   }
 }

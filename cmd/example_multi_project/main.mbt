@@ -21,11 +21,11 @@ async fn main {
   let project_path = "."
   match @moon.MoonProject::discover(project_path) {
     Some(project) => {
-      println("Processing project: \{project.name}")
+      @stdio.stdout.write("Processing project: \{project.name}")
 
       // Process each package
       @tasks.for_each_package(project.root, async fn(pkg) {
-        println("\nProcessing package: \{pkg.path}")
+        @stdio.stdout.write("\nProcessing package: \{pkg.path}")
 
         // Run a simple Codex task on this package
         try {
@@ -33,14 +33,14 @@ async fn main {
             pkg.project.root,
             "Analyze the code in package \{pkg.path} and suggest improvements",
           )
-          println("Codex response:")
-          println(turn.final_response)
+          @stdio.stdout.write("Codex response:")
+          @stdio.stdout.write(turn.final_response)
         } catch {
-          e => println("Error processing \{pkg.path}: \{e}")
+          e => @stdio.stdout.write("Error processing \{pkg.path}: \{e}")
         }
       })
-      println("\nAll packages processed")
+      @stdio.stdout.write("\nAll packages processed")
     }
-    None => println("No MoonBit project found at \{project_path}")
+    None => @stdio.stdout.write("No MoonBit project found at \{project_path}")
   }
 }

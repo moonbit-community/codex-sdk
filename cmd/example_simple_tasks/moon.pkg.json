@@ -3,6 +3,8 @@
   "import": [
     "moonbitlang/async",
     "peter-jerry-ye/codex/x/moon",
-    "peter-jerry-ye/codex/x/git"
+    "peter-jerry-ye/codex/x/git",
+    "moonbitlang/async/stdio",
+    "moonbitlang/async/io"
   ]
 }

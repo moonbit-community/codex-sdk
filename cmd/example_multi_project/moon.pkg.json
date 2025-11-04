@@ -4,6 +4,8 @@
     "moonbitlang/async",
     "peter-jerry-ye/codex",
     "peter-jerry-ye/codex/x/moon",
-    "peter-jerry-ye/codex/x/tasks"
+    "peter-jerry-ye/codex/x/tasks",
+    "moonbitlang/async/stdio",
+    "moonbitlang/async/io"
   ]
 }
