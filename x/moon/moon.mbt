@@ -40,6 +40,99 @@ pub struct ValidationResult {
 }
 
 ///|
+/// Represents a diagnostic message from the compiler
+pub struct Diagnostic {
+  /// File path where the issue occurred
+  file : String
+  /// Line number (1-indexed)
+  line : Int
+  /// Column number (1-indexed, optional)
+  column : Int?
+  /// Diagnostic level: "error", "warning", "info"
+  level : String
+  /// The diagnostic message
+  message : String
+}
+
+///|
+/// Parse diagnostics from moon check/test output
+///
+/// # Arguments
+/// * `output` - The stderr output from moon check/test
+///
+/// # Returns
+/// Array of diagnostics found in the output
+pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
+  let result = []
+  let lines = output.split("\n")
+  for line_text in lines {
+    // Parse format: path/to/file.mbt:line:col: level: message
+    // or: path/to/file.mbt:line: level: message
+    let parts = []
+    for part in line_text.split(":") {
+      parts.push(part)
+    }
+    if parts.length() >= 4 {
+      let file = parts[0].to_string()
+      let line_str = parts[1].trim_space().to_string()
+
+      // Try to parse line number
+      let line = @strconv.parse_int(line_str) catch {
+        _ => continue // Skip lines that don't have valid line numbers
+      }
+
+      // Check if next part is column or level
+      let mut rest_start = 2
+      let column : Int? = try {
+        let col = @strconv.parse_int(parts[2].trim_space().to_string())
+        rest_start = 3
+        Some(col)
+      } catch {
+        _ => None
+      }
+      if rest_start < parts.length() {
+        let level_part = parts[rest_start].trim_space().to_string()
+        // Detect level keywords
+        let level = if level_part.contains("error") ||
+          level_part.contains("Error") {
+          "error"
+        } else if level_part.contains("warning") ||
+          level_part.contains("Warning") {
+          "warning"
+        } else if level_part.contains("info") || level_part.contains("Info") {
+          "info"
+        } else {
+          continue // Not a diagnostic line
+        }
+
+        // Collect remaining parts as message
+        let message_parts = []
+        let mut i = rest_start + 1
+        while i < parts.length() {
+          message_parts.push(parts[i].to_string())
+          i = i + 1
+        }
+        let message = message_parts.join(":").trim_space().to_string()
+        result.push(Diagnostic::{ file, line, column, level, message })
+      }
+    }
+  }
+  result
+}
+
+///|
+/// Get only errors from diagnostics
+pub fn get_errors(diagnostics : Array[Diagnostic]) -> Array[Diagnostic] {
+  diagnostics.filter(fn(d) { d.level == "error" })
+}
+
+///|
+/// Get only warnings from diagnostics
+pub fn get_warnings(diagnostics : Array[Diagnostic]) -> Array[Diagnostic] {
+  diagnostics.filter(fn(d) { d.level == "warning" })
+}
+
+///|
 /// Validators that can be applied to verify project state
 pub(all) enum Validator {
   /// Run `moon check`
