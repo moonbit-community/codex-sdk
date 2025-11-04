@@ -2,6 +2,12 @@
   "import": [
     "peter-jerry-ye/codex",
     "peter-jerry-ye/codex/x/git",
-    "peter-jerry-ye/codex/x/moon"
-  ]
+    "peter-jerry-ye/codex/x/moon",
+    "moonbitlang/async",
+    "TheWaWaR/clap",
+    "moonbitlang/x/sys",
+    "moonbitlang/async/stdio",
+    "moonbitlang/async/io"
+  ],
+  "is-main": true
 }
