@@ -110,10 +110,10 @@ async fn get_changed_mbti_files(project_root : String) -> Array[String] {
     stdout=process_read,
     cwd=project_root,
   ) catch {
-    e => reraise(e)
+    e => @error.reraise(e)
   }
   if status != 0 {
-    fail("Git diff failed with status \{status}")
+    @error.fail("Git diff failed with status \{status}")
   }
   let output = pipe.read_all().text()
   let changed = []
@@ -145,7 +145,7 @@ async fn review_mbti_file(
   if verbose {
     @stdio.stdout.write("Reviewing: \{relative_path}\n")
   }
-  let content = @fs.read_file(file_path).text() catch { e => reraise(e) }
+  let content = @fs.read_file(file_path).text() catch { e => @error.reraise(e) }
 
   // Extract package name using regex-like matching
   let package_name = extract_package_name(content)
@@ -168,7 +168,7 @@ async fn review_mbti_file(
     $|3. Suggestions for improvement (if any)
     $|
     $|Keep the review concise and focused on the public API surface.
-  let result = thread.run(prompt) catch { e => reraise(e) }
+  let result = thread.run(prompt) catch { e => @error.reraise(e) }
   let review_text = result.final_response
   ReviewResult::{
     file: relative_path,
@@ -221,7 +221,7 @@ async fn mkdir_recursive(path : String) -> Unit {
     }
     if !@fs.exists(current) {
       @fs.mkdir(current, permission=0o755) catch {
-        e => fail_with("Failed to create directory \{current}", e)
+        e => @error.fail_with("Failed to create directory \{current}", e)
       }
     }
   }
@@ -240,7 +240,7 @@ async fn save_review_to_file(
 
   // Create output directory if it doesn't exist
   mkdir_recursive(output_dir) catch {
-    e => fail_with("Failed to create output directory \{output_dir}", e)
+    e => @error.fail_with("Failed to create output directory \{output_dir}", e)
   }
 
   // Generate filename from package path (result.file is relative path like "bench/pkg.generated.mbti")
@@ -264,7 +264,7 @@ async fn save_review_to_file(
     $|\{result.review}
     $|
   @fs.write_file(output_path, @encoding/utf8.encode(content_text), create=0o700) catch {
-    e => fail_with("Failed to write review file to \{output_path}", e)
+    e => @error.fail_with("Failed to write review file to \{output_path}", e)
   }
   Some(output_path)
 }

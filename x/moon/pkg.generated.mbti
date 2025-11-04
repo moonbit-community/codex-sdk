@@ -2,10 +2,23 @@
 package "peter-jerry-ye/codex/x/moon"
 
 // Values
+fn get_errors(Array[Diagnostic]) -> Array[Diagnostic]
+
+fn get_warnings(Array[Diagnostic]) -> Array[Diagnostic]
+
+fn parse_diagnostics(String) -> Array[Diagnostic]
 
 // Errors
 
 // Types and methods
+pub struct Diagnostic {
+  file : String
+  line : Int
+  column : Int?
+  level : String
+  message : String
+}
+
 pub struct MoonProject {
   root : String
   name : String

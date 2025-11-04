@@ -10,6 +10,7 @@
     "moonbitlang/async/process",
     "moonbitlang/async/pipe",
     "moonbitlang/async/io",
-    "moonbitlang/async/stdio"
+    "moonbitlang/async/stdio",
+    "peter-jerry-ye/codex/x/error"
   ]
 }

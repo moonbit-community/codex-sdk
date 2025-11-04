@@ -2,6 +2,8 @@
 package "peter-jerry-ye/codex/x/git"
 
 // Values
+async fn remove_directory(String) -> Bool
+
 async fn[T] with_workspace(GitRepo, String, String, create_branch? : Bool, async (IsolatedWorkspace) -> T) -> T
 
 // Errors
@@ -10,10 +12,18 @@ async fn[T] with_workspace(GitRepo, String, String, create_branch? : Bool, async
 pub struct GitRepo {
   path : String
 }
+async fn GitRepo::checkout(Self, String) -> Bool
+async fn GitRepo::clone(String, String) -> Self?
+async fn GitRepo::commit(Self, String, add_all? : Bool) -> Bool
+async fn GitRepo::create_branch(Self, String, from_branch? : String) -> Bool
 async fn GitRepo::create_workspace(Self, String, String, create_branch? : Bool) -> IsolatedWorkspace?
+async fn GitRepo::current_branch(Self) -> String?
+async fn GitRepo::diff(Self) -> String
+async fn GitRepo::diff_staged(Self) -> String
 async fn GitRepo::discover(String) -> Self?
 async fn GitRepo::existing_branches(Self) -> Array[String]
 async fn GitRepo::is_clean(Self) -> Bool
+async fn GitRepo::push(Self, remote? : String, branch? : String, set_upstream? : Bool) -> Bool
 
 pub struct IsolatedWorkspace {
   path : String
