@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex/x/args"
+
+// Values
+fn parse(Array[String], flags? : Array[String], options? : Array[String], collections? : Array[String], aliases? : Map[String, String], negatable? : Array[String], double_dash? : Bool, stop_early? : Bool) -> Args
+
+// Errors
+
+// Types and methods
+pub struct Args {
+  positional : Array[String]
+  flags : Map[String, Bool]
+  options : Map[String, String]
+  collections : Map[String, Array[String]]
+}
+
+// Type aliases
+
+// Traits
+
