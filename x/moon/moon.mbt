@@ -62,60 +62,102 @@ pub struct Diagnostic {
 ///
 /// # Returns
 /// Array of diagnostics found in the output
+///
+/// # Format
+/// Parses the box-drawing format used by moon with Error/Warning markers
+/// followed by location information in brackets
 pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
   let result = []
-  let lines = output.split("\n")
-  for line_text in lines {
-    // Parse format: path/to/file.mbt:line:col: level: message
-    // or: path/to/file.mbt:line: level: message
-    let parts = []
-    for part in line_text.split(":") {
-      parts.push(part)
+  let lines = []
+  for line in output.split("\n") {
+    lines.push(line.to_string())
+  }
+  let mut i = 0
+  while i < lines.length() {
+    let line = lines[i]
+
+    // Look for "Error: [XXXX]" or "Warning: [XXXX]"
+    let level = if line.has_prefix("Error:") {
+      "error"
+    } else if line.has_prefix("Warning:") {
+      "warning"
+    } else {
+      i = i + 1
+      continue
     }
-    if parts.length() >= 4 {
-      let file = parts[0].to_string()
-      let line_str = parts[1].trim_space().to_string()
 
-      // Try to parse line number
-      let line = @strconv.parse_int(line_str) catch {
-        _ => continue // Skip lines that don't have valid line numbers
-      }
+    // Next line should have the location: "   ╭─[ /path/to/file.mbt:line:col ]"
+    i = i + 1
+    if i >= lines.length() {
+      break
+    }
+    let location_line = lines[i]
+    // Extract the part between [ and ] using split
+    if !location_line.contains("[") || !location_line.contains("]") {
+      continue
+    }
+    let parts1 = []
+    for part in location_line.split("[") {
+      parts1.push(part.to_string())
+    }
+    if parts1.length() < 2 {
+      continue
+    }
+    let parts2 = []
+    for part in parts1[1].split("]") {
+      parts2.push(part.to_string())
+    }
+    if parts2.length() < 1 {
+      continue
+    }
+    let location = parts2[0].trim_space()
 
-      // Check if next part is column or level
-      let mut rest_start = 2
-      let column : Int? = try {
-        let col = @strconv.parse_int(parts[2].trim_space().to_string())
-        rest_start = 3
-        Some(col)
-      } catch {
+    // Parse location format: /path/to/file.mbt:line:col or /path/to/file.mbt:line
+    let parts = []
+    for part in location.split(":") {
+      parts.push(part.to_string())
+    }
+    if parts.length() < 2 {
+      continue
+    }
+    let file = parts[0]
+    let line_num = @strconv.parse_int(parts[1]) catch { _ => continue }
+    let column : Int? = if parts.length() >= 3 {
+      Some(@strconv.parse_int(parts[2])) catch {
         _ => None
       }
-      if rest_start < parts.length() {
-        let level_part = parts[rest_start].trim_space().to_string()
-        // Detect level keywords
-        let level = if level_part.contains("error") ||
-          level_part.contains("Error") {
-          "error"
-        } else if level_part.contains("warning") ||
-          level_part.contains("Warning") {
-          "warning"
-        } else if level_part.contains("info") || level_part.contains("Info") {
-          "info"
-        } else {
-          continue // Not a diagnostic line
-        }
-
-        // Collect remaining parts as message
-        let message_parts = []
-        let mut i = rest_start + 1
-        while i < parts.length() {
-          message_parts.push(parts[i].to_string())
-          i = i + 1
-        }
-        let message = message_parts.join(":").trim_space().to_string()
-        result.push(Diagnostic::{ file, line, column, level, message })
-      }
+    } else {
+      None
     }
+
+    // Collect the message from lines with ╰── marker
+    let message_parts = []
+    i = i + 1
+    while i < lines.length() {
+      let msg_line = lines[i]
+      if msg_line.contains("───╯") {
+        break
+      }
+      if msg_line.contains("╰──") {
+        // Extract message after the arrow by splitting
+        let arrow_parts = []
+        for part in msg_line.split("╰──") {
+          arrow_parts.push(part.to_string())
+        }
+        if arrow_parts.length() >= 2 {
+          let msg = arrow_parts[1].trim_space()
+          if !msg.is_empty() {
+            message_parts.push(msg)
+          }
+        }
+      }
+      i = i + 1
+    }
+    let message = message_parts.join(" ")
+    if !message.is_empty() {
+      result.push(Diagnostic::{ file, line: line_num, column, level, message })
+    }
+    i = i + 1
   }
   result
 }

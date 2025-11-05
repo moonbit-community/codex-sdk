@@ -2,7 +2,7 @@
 package "peter-jerry-ye/codex/x/args"
 
 // Values
-fn parse(Array[String], flags? : Array[String], options? : Array[String], collections? : Array[String], aliases? : Map[String, String], negatable? : Array[String], double_dash? : Bool, stop_early? : Bool) -> Args
+fn parse(ArrayView[String], flags? : ArrayView[String], options? : ArrayView[String], collections? : ArrayView[String], aliases? : Map[String, String], negatable? : ArrayView[String], double_dash? : Bool, stop_early? : Bool) -> Args
 
 // Errors
 
