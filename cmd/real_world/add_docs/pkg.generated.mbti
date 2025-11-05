@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex-example/real_world/add_docs"
+
+// Values
+
+// Errors
+type Reraise
+
+// Types and methods
+type Arguments
+impl Default for Arguments
+
+type ExecResult
+
+type Module
+
+type Package
+
+type Repo
+
+// Type aliases
+
+// Traits
+

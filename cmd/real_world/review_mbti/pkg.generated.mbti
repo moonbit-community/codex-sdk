@@ -1,0 +1,18 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex-example/real_world/review_mbti"
+
+// Values
+
+// Errors
+
+// Types and methods
+type Arguments
+impl Default for Arguments
+
+type ReviewResult
+impl Show for ReviewResult
+
+// Type aliases
+
+// Traits
+

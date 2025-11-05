@@ -1,0 +1,16 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex-example/example_fix_warnings"
+
+// Values
+async fn fix_warnings_workflow(String, String, String, Int) -> Unit
+
+// Errors
+
+// Types and methods
+type Arguments
+impl Default for Arguments
+
+// Type aliases
+
+// Traits
+
