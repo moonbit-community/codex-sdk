@@ -1,0 +1,15 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex-example/scan_and_fix"
+
+// Values
+
+// Errors
+
+// Types and methods
+type Arguments
+impl Default for Arguments
+
+// Type aliases
+
+// Traits
+
