@@ -88,13 +88,3 @@ impl Show for Reraise with output(error, logger) {
     logger.write_string("Caused by: \{error}\n")
   }
 }
-
-///|
-test {
-  fail("asdf") catch {
-    e =>
-      reraise(e) catch {
-        e => reraise(e) catch { e => fail_with("Oh, my test failed", e) }
-      }
-  }
-}

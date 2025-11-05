@@ -14,12 +14,12 @@ pub struct Args {
 ///|
 /// Parse command line arguments with simple configuration
 pub fn parse(
-  args : Array[String],
-  flags? : Array[String] = [],
-  options? : Array[String] = [],
-  collections? : Array[String] = [],
+  args : ArrayView[String],
+  flags? : ArrayView[String] = [],
+  options? : ArrayView[String] = [],
+  collections? : ArrayView[String] = [],
   aliases? : Map[String, String] = {},
-  negatable? : Array[String] = [],
+  negatable? : ArrayView[String] = [],
   double_dash? : Bool = true,
   stop_early? : Bool = false,
 ) -> Args {
