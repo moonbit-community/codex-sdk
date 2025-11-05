@@ -1,47 +1,44 @@
 ///|
 struct Arguments {
   /// Path to the root directory containing packages
-  mut path : String
+  path : String
   /// Number of parallel tasks
-  mut parallelism : Int
+  parallelism : Int
 } derive(Default)
-
-///|
-impl @clap.Value for Arguments with add_value(self, name, value, positional) {
-  if name is "parallelism" {
-    self.parallelism = @clap.BasicValue::parse(value) catch {
-      StrConvError(err) =>
-        raise @clap.ParserError::InvalidArgumentValue(
-          "Invalid value for \{name}: \{err}",
-        )
-    }
-  } else if name is "path" && positional {
-    self.path = value
-  } else {
-    raise @clap.ParserError::InvalidArgumentName(
-      "Invalid argument name \{name}",
-    )
-  }
-}
 
 ///|
 async fn main {
   // Parse CLI arguments
-  let parser = @clap.Parser::new(prog="moon run real_world/add_docs --", args={
-    "parallelism": @clap.Arg::named(
-      nargs=@clap.AtMost(1),
-      help="Number of parallel tasks",
-      defaults=["4"],
-    ),
-    "path": @clap.Arg::positional(
-      nargs=@clap.One,
-      help="Path to the root directory containing packages",
-    ),
-  })
-  let argument = Arguments::default()
-  if parser.parse(argument, @sys.get_cli_args()[1:]) is Some(help_message) {
+  let help_message =
+    #|Usage: moon run real_world/add_docs -- [OPTIONS] <path>
+    #|
+    #|<path>    Path to the root directory containing packages
+    #|
+    #|Options:
+    #|  --parallelism <parallelism>    Number of parallel tasks (default: 4)
+    #|  --help                         Print this help message
+    #|
+  let args = @args.parse(
+    @sys.get_cli_args()[1:],
+    flags=["help"],
+    options=["parallelism", "path"],
+    aliases={ "h": "help" },
+  )
+  if args.flags.get("help") is Some(true) {
     @stdio.stdout.write("\{help_message}\n")
     return
+  }
+  guard args.positional is [path] else {
+    @error.fail(
+      "Missing required positional argument: <path>\n\{help_message}\n",
+    )
+  }
+  let parallelism = args.options.get("parallelism").unwrap_or("4")
+  let argument = {
+    path,
+    parallelism: @strconv.parse_int(parallelism) catch {
+      e => @error.fail_with("Invalid parallelism value", e)
+    },
   }
 
   // Prepare environments

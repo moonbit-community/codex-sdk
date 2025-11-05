@@ -51,6 +51,7 @@ moon run example_fix_warnings -- \
 - `--branch-name <NAME>` - Branch name for fixes (default: fix/warnings-auto)
 - `--max-iterations <N>` - Maximum fix iterations (default: 5)
 - `--dry-run` - Show workflow steps without executing
+- `-h, --help` - Show help message
 
 ## How It Works
 

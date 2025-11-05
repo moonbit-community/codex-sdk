@@ -25,42 +25,46 @@ struct Arguments {
   mut max_iterations : Int
   /// Dry run mode - don't actually execute
   mut dry_run : Bool
+  /// Show help message
+  mut help : Bool
 } derive(Default)
 
 ///|
-impl @clap.Value for Arguments with set_flag(self : Arguments, name, value) {
-  if name == "dry-run" {
-    self.dry_run = value
-  } else {
-    raise @clap.ParserError::InvalidArgumentName("Invalid flag name \{name}")
-  }
-}
+fn parse_args(args : @args.Args) -> Arguments raise {
+  let arguments = Arguments::default()
 
-///|
-impl @clap.Value for Arguments with add_value(
-  self : Arguments,
-  name,
-  value,
-  _positional,
-) {
-  if name == "repo-url" {
-    self.repo_url = value
-  } else if name == "clone-path" {
-    self.clone_path = value
-  } else if name == "branch-name" {
-    self.branch_name = value
-  } else if name == "max-iterations" {
-    self.max_iterations = @clap.BasicValue::parse(value) catch {
-      StrConvError(err) =>
-        raise @clap.ParserError::InvalidArgumentValue(
-          "Invalid value for \{name}: \{err}",
-        )
-    }
-  } else {
-    raise @clap.ParserError::InvalidArgumentName(
-      "Invalid argument name \{name}",
-    )
+  // Set defaults
+  arguments.repo_url = "https://github.com/moonbit-community/codex-sdk.git"
+  arguments.clone_path = "/tmp/moonbit-fix-warnings"
+  arguments.branch_name = "fix/warnings-auto"
+  arguments.max_iterations = 5
+  arguments.dry_run = false
+  arguments.help = false
+
+  // Parse flags
+  if args.flags.get("dry-run") is Some(true) {
+    arguments.dry_run = true
   }
+  if args.flags.get("help") is Some(true) {
+    arguments.help = true
+  }
+
+  // Parse options
+  if args.options.get("repo-url") is Some(value) {
+    arguments.repo_url = value
+  }
+  if args.options.get("clone-path") is Some(value) {
+    arguments.clone_path = value
+  }
+  if args.options.get("branch-name") is Some(value) {
+    arguments.branch_name = value
+  }
+  if args.options.get("max-iterations") is Some(value) {
+    arguments.max_iterations = @strconv.parse_int(value) catch {
+      e => @error.fail_with("Invalid max-iterations value: \{value}", e)
+    }
+  }
+  arguments
 }
 
 ///|
@@ -287,59 +291,51 @@ fn build_fix_prompt(
 ///|
 /// Main entry point with CLI argument parsing
 async fn main {
-  @stdio.stdout.write("=== MoonBit Warning Fixer ===\n\n")
+  let help_message =
+    $|
+    $|Usage: moon run example_fix_warnings -- [OPTIONS]
+    $|Automated workflow to fix compilation warnings in a MoonBit project.
+    $|
+    $|Options:
+    $|  --repo-url <url>          Repository URL to clone (default: https://github.com/moonbit-community/codex-sdk.git)
+    $|  --clone-path <path>       Local directory where to clone the repository (default: /tmp/moonbit-fix-warnings)
+    $|  --branch-name <name>      Name of the branch to create for fixes (default: fix/warnings-auto)
+    $|  --max-iterations <num>    Maximum number of fix iterations (default: 5)
+    $|  --dry-run                 Show what would be done without executing
+    $|  -h, --help                Show this help message
+    $|
 
   // Parse CLI arguments
-  let parser = @clap.Parser::new(prog="moon run example_fix_warnings --", args={
-    "repo-url": @clap.Arg::named(
-      nargs=@clap.AtMost(1),
-      help="Repository URL to clone (e.g., https://github.com/owner/repo.git)",
-      defaults=["https://github.com/moonbit-community/codex-sdk.git"],
-    ),
-    "clone-path": @clap.Arg::named(
-      nargs=@clap.AtMost(1),
-      help="Local directory where to clone the repository",
-      defaults=["/tmp/moonbit-fix-warnings"],
-    ),
-    "branch-name": @clap.Arg::named(
-      nargs=@clap.AtMost(1),
-      help="Name of the branch to create for fixes",
-      defaults=["fix/warnings-auto"],
-    ),
-    "max-iterations": @clap.Arg::named(
-      nargs=@clap.AtMost(1),
-      help="Maximum number of fix iterations",
-      defaults=["5"],
-    ),
-    "dry-run": @clap.Arg::flag(help="Show what would be done without executing"),
-  })
-  let args = Arguments::{
-    repo_url: "https://github.com/moonbit-community/codex-sdk.git",
-    clone_path: "/tmp/moonbit-fix-warnings",
-    branch_name: "fix/warnings-auto",
-    max_iterations: 5,
-    dry_run: false,
-  }
-  if parser.parse(args, @sys.get_cli_args()[1:]) is Some(help_message) {
+  let args = @args.parse(
+    @sys.get_cli_args()[1:],
+    flags=["dry-run", "help"],
+    options=["repo-url", "clone-path", "branch-name", "max-iterations"],
+    aliases={ "h": "help" },
+  )
+  let arguments = parse_args(args)
+  if arguments.help {
     @stdio.stdout.write("\{help_message}\n")
     return
   }
+  @stdio.stdout.write("=== MoonBit Warning Fixer ===\n\n")
 
   // Display configuration
   @stdio.stdout.write("Configuration:\n")
-  @stdio.stdout.write("  Repository URL: \{args.repo_url}\n")
-  @stdio.stdout.write("  Clone path: \{args.clone_path}\n")
-  @stdio.stdout.write("  Branch name: \{args.branch_name}\n")
-  @stdio.stdout.write("  Max iterations: \{args.max_iterations}\n")
-  @stdio.stdout.write("  Dry run: \{args.dry_run}\n\n")
-  if args.dry_run {
+  @stdio.stdout.write("  Repository URL: \{arguments.repo_url}\n")
+  @stdio.stdout.write("  Clone path: \{arguments.clone_path}\n")
+  @stdio.stdout.write("  Branch name: \{arguments.branch_name}\n")
+  @stdio.stdout.write("  Max iterations: \{arguments.max_iterations}\n")
+  @stdio.stdout.write("  Dry run: \{arguments.dry_run}\n\n")
+  if arguments.dry_run {
     @stdio.stdout.write("🔍 DRY RUN MODE - No changes will be made\n\n")
     @stdio.stdout.write("Workflow steps that would be executed:\n")
-    @stdio.stdout.write("1. Clone repository from \{args.repo_url}\n")
-    @stdio.stdout.write("2. Create and checkout branch '\{args.branch_name}'\n")
+    @stdio.stdout.write("1. Clone repository from \{arguments.repo_url}\n")
+    @stdio.stdout.write(
+      "2. Create and checkout branch '\{arguments.branch_name}'\n",
+    )
     @stdio.stdout.write("3. Run moon check to identify warnings\n")
     @stdio.stdout.write(
-      "4. Use AI to fix warnings (up to \{args.max_iterations} iterations)\n",
+      "4. Use AI to fix warnings (up to \{arguments.max_iterations} iterations)\n",
     )
     @stdio.stdout.write("5. Run moon test to verify changes\n")
     @stdio.stdout.write("6. Run moon info and moon fmt\n")
@@ -355,9 +351,9 @@ async fn main {
   // Execute the workflow
   @stdio.stdout.write("🚀 Starting workflow...\n\n")
   fix_warnings_workflow(
-    args.repo_url,
-    args.clone_path,
-    args.branch_name,
-    args.max_iterations,
+    arguments.repo_url,
+    arguments.clone_path,
+    arguments.branch_name,
+    arguments.max_iterations,
   )
 }

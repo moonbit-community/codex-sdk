@@ -18,41 +18,33 @@ struct Arguments {
 } derive(Default)
 
 ///|
-impl @clap.Value for Arguments with set_flag(self, name, value) {
-  if name == "all" {
-    self.all = value
-  } else if name == "changed" {
-    self.changed = value
-  } else if name == "verbose" {
-    self.verbose = value
-  } else {
-    raise @clap.ParserError::InvalidArgumentName("Invalid flag name \{name}")
+fn parse_args(args : @args.Args) -> Arguments raise {
+  let arguments = Arguments::default()
+  if args.flags.get("all") is Some(true) {
+    arguments.all = true
   }
-}
-
-///|
-impl @clap.Value for Arguments with add_value(self, name, value, positional) {
-  if name == "concurrency" {
-    self.concurrency = @clap.BasicValue::parse(value) catch {
-      StrConvError(err) =>
-        raise @clap.ParserError::InvalidArgumentValue(
-          "Invalid value for \{name}: \{err}",
-        )
-    }
-  } else if name == "files" {
-    self.files = value
+  if args.flags.get("changed") is Some(true) {
+    arguments.changed = true
+  }
+  if args.options.get("files") is Some(value) {
+    arguments.files = value
       .split(",")
       .map(fn(s) { s.trim(char_set=" \t\n\r").to_string() })
       .collect()
-  } else if name == "output" {
-    self.output = value
-  } else if name == "path" && positional {
-    self.path = value
-  } else {
-    raise @clap.ParserError::InvalidArgumentName(
-      "Invalid argument name \{name}",
-    )
   }
+  let concurrency = args.options.get("concurrency").unwrap_or("5")
+  arguments.concurrency = @strconv.parse_int(concurrency) catch {
+    e => @error.fail_with("Invalid concurrency value", e)
+  }
+  if args.flags.get("verbose") is Some(true) {
+    arguments.verbose = true
+  }
+  guard args.positional is [path] else {
+    @error.fail("Path argument is required")
+  }
+  arguments.path = path
+  arguments.output = args.options.get("output").unwrap_or("mbti-reviews")
+  arguments
 }
 
 ///|
@@ -344,45 +336,32 @@ async fn process_concurrently(
 ///|
 /// Main entry point
 async fn main {
-  @stdio.stdout.write("🔍 Starting mbti file review...\n\n")
-
+  let help_message =
+    $|
+    #|Usage: moon run real_world/review_mbti -- [OPTIONS] <path>
+    #|Review MoonBit interface files (pkg.generated.mbti) using Codex.
+    #|
+    #|Options:
+    #|  --all                     Review all mbti files (default)
+    #|  --changed                 Only review changed files in git
+    #|  --files <files>           Specific files to review (comma-separated)
+    #|  -c, --concurrency <num>   Number of concurrent reviews (default: 5)
+    #|  -v, --verbose             Show detailed progress
+    #|  -o, --output <dir>        Output directory for review files (default: mbti-reviews)
+    #|  <path>                    Path to the project root
+    #|
   // Parse CLI arguments
-  let parser = @clap.Parser::new(prog="moon run real_world/review_mbti --", args={
-    "all": @clap.Arg::flag(help="Review all mbti files (default)"),
-    "changed": @clap.Arg::flag(help="Only review changed files in git"),
-    "files": @clap.Arg::named(
-      nargs=@clap.AtMost(1),
-      help="Specific files to review (comma-separated)",
-    ),
-    "concurrency": @clap.Arg::named(
-      nargs=@clap.AtMost(1),
-      help="Number of concurrent reviews",
-      defaults=["5"],
-    ),
-    "verbose": @clap.Arg::flag(help="Show detailed progress"),
-    "output": @clap.Arg::named(
-      nargs=@clap.AtMost(1),
-      help="Output directory for review files",
-      defaults=["mbti-reviews"],
-    ),
-    "path": @clap.Arg::positional(
-      nargs=@clap.One,
-      help="Path to the project root",
-    ),
-  })
-  let argument = Arguments::{
-    all: true,
-    changed: false,
-    files: [],
-    concurrency: 5,
-    verbose: false,
-    path: ".",
-    output: "mbti-reviews",
-  }
-  if parser.parse(argument, @sys.get_cli_args()[1:]) is Some(help_message) {
+  let args = @args.parse(
+    @sys.get_cli_args()[1:],
+    flags=["all", "changed", "verbose", "help"],
+    options=["files", "concurrency", "output"],
+    aliases={ "h": "help", "v": "verbose", "o": "output", "c": "concurrency" },
+  )
+  if args.flags.get("help") is Some(true) {
     @stdio.stdout.write("\{help_message}\n")
     return
   }
+  let argument = parse_args(args)
   let project_root = argument.path
 
   // Make output directory absolute if it's relative

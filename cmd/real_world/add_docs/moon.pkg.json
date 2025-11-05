@@ -5,12 +5,13 @@
     "peter-jerry-ye/codex",
     "moonbitlang/async/fs",
     "moonbitlang/async/semaphore",
-    "TheWaWaR/clap",
     "moonbitlang/x/sys",
     "moonbitlang/async/process",
     "moonbitlang/async/pipe",
     "moonbitlang/async/io",
-    "moonbitlang/async/stdio"
+    "moonbitlang/async/stdio",
+    "peter-jerry-ye/codex/x/args",
+    "peter-jerry-ye/codex/x/error"
   ],
   "link": {
     "native": {
