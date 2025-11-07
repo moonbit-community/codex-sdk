@@ -198,23 +198,155 @@ async fn solve_task(
   )
   @stdio.stdout.write("Starting AI agent...\n\n")
 
-  // Run the task
+  // Run the task - use streaming to show progress
+  let streamed_turn = thread.run_streamed(full_prompt)
+  let events = streamed_turn.events
+  let mut final_response = ""
+  let mut thread_id : String? = None
+  let mut usage : @codex.Usage? = None
+  let items : Array[@codex.ThreadItem] = []
   try {
-    let turn = thread.run(full_prompt)
-    @stdio.stdout.write("=== Agent Response ===\n\n")
-    @stdio.stdout.write("\{turn.final_response}\n\n")
-    if verbose && turn.items.length() > 0 {
-      @stdio.stdout.write("=== Actions Taken ===\n\n")
-      @stdio.stdout.write("Number of items: \{turn.items.length()}\n\n")
+    while events.next() is Some(event) {
+      match event {
+        @codex.ThreadStarted(thread_id=tid) => {
+          thread_id = Some(tid)
+          @stdio.stdout.write(
+            "Thread started with ID: \{tid}\n(Use this ID with 'codex resume \{tid}' to continue)\n\n",
+          )
+        }
+        @codex.TurnStarted =>
+          if verbose {
+            @stdio.stdout.write("=== Turn Started ===\n\n")
+          }
+        @codex.ItemStarted(item) =>
+          if verbose {
+            match item {
+              @codex.ReasoningItem(text~, ..) =>
+                @stdio.stdout.write("💭 Reasoning: \{text}\n\n")
+              @codex.CommandExecutionItem(command~, ..) =>
+                @stdio.stdout.write("⚙️  Executing command: \{command}\n")
+              @codex.FileChangeItem(changes~, ..) => {
+                @stdio.stdout.write("📝 File changes:\n")
+                for change in changes {
+                  let kind_str = match change.kind {
+                    @codex.Add => "Adding"
+                    @codex.Delete => "Deleting"
+                    @codex.Update => "Updating"
+                  }
+                  @stdio.stdout.write("   \{kind_str}: \{change.path}\n")
+                }
+                @stdio.stdout.write("\n")
+              }
+              @codex.TodoListItem(items~, ..) => {
+                @stdio.stdout.write("📋 Todo List:\n")
+                for i = 0; i < items.length(); i = i + 1 {
+                  let todo = items[i]
+                  let status = if todo.completed { "✓" } else { " " }
+                  @stdio.stdout.write("   [\{status}] \{todo.text}\n")
+                }
+                @stdio.stdout.write("\n")
+              }
+              @codex.McpToolCallItem(server~, tool~, ..) =>
+                @stdio.stdout.write(
+                  "🔧 Calling MCP tool: \{server}/\{tool}\n",
+                )
+              @codex.WebSearchItem(query~, ..) =>
+                @stdio.stdout.write("🔍 Web search: \{query}\n")
+              _ => ()
+            }
+          }
+        @codex.ItemUpdated(item) =>
+          if verbose {
+            match item {
+              @codex.TodoListItem(items~, ..) => {
+                @stdio.stdout.write("📋 Todo List Updated:\n")
+                for i = 0; i < items.length(); i = i + 1 {
+                  let todo = items[i]
+                  let status = if todo.completed { "✓" } else { " " }
+                  @stdio.stdout.write("   [\{status}] \{todo.text}\n")
+                }
+                @stdio.stdout.write("\n")
+              }
+              @codex.CommandExecutionItem(aggregated_output~, ..) =>
+                if !aggregated_output.is_empty() {
+                  @stdio.stdout.write("   Output: \{aggregated_output}\n")
+                }
+              _ => ()
+            }
+          }
+        @codex.ItemCompleted(item) => {
+          items.push(item)
+          if verbose {
+            match item {
+              @codex.AgentMessageItem(text~, ..) => {
+                final_response = text
+                @stdio.stdout.write("💬 Agent: \{text}\n\n")
+              }
+              @codex.CommandExecutionItem(status~, exit_code~, ..) => {
+                let status_str = match status {
+                  @codex.Completed => "✓ Completed"
+                  @codex.Failed => "✗ Failed"
+                  @codex.InProgress => "In Progress"
+                }
+                @stdio.stdout.write("   Status: \{status_str}")
+                if exit_code is Some(code) {
+                  @stdio.stdout.write(" (exit code: \{code})")
+                }
+                @stdio.stdout.write("\n\n")
+              }
+              @codex.ErrorItem(message~, ..) =>
+                @stdio.stdout.write("❌ Error: \{message}\n\n")
+              _ => ()
+            }
+            // Even in non-verbose mode, capture final response
+          } else if item is @codex.AgentMessageItem(text~, ..) {
+            final_response = text
+          }
+        }
+        @codex.TurnCompleted(u) => {
+          usage = Some(u)
+          if verbose {
+            @stdio.stdout.write("=== Turn Completed ===\n\n")
+          }
+        }
+        @codex.TurnFailed(error) => {
+          @stdio.stdout.write("❌ Turn Failed: \{error.message}\n")
+          return
+        }
+        @codex.ThreadErrorEvent(message) => {
+          @stdio.stdout.write("❌ Thread Error: \{message}\n")
+          return
+        }
+      }
     }
-    if turn.usage is Some(usage) {
+
+    // Print summary
+    @stdio.stdout.write("=== Agent Response ===\n\n")
+    @stdio.stdout.write("\{final_response}\n\n")
+    if usage is Some(u) {
       @stdio.stdout.write("=== Usage Stats ===\n")
-      @stdio.stdout.write("Input tokens: \{usage.input_tokens}\n")
-      @stdio.stdout.write("Output tokens: \{usage.output_tokens}\n")
+      @stdio.stdout.write("Input tokens: \{u.input_tokens}\n")
+      @stdio.stdout.write("Output tokens: \{u.output_tokens}\n")
+      if u.cached_input_tokens > 0 {
+        @stdio.stdout.write("Cached tokens: \{u.cached_input_tokens}\n")
+      }
+    }
+    if thread_id is Some(id) {
+      @stdio.stdout.write("\nThread ID: \{id}\n")
     }
     @stdio.stdout.write("\n=== Task Complete ===\n")
   } catch {
-    error => @stdio.stdout.write("Error during task execution: \{error}\n")
+    error => {
+      while events.returns() is Some(_) {
+        // Must drain the generator to avoid unhandled promise rejection
+      }
+      @stdio.stdout.write("❌ Error during task execution: \{error}\n")
+      if thread_id is Some(id) {
+        @stdio.stdout.write(
+          "\nThread ID: \{id}\nYou can resume with: codex resume \{id}\n",
+        )
+      }
+    }
   }
 }
 
