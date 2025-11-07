@@ -84,10 +84,11 @@ async fn read_task(arguments : Arguments) -> String {
   } else if !arguments.file.is_empty() {
     // Read from file
     if @fs.exists(arguments.file) {
-      @fs.read_file(arguments.file).text()
+      @fs.read_file(arguments.file).text() catch {
+        e => @error.fail_with("Failed to read file '\{arguments.file}'", e)
+      }
     } else {
-      @stdio.stdout.write("Error: File not found: \{arguments.file}\n")
-      ""
+      @error.fail("File not found: \{arguments.file}")
     }
   } else {
     // Return the task as-is (direct task description)
@@ -170,153 +171,153 @@ async fn solve_task(
   model : String,
   verbose : Bool,
 ) -> Unit {
-  if task.is_empty() {
-    @stdio.stdout.write("Error: No task provided\n")
-    return
-  }
-  @stdio.stdout.write("=== MoonBit Task Solver ===\n\n")
-  @stdio.stdout.write("Working directory: \{working_dir}\n")
-  @stdio.stdout.write("Model: \{model}\n\n")
-  @stdio.stdout.write("Task:\n\{task}\n\n")
-  @stdio.stdout.write("---\n\n")
-
-  // Build the enhanced prompt with system context
-  let system_context = build_system_context(working_dir)
-  let full_prompt = "\{system_context}\n\n## TASK:\n\n\{task}"
-  if verbose {
-    @stdio.stdout.write("=== System Context ===\n\{system_context}\n\n")
-  }
-
-  // Initialize Codex with workspace write permissions
-  let codex = @codex.Codex::new()
-  let thread = codex.start_thread(
-    options=@codex.ThreadOptions::new(
-      model~,
-      sandbox_mode=@codex.SandboxMode::WorkspaceWrite,
-      working_directory=working_dir,
-    ),
-  )
-  @stdio.stdout.write("Starting AI agent...\n\n")
-
-  // Run the task - use streaming to show progress
-  let streamed_turn = thread.run_streamed(full_prompt)
-  let events = streamed_turn.events
-  let mut final_response = ""
-  let mut thread_id : String? = None
-  let mut usage : @codex.Usage? = None
-  let items : Array[@codex.ThreadItem] = []
   try {
-    while events.next() is Some(event) {
-      match event {
-        @codex.ThreadStarted(thread_id=tid) => {
-          thread_id = Some(tid)
-          @stdio.stdout.write(
-            "Thread started with ID: \{tid}\n(Use this ID with 'codex resume \{tid}' to continue)\n\n",
-          )
-        }
-        @codex.TurnStarted =>
-          if verbose {
-            @stdio.stdout.write("=== Turn Started ===\n\n")
+    if task.is_empty() {
+      @error.fail("No task provided")
+    }
+    @stdio.stdout.write("=== MoonBit Task Solver ===\n\n")
+    @stdio.stdout.write("Working directory: \{working_dir}\n")
+    @stdio.stdout.write("Model: \{model}\n\n")
+    @stdio.stdout.write("Task:\n\{task}\n\n")
+    @stdio.stdout.write("---\n\n")
+
+    // Build the enhanced prompt with system context
+    let system_context = build_system_context(working_dir)
+    let full_prompt = "\{system_context}\n\n## TASK:\n\n\{task}"
+    if verbose {
+      @stdio.stdout.write("=== System Context ===\n\{system_context}\n\n")
+    }
+
+    // Initialize Codex with workspace write permissions
+    let codex = @codex.Codex::new()
+    let thread = codex.start_thread(
+      options=@codex.ThreadOptions::new(
+        model~,
+        sandbox_mode=@codex.SandboxMode::WorkspaceWrite,
+        working_directory=working_dir,
+      ),
+    )
+    @stdio.stdout.write("Starting AI agent...\n\n")
+    let thread_id = thread.id()
+    let events = thread.run_streamed(full_prompt) catch {
+      e => @error.fail_with("Failed to send user message", e)
+    }
+    let mut final_response = ""
+    let mut usage : @codex.Usage? = None
+    let items = Array::new()
+    try {
+      while events.events.next() is Some(event) {
+        match event {
+          @codex.ThreadStarted(thread_id~) => {
+            @stdio.stdout.write("=== Thread Started ===\n\n")
+            @stdio.stdout.write("Thread ID: \{thread_id}\n\n")
           }
-        @codex.ItemStarted(item) =>
-          if verbose {
-            match item {
-              @codex.ReasoningItem(text~, ..) =>
-                @stdio.stdout.write("💭 Reasoning: \{text}\n\n")
-              @codex.CommandExecutionItem(command~, ..) =>
-                @stdio.stdout.write("⚙️  Executing command: \{command}\n")
-              @codex.FileChangeItem(changes~, ..) => {
-                @stdio.stdout.write("📝 File changes:\n")
-                for change in changes {
-                  let kind_str = match change.kind {
-                    @codex.Add => "Adding"
-                    @codex.Delete => "Deleting"
-                    @codex.Update => "Updating"
+          @codex.TurnStarted =>
+            if verbose {
+              @stdio.stdout.write("=== Turn Started ===\n\n")
+            }
+          @codex.ItemStarted(item) =>
+            if verbose {
+              match item {
+                @codex.ReasoningItem(text~, ..) =>
+                  @stdio.stdout.write("💭 Reasoning: \{text}\n\n")
+                @codex.CommandExecutionItem(command~, ..) =>
+                  @stdio.stdout.write("⚙️ Executing command: \{command}\n")
+                @codex.FileChangeItem(changes~, ..) => {
+                  @stdio.stdout.write("📝 File changes:\n")
+                  for change in changes {
+                    let kind_str = match change.kind {
+                      @codex.Add => "Adding"
+                      @codex.Delete => "Deleting"
+                      @codex.Update => "Updating"
+                    }
+                    @stdio.stdout.write("   \{kind_str}: \{change.path}\n")
                   }
-                  @stdio.stdout.write("   \{kind_str}: \{change.path}\n")
+                  @stdio.stdout.write("\n")
                 }
-                @stdio.stdout.write("\n")
-              }
-              @codex.TodoListItem(items~, ..) => {
-                @stdio.stdout.write("📋 Todo List:\n")
-                for i = 0; i < items.length(); i = i + 1 {
-                  let todo = items[i]
-                  let status = if todo.completed { "✓" } else { " " }
-                  @stdio.stdout.write("   [\{status}] \{todo.text}\n")
+                @codex.TodoListItem(items~, ..) => {
+                  @stdio.stdout.write("📋 Todo List:\n")
+                  for i = 0; i < items.length(); i = i + 1 {
+                    let todo = items[i]
+                    let status = if todo.completed { "✓" } else { " " }
+                    @stdio.stdout.write("   [\{status}] \{todo.text}\n")
+                  }
+                  @stdio.stdout.write("\n")
                 }
-                @stdio.stdout.write("\n")
+                @codex.McpToolCallItem(server~, tool~, ..) =>
+                  @stdio.stdout.write(
+                    "🔧 Calling MCP tool: \{server}/\{tool}\n",
+                  )
+                @codex.WebSearchItem(query~, ..) =>
+                  @stdio.stdout.write("🔍 Web search: \{query}\n")
+                _ => ()
               }
-              @codex.McpToolCallItem(server~, tool~, ..) =>
-                @stdio.stdout.write(
-                  "🔧 Calling MCP tool: \{server}/\{tool}\n",
-                )
-              @codex.WebSearchItem(query~, ..) =>
-                @stdio.stdout.write("🔍 Web search: \{query}\n")
-              _ => ()
+            }
+          @codex.ItemUpdated(item) =>
+            if verbose {
+              match item {
+                @codex.TodoListItem(items~, ..) => {
+                  @stdio.stdout.write("📋 Todo List Updated:\n")
+                  for i = 0; i < items.length(); i = i + 1 {
+                    let todo = items[i]
+                    let status = if todo.completed { "✓" } else { " " }
+                    @stdio.stdout.write("   [\{status}] \{todo.text}\n")
+                  }
+                  @stdio.stdout.write("\n")
+                }
+                @codex.CommandExecutionItem(aggregated_output~, ..) =>
+                  if !aggregated_output.is_empty() {
+                    @stdio.stdout.write("   Output: \{aggregated_output}\n")
+                  }
+                _ => ()
+              }
+            }
+          @codex.ItemCompleted(item) => {
+            items.push(item)
+            if verbose {
+              match item {
+                @codex.AgentMessageItem(text~, ..) => {
+                  final_response = text
+                  @stdio.stdout.write("💬 Agent: \{text}\n\n")
+                }
+                @codex.CommandExecutionItem(status~, exit_code~, ..) => {
+                  let status_str = match status {
+                    @codex.Completed => "✓ Completed"
+                    @codex.Failed => "✗ Failed"
+                    @codex.InProgress => "In Progress"
+                  }
+                  @stdio.stdout.write("   Status: \{status_str}")
+                  if exit_code is Some(code) {
+                    @stdio.stdout.write(" (exit code: \{code})")
+                  }
+                  @stdio.stdout.write("\n\n")
+                }
+                @codex.ErrorItem(message~, ..) =>
+                  @stdio.stdout.write("❌ Error: \{message}\n\n")
+                _ => ()
+              }
+            } else if item is @codex.AgentMessageItem(text~, ..) {
+              final_response = text
             }
           }
-        @codex.ItemUpdated(item) =>
-          if verbose {
-            match item {
-              @codex.TodoListItem(items~, ..) => {
-                @stdio.stdout.write("📋 Todo List Updated:\n")
-                for i = 0; i < items.length(); i = i + 1 {
-                  let todo = items[i]
-                  let status = if todo.completed { "✓" } else { " " }
-                  @stdio.stdout.write("   [\{status}] \{todo.text}\n")
-                }
-                @stdio.stdout.write("\n")
-              }
-              @codex.CommandExecutionItem(aggregated_output~, ..) =>
-                if !aggregated_output.is_empty() {
-                  @stdio.stdout.write("   Output: \{aggregated_output}\n")
-                }
-              _ => ()
+          @codex.TurnCompleted(u) => {
+            usage = Some(u)
+            if verbose {
+              @stdio.stdout.write("=== Turn Completed ===\n\n")
             }
           }
-        @codex.ItemCompleted(item) => {
-          items.push(item)
-          if verbose {
-            match item {
-              @codex.AgentMessageItem(text~, ..) => {
-                final_response = text
-                @stdio.stdout.write("💬 Agent: \{text}\n\n")
-              }
-              @codex.CommandExecutionItem(status~, exit_code~, ..) => {
-                let status_str = match status {
-                  @codex.Completed => "✓ Completed"
-                  @codex.Failed => "✗ Failed"
-                  @codex.InProgress => "In Progress"
-                }
-                @stdio.stdout.write("   Status: \{status_str}")
-                if exit_code is Some(code) {
-                  @stdio.stdout.write(" (exit code: \{code})")
-                }
-                @stdio.stdout.write("\n\n")
-              }
-              @codex.ErrorItem(message~, ..) =>
-                @stdio.stdout.write("❌ Error: \{message}\n\n")
-              _ => ()
-            }
-            // Even in non-verbose mode, capture final response
-          } else if item is @codex.AgentMessageItem(text~, ..) {
-            final_response = text
-          }
+          @codex.TurnFailed(error) =>
+            @error.fail("Turn failed: \{error.message}")
+          @codex.ThreadErrorEvent(message) =>
+            @error.fail("Thread error: \{message}")
         }
-        @codex.TurnCompleted(u) => {
-          usage = Some(u)
-          if verbose {
-            @stdio.stdout.write("=== Turn Completed ===\n\n")
-          }
+      }
+    } catch {
+      e => {
+        while events.events.returns() is Some(_) {
+          // Must drain the generator to avoid unhandled promise rejection
         }
-        @codex.TurnFailed(error) => {
-          @stdio.stdout.write("❌ Turn Failed: \{error.message}\n")
-          return
-        }
-        @codex.ThreadErrorEvent(message) => {
-          @stdio.stdout.write("❌ Thread Error: \{message}\n")
-          return
-        }
+        @error.reraise(e)
       }
     }
 
@@ -331,22 +332,10 @@ async fn solve_task(
         @stdio.stdout.write("Cached tokens: \{u.cached_input_tokens}\n")
       }
     }
-    if thread_id is Some(id) {
-      @stdio.stdout.write("\nThread ID: \{id}\n")
-    }
+    @stdio.stdout.write("\nThread ID: \{thread_id}\n")
     @stdio.stdout.write("\n=== Task Complete ===\n")
   } catch {
-    error => {
-      while events.returns() is Some(_) {
-        // Must drain the generator to avoid unhandled promise rejection
-      }
-      @stdio.stdout.write("❌ Error during task execution: \{error}\n")
-      if thread_id is Some(id) {
-        @stdio.stdout.write(
-          "\nThread ID: \{id}\nYou can resume with: codex resume \{id}\n",
-        )
-      }
-    }
+    error => @stdio.stdout.write("❌ Error during task execution: \{error}\n")
   }
 }
 
@@ -390,7 +379,6 @@ async fn main {
     $|  - Can use git, moon, and other utilities from x/
     $|  - Has workspace write permissions for implementing solutions
     $|
-
   // Parse CLI arguments
   let args = @args.parse(
     @sys.get_cli_args()[1:],
@@ -407,9 +395,7 @@ async fn main {
   // Read the task
   let task = read_task(arguments)
   if task.is_empty() {
-    @stdio.stdout.write("Error: No task provided\n")
-    @stdio.stdout.write("Use --help for usage information\n")
-    return
+    @error.fail("No task provided. Use --help for usage information")
   }
 
   // Execute the task solver
