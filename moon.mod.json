@@ -1,6 +1,6 @@
 {
   "name": "peter-jerry-ye/codex",
-  "version": "0.46.0",
+  "version": "0.46.1",
   "deps": {
     "moonbitlang/async": "0.11.0",
     "moonbitlang/x": "0.4.36"
@@ -11,6 +11,6 @@
   "keywords": [
     "AI"
   ],
-  "description": "",
+  "description": "Codex SDK, with some useful tools for building AI applications.",
   "preferred-target": "native"
 }
