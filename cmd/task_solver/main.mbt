@@ -26,7 +26,7 @@ struct Arguments {
   /// Show help message
   mut help : Bool
   /// Model to use for task solving
-  mut model : String
+  mut model : String?
   /// Verbose output mode
   mut verbose : Bool
 } derive(Default)
@@ -41,7 +41,6 @@ fn parse_args(args : @args.Args) -> Arguments {
   arguments.file = ""
   arguments.working_dir = "."
   arguments.help = false
-  arguments.model = "anthropic/claude-sonnet-4"
   arguments.verbose = false
 
   // Parse flags
@@ -61,7 +60,7 @@ fn parse_args(args : @args.Args) -> Arguments {
     arguments.working_dir = value
   }
   if args.options.get("model") is Some(value) {
-    arguments.model = value
+    arguments.model = Some(value)
   }
   if args.options.get("file") is Some(value) {
     arguments.file = value
@@ -168,22 +167,35 @@ fn build_system_context(working_dir : String) -> String {
 async fn solve_task(
   task : String,
   working_dir : String,
-  model : String,
+  model : String?,
   verbose : Bool,
 ) -> Unit {
   try {
     if task.is_empty() {
       @error.fail("No task provided")
     }
-    @stdio.stdout.write("=== MoonBit Task Solver ===\n\n")
-    @stdio.stdout.write("Working directory: \{working_dir}\n")
-    @stdio.stdout.write("Model: \{model}\n\n")
-    @stdio.stdout.write("Task:\n\{task}\n\n")
-    @stdio.stdout.write("---\n\n")
+    @stdio.stdout.write(
+      (
+        #|=== MoonBit Task Solver ===
+        #|
+        $|Working directory: \{working_dir}
+        $|Model: \{model}
+        $|Task:
+        $|\{task}
+        $|
+        #|---
+        #|
+      ),
+    )
 
     // Build the enhanced prompt with system context
     let system_context = build_system_context(working_dir)
-    let full_prompt = "\{system_context}\n\n## TASK:\n\n\{task}"
+    let full_prompt =
+      $|\{system_context}
+      #|
+      #|## TASK:
+      $|\{task}
+      #|
     if verbose {
       @stdio.stdout.write("=== System Context ===\n\{system_context}\n\n")
     }
@@ -192,29 +204,39 @@ async fn solve_task(
     let codex = @codex.Codex::new()
     let thread = codex.start_thread(
       options=@codex.ThreadOptions::new(
-        model~,
+        model?,
         sandbox_mode=@codex.SandboxMode::WorkspaceWrite,
         working_directory=working_dir,
       ),
     )
     @stdio.stdout.write("Starting AI agent...\n\n")
-    let thread_id = thread.id()
+    let mut thread_id = thread.id()
     let events = thread.run_streamed(full_prompt) catch {
       e => @error.fail_with("Failed to send user message", e)
     }
     let mut final_response = ""
     let mut usage : @codex.Usage? = None
-    let items = Array::new()
     try {
       while events.events.next() is Some(event) {
         match event {
-          @codex.ThreadStarted(thread_id~) => {
-            @stdio.stdout.write("=== Thread Started ===\n\n")
-            @stdio.stdout.write("Thread ID: \{thread_id}\n\n")
+          @codex.ThreadStarted(thread_id=tid) => {
+            thread_id = Some(tid)
+            @stdio.stdout.write(
+              (
+                #|=== Thread Started ===
+                $|Thread ID: \{tid}
+                #|
+              ),
+            )
           }
           @codex.TurnStarted =>
             if verbose {
-              @stdio.stdout.write("=== Turn Started ===\n\n")
+              @stdio.stdout.write(
+                (
+                  #|=== Turn Started ===
+                  #|
+                ),
+              )
             }
           @codex.ItemStarted(item) =>
             if verbose {
@@ -272,8 +294,7 @@ async fn solve_task(
                 _ => ()
               }
             }
-          @codex.ItemCompleted(item) => {
-            items.push(item)
+          @codex.ItemCompleted(item) =>
             if verbose {
               match item {
                 @codex.AgentMessageItem(text~, ..) => {
@@ -299,7 +320,6 @@ async fn solve_task(
             } else if item is @codex.AgentMessageItem(text~, ..) {
               final_response = text
             }
-          }
           @codex.TurnCompleted(u) => {
             usage = Some(u)
             if verbose {
@@ -322,18 +342,33 @@ async fn solve_task(
     }
 
     // Print summary
-    @stdio.stdout.write("=== Agent Response ===\n\n")
-    @stdio.stdout.write("\{final_response}\n\n")
+    @stdio.stdout.write(
+      (
+        #|=== Agent Response ===
+        $|\{final_response}
+        $|
+      ),
+    )
     if usage is Some(u) {
-      @stdio.stdout.write("=== Usage Stats ===\n")
-      @stdio.stdout.write("Input tokens: \{u.input_tokens}\n")
-      @stdio.stdout.write("Output tokens: \{u.output_tokens}\n")
+      @stdio.stdout.write(
+        (
+          #|=== Usage Stats ===
+          $|Input tokens: \{u.input_tokens}
+          $|Output tokens: \{u.output_tokens}
+          $|
+        ),
+      )
       if u.cached_input_tokens > 0 {
         @stdio.stdout.write("Cached tokens: \{u.cached_input_tokens}\n")
       }
     }
-    @stdio.stdout.write("\nThread ID: \{thread_id}\n")
-    @stdio.stdout.write("\n=== Task Complete ===\n")
+    @stdio.stdout.write(
+      (
+        $|Thread ID: \{thread_id}
+        #|=== Task Complete ===
+        $|
+      ),
+    )
   } catch {
     error => @stdio.stdout.write("❌ Error during task execution: \{error}\n")
   }
