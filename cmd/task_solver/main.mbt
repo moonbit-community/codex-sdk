@@ -29,19 +29,28 @@ struct Arguments {
   mut model : String?
   /// Verbose output mode
   mut verbose : Bool
-} derive(Default)
+  /// Skip git checks
+  mut skip_git_check : Bool
+  /// Sandbox mode (WorkspaceWrite or DangerousFullAccess)
+  mut sandbox_mode : @codex.SandboxMode
+  /// Resume an existing thread by ID
+  mut resume_thread_id : String?
+}
 
 ///|
 fn parse_args(args : @args.Args) -> Arguments {
-  let arguments = Arguments::default()
-
-  // Set defaults
-  arguments.task = ""
-  arguments.use_stdin = false
-  arguments.file = ""
-  arguments.working_dir = "."
-  arguments.help = false
-  arguments.verbose = false
+  let arguments = {
+    task: "",
+    use_stdin: false,
+    file: "",
+    working_dir: ".",
+    help: false,
+    model: None,
+    verbose: false,
+    skip_git_check: false,
+    sandbox_mode: WorkspaceWrite,
+    resume_thread_id: None,
+  }
 
   // Parse flags
   if args.flags.get("stdin") is Some(true) {
@@ -54,6 +63,9 @@ fn parse_args(args : @args.Args) -> Arguments {
     args.flags.get("v") is Some(true) {
     arguments.verbose = true
   }
+  if args.flags.get("skip-git-check") is Some(true) {
+    arguments.skip_git_check = true
+  }
 
   // Parse options
   if args.options.get("working-dir") is Some(value) {
@@ -64,6 +76,20 @@ fn parse_args(args : @args.Args) -> Arguments {
   }
   if args.options.get("file") is Some(value) {
     arguments.file = value
+  }
+  if args.options.get("sandbox-mode") is Some(mode) &&
+    mode is ("DangerousFullAccess" | "WorkspaceWrite" | "ReadOnly") {
+    match mode {
+      "DangerousFullAccess" =>
+        arguments.sandbox_mode = @codex.SandboxMode::DangerFullAccess
+      "WorkspaceWrite" =>
+        arguments.sandbox_mode = @codex.SandboxMode::WorkspaceWrite
+      "ReadOnly" => arguments.sandbox_mode = @codex.SandboxMode::ReadOnly
+      _ => panic()
+    }
+  }
+  if args.options.get("resume") is Some(value) {
+    arguments.resume_thread_id = Some(value)
   }
 
   // Parse positional arguments (task description or file path)
@@ -97,69 +123,38 @@ async fn read_task(arguments : Arguments) -> String {
 
 ///|
 /// Build the system prompt that gives the agent awareness of its capabilities
-fn build_system_context(working_dir : String) -> String {
-  let context = StringBuilder::new()
-  context.write_string(
-    "You are an intelligent task solver with special capabilities.\n\n",
+fn build_system_context() -> String {
+  (
+    #|You are an intelligent task solver with special capabilities.
+    #|
+    #|## Your Capabilities:
+    #|1. **File Operations**: You can read, write, and modify files in the workspace.
+    #|2. **MoonBit Ecosystem**: You can use MoonBit commands:
+    #|   - Use `moon new` to create new MoonBit project
+    #|   - Use `moon check` to validate code
+    #|   - Use `moon test` to run tests
+    #|   - Use `moon fmt` to format code
+    #|   - Use `moon info` to update interface files
+    #|3. **Git Operations**: You can clone repos, create branches, commit, and push.
+    #|4. **Other MCP Tools**: You can call other MCP tools as needed.
+    #|5. **Self-Improvement**: You can use MoonBit to create new tools.
+    #|   - Use `peter-jerry-ye/codex` to create AI agent tools.
+    #|
+    #|## Task Solving Approach:
+    #|1. **Analyze** the task requirements carefully 
+    #|2. **Plan** your approach - break down complex tasks into steps
+    #|3. **Execute** - implement the solution step by step
+    #|4. **Verify** - test that your solution works
+    #|5. **Document** - if you create a new tool, document it
+    #|
+    #|## Special Instructions:
+    #|- If the task requires a new tool that doesn't exist, CREATE IT!
+    #|- Follow MoonBit coding conventions
+    #|- Run `moon fmt && moon info` after creating/modifying code
+    #|- Prefer creating reusable tools over one-off solutions
+    #|Now, please solve the task that follows.
+    #|
   )
-  context.write_string("## Your Capabilities:\n\n")
-  context.write_string(
-    "1. **File Operations**: You can read, write, and modify files in the workspace.\n\n",
-  )
-  context.write_string(
-    "2. **Project Awareness**: You are working in a MoonBit project (codex-sdk).\n",
-  )
-  context.write_string(
-    "   - This repository contains utilities for creating AI agent tools\n",
-  )
-  context.write_string("   - Current working directory: \{working_dir}\n\n")
-  context.write_string(
-    "3. **Self-Improvement**: You can create new tools under cmd/ directory.\n",
-  )
-  context.write_string("   - Study existing tools in cmd/ for examples\n")
-  context.write_string(
-    "   - Each tool needs: moon.pkg.json, main.mbt, and optionally README.md\n",
-  )
-  context.write_string(
-    "   - You can use utilities from x/ (moon, git, args, error, tasks)\n",
-  )
-  context.write_string(
-    "   - After creating a tool, test it with `moon run cmd/<tool_name>`\n\n",
-  )
-  context.write_string("4. **MoonBit Ecosystem**:\n")
-  context.write_string("   - Use `moon check` to validate code\n")
-  context.write_string("   - Use `moon test` to run tests\n")
-  context.write_string("   - Use `moon fmt` to format code\n")
-  context.write_string("   - Use `moon info` to update interface files\n\n")
-  context.write_string(
-    "5. **Git Operations**: You can clone repos, create branches, commit, and push.\n\n",
-  )
-  context.write_string("## Task Solving Approach:\n\n")
-  context.write_string("1. **Analyze** the task requirements carefully\n")
-  context.write_string(
-    "2. **Plan** your approach - break down complex tasks into steps\n",
-  )
-  context.write_string("3. **Execute** - implement the solution step by step\n")
-  context.write_string("4. **Verify** - test that your solution works\n")
-  context.write_string(
-    "5. **Document** - if you create a new tool, document it\n\n",
-  )
-  context.write_string("## Special Instructions:\n\n")
-  context.write_string(
-    "- If the task requires a new tool that doesn't exist, CREATE IT!\n",
-  )
-  context.write_string(
-    "- Look at cmd/example_fix_warnings, cmd/example_simple_tasks, etc. as templates\n",
-  )
-  context.write_string("- Follow MoonBit coding conventions (see AGENTS.md)\n")
-  context.write_string(
-    "- Run `moon fmt && moon info` after creating/modifying code\n",
-  )
-  context.write_string(
-    "- Prefer creating reusable tools over one-off solutions\n\n",
-  )
-  context.write_string("Now, please solve the task that follows.\n")
-  context.to_string()
 }
 
 ///|
@@ -169,17 +164,23 @@ async fn solve_task(
   working_dir : String,
   model : String?,
   verbose : Bool,
+  skip_git_check : Bool,
+  sandbox_mode : @codex.SandboxMode,
+  resume_thread_id : String?,
 ) -> Unit {
   try {
     if task.is_empty() {
       @error.fail("No task provided")
     }
+    let git_check_status = if skip_git_check { "SKIPPED" } else { "enabled" }
     @stdio.stdout.write(
       (
         #|=== MoonBit Task Solver ===
         #|
         $|Working directory: \{working_dir}
         $|Model: \{model}
+        $|Sandbox mode: \{sandbox_mode.to_json().as_string().unwrap()}
+        $|Git check: \{git_check_status}
         $|Task:
         $|\{task}
         $|
@@ -189,7 +190,7 @@ async fn solve_task(
     )
 
     // Build the enhanced prompt with system context
-    let system_context = build_system_context(working_dir)
+    let system_context = build_system_context()
     let full_prompt =
       $|\{system_context}
       #|
@@ -200,15 +201,20 @@ async fn solve_task(
       @stdio.stdout.write("=== System Context ===\n\{system_context}\n\n")
     }
 
-    // Initialize Codex with workspace write permissions
+    // Initialize Codex with appropriate sandbox mode
     let codex = @codex.Codex::new()
-    let thread = codex.start_thread(
-      options=@codex.ThreadOptions::new(
-        model?,
-        sandbox_mode=@codex.SandboxMode::WorkspaceWrite,
-        working_directory=working_dir,
-      ),
+    let options = @codex.ThreadOptions::new(
+      model?,
+      sandbox_mode~,
+      working_directory=working_dir,
+      skip_git_repo_check=skip_git_check,
     )
+    let thread = if resume_thread_id is Some(thread_id) {
+      @stdio.stdout.write("Resuming thread: \{thread_id}\n")
+      codex.resume_thread(thread_id, options~)
+    } else {
+      codex.start_thread(options~)
+    }
     @stdio.stdout.write("Starting AI agent...\n\n")
     let mut thread_id = thread.id()
     let events = thread.run_streamed(full_prompt) catch {
@@ -392,6 +398,9 @@ async fn main {
     $|  --stdin                   Read task from stdin instead of argument
     $|  --working-dir <path>      Working directory for task execution (default: .)
     $|  --model <model>           AI model to use (default: anthropic/claude-sonnet-4)
+    $|  --resume <thread_id>      Resume an existing thread by ID
+    $|  --sandbox-mode <mode>     Set sandbox mode (DangerousFullAccess, WorkspaceWrite, ReadOnly; default: WorkspaceWrite)
+    $|  --skip-git-check          Skip git repository checks
     $|  -v, --verbose             Enable verbose output showing all actions
     $|  -h, --help                Show this help message
     $|
@@ -408,6 +417,12 @@ async fn main {
     $|  # Use a different model
     $|  moon run cmd/task_solver -- --model "openai/gpt-4" "Document all exported functions"
     $|
+    $|  # Resume an existing thread
+    $|  moon run cmd/task_solver -- --resume <thread_id> "Continue the previous task"
+    $|
+    $|  # Use dangerous full access mode
+    $|  moon run cmd/task_solver -- --sandbox-mode DangerousFullAccess "Delete all temp files"
+    $|
     $|Special Features:
     $|  - Can create new tools under cmd/ directory when needed
     $|  - Aware of MoonBit project structure and conventions
@@ -417,8 +432,8 @@ async fn main {
   // Parse CLI arguments
   let args = @args.parse(
     @sys.get_cli_args()[1:],
-    flags=["stdin", "help", "verbose", "v"],
-    options=["working-dir", "model", "file"],
+    flags=["stdin", "help", "verbose", "v", "skip-git-check"],
+    options=["working-dir", "model", "file", "sandbox-mode", "resume"],
     aliases={ "h": "help" },
   )
   let arguments = parse_args(args)
@@ -434,5 +449,13 @@ async fn main {
   }
 
   // Execute the task solver
-  solve_task(task, arguments.working_dir, arguments.model, arguments.verbose)
+  solve_task(
+    task,
+    arguments.working_dir,
+    arguments.model,
+    arguments.verbose,
+    arguments.skip_git_check,
+    arguments.sandbox_mode,
+    arguments.resume_thread_id,
+  )
 }
