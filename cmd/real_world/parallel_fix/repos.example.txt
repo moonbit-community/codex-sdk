@@ -1,0 +1,14 @@
+# Sample Repository List
+# One repository URL per line
+# Lines starting with # are ignored
+
+# Example repositories
+https://github.com/moonbit-community/diff
+https://github.com/moonbit-community/rope.mbt
+https://github.com/moonbit-community/piediff
+https://github.com/moonbit-community/SwissTable
+https://github.com/moonbit-community/fuzzy_match
+https://github.com/moonbitlang/llvm.mbt
+https://github.com/moonbit-community/logr
+https://github.com/moonbit-community/NyaSearch
+https://github.com/moonbit-community/clang.mbt

@@ -7,7 +7,6 @@ package "peter-jerry-ye/codex-example/task_solver"
 
 // Types and methods
 type Arguments
-impl Default for Arguments
 
 // Type aliases
 

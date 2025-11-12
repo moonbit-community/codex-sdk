@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex-example/real_world/parallel_fix"
+
+// Values
+
+// Errors
+
+// Types and methods
+type Arguments
+impl Default for Arguments
+
+type RepoInfo
+
+type TaskResult
+impl Show for TaskResult
+
+// Type aliases
+
+// Traits
+
