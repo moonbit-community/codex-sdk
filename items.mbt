@@ -125,12 +125,12 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
       }
       let exit_code = match exit_code {
         Some(Number(n, ..)) => Some(n.to_int())
-        None => None
-        _ =>
+        Some(Null) | None => None
+        v =>
           raise @json.JsonDecodeError(
             (
               path.add_key("exit_code"),
-              "expected integer or null for CommandExecutionItem.exit_code",
+              "expected integer or null for CommandExecutionItem.exit_code. Got: \{v}",
             ),
           )
       }
