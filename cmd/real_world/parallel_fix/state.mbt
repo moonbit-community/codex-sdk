@@ -198,33 +198,49 @@ pub async fn StateManager::get_repos_in_state(
 ) -> Array[RepositoryRecord] {
   let state_str = state.to_string()
   let sql = "SELECT id, url, name, state FROM repositories WHERE state = '\{state_str}';"
-  let rows = self.db.query_csv(sql)
+  let rows = self.db.query(sql).unwrap_or([])
   let repos = []
-  // Skip header row (index 0)
-  for i = 1; i < rows.length(); i = i + 1 {
-    let row = rows[i]
-    if row.length() >= 4 {
-      let id = @strconv.parse_int(row[0]) catch { _ => continue 0 }
-      let repo_state = RepoState::from_string(row[3]).unwrap_or(Pending)
-      repos.push(RepositoryRecord::{
-        id,
-        url: row[1],
-        name: row[2],
-        state: repo_state,
-        local_path: None,
-        default_branch: None,
-        current_branch: None,
-        task_description: None,
-        pr_number: None,
-        pr_url: None,
-        pr_state: None,
-        thread_id: None,
-        attempt_count: 0,
-        iteration: 1,
-        last_error: None,
-        created_at: "",
-        updated_at: "",
-      })
+  for row in rows {
+    match row {
+      Object(obj) => {
+        let id = match obj.get("id") {
+          Some(Number(n, ..)) => n.to_int()
+          _ => continue
+        }
+        let url = match obj.get("url") {
+          Some(String(s)) => s
+          _ => continue
+        }
+        let name = match obj.get("name") {
+          Some(String(s)) => s
+          _ => continue
+        }
+        let state_str = match obj.get("state") {
+          Some(String(s)) => s
+          _ => continue
+        }
+        let repo_state = RepoState::from_string(state_str).unwrap_or(Pending)
+        repos.push(RepositoryRecord::{
+          id,
+          url,
+          name,
+          state: repo_state,
+          local_path: None,
+          default_branch: None,
+          current_branch: None,
+          task_description: None,
+          pr_number: None,
+          pr_url: None,
+          pr_state: None,
+          thread_id: None,
+          attempt_count: 0,
+          iteration: 1,
+          last_error: None,
+          created_at: "",
+          updated_at: "",
+        })
+      }
+      _ => continue
     }
   }
   repos
@@ -285,4 +301,212 @@ pub async fn StateManager::increment_attempts(
   let now = now()
   let sql = "UPDATE repositories SET attempt_count = attempt_count + 1, updated_at = '\{now}' WHERE id = \{repo_id};"
   self.db.exec(sql)
+}
+
+///|
+/// Get full repository record by ID
+pub async fn StateManager::get_repository_full(
+  self : StateManager,
+  repo_id : Int,
+) -> RepositoryRecord? {
+  let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, pr_number, pr_url, pr_state, thread_id, attempt_count, last_error, iteration, created_at, updated_at FROM repositories WHERE id = \{repo_id};"
+  match self.db.query_one(sql) {
+    Some(
+      Object(
+        {
+          "id": Number(id, ..),
+          "url": String(url),
+          "name": String(name),
+          "state": String(state_str),
+          "local_path": local_path,
+          "default_branch": default_branch,
+          "current_branch": current_branch,
+          "task_description": task_description,
+          "pr_number": pr_number,
+          "pr_url": pr_url,
+          "pr_state": pr_state,
+          "thread_id": thread_id,
+          "attempt_count": Number(attempt_count, ..),
+          "last_error": last_error,
+          "iteration": Number(iteration, ..),
+          "created_at": String(created_at),
+          "updated_at": String(updated_at),
+          ..
+        }
+      )
+    ) => {
+      let state = RepoState::from_string(state_str).unwrap_or(Pending)
+      let local_path = match local_path {
+        String(s) if !s.is_empty() => Some(s)
+        Null => None
+        _ => panic()
+      }
+      let default_branch = match default_branch {
+        String(s) if !s.is_empty() => Some(s)
+        Null => None
+        _ => panic()
+      }
+      let current_branch = match current_branch {
+        String(s) if !s.is_empty() => Some(s)
+        Null => None
+        _ => panic()
+      }
+      let task_description = match task_description {
+        String(s) if !s.is_empty() => Some(s)
+        Null => None
+        _ => panic()
+      }
+      let pr_number = match pr_number {
+        Number(n, ..) => Some(n.to_int())
+        Null => None
+        _ => panic()
+      }
+      let pr_url = match pr_url {
+        String(s) if !s.is_empty() => Some(s)
+        Null => None
+        _ => panic()
+      }
+      let pr_state = match pr_state {
+        String(s) if !s.is_empty() => Some(s)
+        Null => None
+        _ => panic()
+      }
+      let thread_id = match thread_id {
+        String(s) if !s.is_empty() => Some(s)
+        Null => None
+        _ => panic()
+      }
+      let last_error = match last_error {
+        String(s) if !s.is_empty() => Some(s)
+        Null => None
+        _ => panic()
+      }
+      Some(RepositoryRecord::{
+        id: id.to_int(),
+        url,
+        name,
+        state,
+        local_path,
+        default_branch,
+        current_branch,
+        task_description,
+        pr_number,
+        pr_url,
+        pr_state,
+        thread_id,
+        attempt_count: attempt_count.to_int(),
+        last_error,
+        iteration: iteration.to_int(),
+        created_at,
+        updated_at,
+      })
+    }
+    _ => None
+  }
+}
+
+///|
+/// Update multiple repository fields at once
+pub async fn StateManager::update_repository(
+  self : StateManager,
+  repo_id : Int,
+  updates : Array[(String, String)],
+) -> Bool {
+  if updates.is_empty() {
+    return true
+  }
+  let now = now()
+  let set_clauses = []
+  for update in updates {
+    let (field, value) = update
+    set_clauses.push("\{field} = '\{value}'")
+  }
+  set_clauses.push("updated_at = '\{now}'")
+  let separator = ", "
+  let joined = set_clauses.join(separator)
+  let sql = "UPDATE repositories SET \{joined} WHERE id = \{repo_id};"
+  self.db.exec(sql)
+}
+
+///|
+/// Get pending or retry repositories for processing
+pub async fn StateManager::get_processable_repos(
+  self : StateManager,
+  limit : Int,
+) -> Array[RepositoryRecord] {
+  let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, attempt_count, iteration FROM repositories WHERE state IN ('PENDING', 'RETRY', 'CLONED', 'BRANCHED', 'FIXED', 'COMMITTED', 'PUSHED') ORDER BY attempt_count ASC, created_at ASC LIMIT \{limit};"
+  let rows = self.db.query(sql).unwrap_or([])
+  let repos = []
+  for row in rows {
+    match row {
+      Object(obj) => {
+        let id = match obj.get("id") {
+          Some(Number(n, ..)) => n.to_int()
+          _ => continue
+        }
+        let url = match obj.get("url") {
+          Some(String(s)) => s
+          _ => continue
+        }
+        let name = match obj.get("name") {
+          Some(String(s)) => s
+          _ => continue
+        }
+        let state_str = match obj.get("state") {
+          Some(String(s)) => s
+          _ => continue
+        }
+        let state = RepoState::from_string(state_str).unwrap_or(Pending)
+        let local_path = match obj.get("local_path") {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          Some(Null) | None => None
+          _ => None
+        }
+        let default_branch = match obj.get("default_branch") {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          Some(Null) | None => None
+          _ => None
+        }
+        let current_branch = match obj.get("current_branch") {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          Some(Null) | None => None
+          _ => None
+        }
+        let task_description = match obj.get("task_description") {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          Some(Null) | None => None
+          _ => None
+        }
+        let attempt_count = match obj.get("attempt_count") {
+          Some(Number(n, ..)) => n.to_int()
+          _ => 0
+        }
+        let iteration = match obj.get("iteration") {
+          Some(Number(n, ..)) => n.to_int()
+          _ => 1
+        }
+        repos.push(RepositoryRecord::{
+          id,
+          url,
+          name,
+          state,
+          local_path,
+          default_branch,
+          current_branch,
+          task_description,
+          pr_number: None,
+          pr_url: None,
+          pr_state: None,
+          thread_id: None,
+          attempt_count,
+          last_error: None,
+          iteration,
+          created_at: "",
+          updated_at: "",
+        })
+      }
+      _ => continue
+    }
+  }
+  repos
 }

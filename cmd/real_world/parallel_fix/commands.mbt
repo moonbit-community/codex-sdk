@@ -277,14 +277,13 @@ pub async fn cmd_help(_args : ArrayView[String]) -> Unit {
     #|Subcommands:
     #|  init              Initialize workspace and database
     #|  add <repos-file>  Add repositories to the queue
+    #|  run               Start/resume processing repositories
     #|  status            Show current state of all repositories
-    #|  run               Start/resume processing (not implemented yet)
+    #|  help              Show this help message
     #|
-    #|Options:
+    #|Global Options:
     #|  --work-dir <path>   Working directory (default: /tmp/parallel-fix)
-    #|  --task <desc>       Task description (required for 'add')
-    #|  --verbose, -v       Show detailed output (for 'status')
-    #|  --help, -h          Show this help message
+    #|  --help, -h          Show help for a subcommand
     #|
     #|Examples:
     #|  # Initialize workspace
@@ -293,10 +292,159 @@ pub async fn cmd_help(_args : ArrayView[String]) -> Unit {
     #|  # Add repositories
     #|  moon run real_world/parallel_fix -- add repos.txt --task "Fix linting"
     #|
+    #|  # Start processing
+    #|  moon run real_world/parallel_fix -- run --parallelism 8
+    #|
     #|  # Check status
     #|  moon run real_world/parallel_fix -- status --verbose
     #|
-    #|Note: The original 'run' command (without subcommand) still works for quick one-off fixes.
+    #|Use '<subcommand> --help' for more information about a specific subcommand.
     #|
   @stdio.stdout.write(help_message)
+}
+
+///|
+/// Handle the 'run' subcommand
+/// Start/resume processing repositories from the database
+pub async fn cmd_run(args : ArrayView[String]) -> Unit {
+  let help_message =
+    #|Usage: run [OPTIONS]
+    #|
+    #|Start or resume processing repositories from the database queue
+    #|
+    #|Options:
+    #|  --work-dir <path>      Working directory (default: /tmp/parallel-fix)
+    #|  --parallelism <n>      Number of parallel workers (default: 4)
+    #|  --max-retries <n>      Maximum retry attempts per repo (default: 3)
+    #|  --branch-prefix <p>    Branch name prefix (default: "ai-fix")
+    #|  --help, -h             Show this help
+    #|
+
+  // Parse arguments
+  let parsed_args = @args.parse(
+    args,
+    flags=["help"],
+    options=["work-dir", "parallelism", "max-retries", "branch-prefix"],
+    aliases={ "h": "help" },
+  )
+
+  // Handle help flag
+  if parsed_args.flags.get("help") is Some(true) {
+    @stdio.stdout.write(help_message)
+    return
+  }
+
+  // Main logic
+  let work_dir = parsed_args.options
+    .get("work-dir")
+    .unwrap_or("/tmp/parallel-fix")
+  let parallelism_str = parsed_args.options.get("parallelism").unwrap_or("4")
+  let parallelism = @strconv.parse_int(parallelism_str) catch {
+    e => @error.fail_with("Invalid parallelism value", e)
+  }
+  let max_retries_str = parsed_args.options.get("max-retries").unwrap_or("3")
+  let max_retries = @strconv.parse_int(max_retries_str) catch {
+    e => @error.fail_with("Invalid max-retries value", e)
+  }
+  let branch_prefix = parsed_args.options
+    .get("branch-prefix")
+    .unwrap_or("ai-fix")
+  let db_path = "\{work_dir}/parallel-fix.db"
+
+  // Check if database exists
+  let state_mgr = StateManager::new(db_path)
+  if !state_mgr.db.exists() {
+    @error.fail(
+      "Database not found. Please run 'init' first:\n  moon run real_world/parallel_fix -- init",
+    )
+  }
+  @stdio.stdout.write("=".repeat(60))
+  @stdio.stdout.write("\nSTARTING PARALLEL REPOSITORY PROCESSING\n")
+  @stdio.stdout.write("=".repeat(60))
+  @stdio.stdout.write("\n\n")
+  @stdio.stdout.write("Configuration:\n")
+  @stdio.stdout.write("  Work directory: \{work_dir}\n")
+  @stdio.stdout.write("  Parallelism: \{parallelism}\n")
+  @stdio.stdout.write("  Max retries: \{max_retries}\n")
+  @stdio.stdout.write("  Branch prefix: \{branch_prefix}\n")
+  @stdio.stdout.write("\n")
+
+  // Create codex instance
+  let codex = @codex.Codex::new()
+
+  // Create worker config
+  let config = WorkerConfig::{
+    work_dir,
+    branch_prefix,
+    max_retries,
+    codex,
+    state_mgr,
+  }
+
+  // Get total count and processable count
+  let total = state_mgr.total_count()
+  if total == 0 {
+    @stdio.stdout.write(
+      "No repositories in database. Add some with:\n  moon run real_world/parallel_fix -- add <repos-file> --task \"description\"\n",
+    )
+    return
+  }
+  @stdio.stdout.write("Total repositories: \{total}\n")
+
+  // Process repositories in parallel using worker pool
+  let mut processed = 0
+  let mut successful = 0
+  let mut failed = 0
+  let mut continue_processing = true
+  while continue_processing {
+    // Get batch of processable repositories
+    let repos = state_mgr.get_processable_repos(parallelism * 2)
+    if repos.is_empty() {
+      @stdio.stdout.write("\nNo more repositories to process.\n")
+      continue_processing = false
+      continue
+    }
+    @stdio.stdout.write(
+      "\nProcessing batch of \{repos.length()} repositories...\n\n",
+    )
+
+    // Process batch in parallel
+    @async.with_task_group(fn(task_group) {
+      let semaphore = @semaphore.Semaphore::new(parallelism)
+      for repo in repos {
+        task_group.spawn_bg(allow_failure=true, fn() {
+          semaphore.acquire()
+          defer semaphore.release()
+          let success = process_repository_stateful(config, repo) catch {
+            e => {
+              @stdio.stderr.write(
+                "error [\{repo.name}] - Unexpected error: \{e}\n",
+              )
+              false
+            }
+          }
+          processed = processed + 1
+          if success {
+            successful = successful + 1
+          } else {
+            failed = failed + 1
+          }
+        })
+      }
+    })
+  }
+
+  // Print final summary
+  @stdio.stdout.write("\n")
+  @stdio.stdout.write("=".repeat(60))
+  @stdio.stdout.write("\nFINAL SUMMARY\n")
+  @stdio.stdout.write("=".repeat(60))
+  @stdio.stdout.write("\n")
+  @stdio.stdout.write("  Processed: \{processed}\n")
+  @stdio.stdout.write("  Successful: \{successful}\n")
+  @stdio.stdout.write("  Failed: \{failed}\n")
+  @stdio.stdout.write("\n")
+  @stdio.stdout.write(
+    "Run 'moon run real_world/parallel_fix -- status --verbose' for detailed status\n",
+  )
 }

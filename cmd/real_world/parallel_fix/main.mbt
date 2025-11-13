@@ -158,6 +158,7 @@ async fn main {
   match parsed.positional {
     ["init", .. remaining] => cmd_init(remaining)
     ["add", .. remaining] => cmd_add(remaining)
+    ["run", .. remaining] => cmd_run(remaining)
     ["status", .. remaining] => cmd_status(remaining)
     ["help", .. remaining] => cmd_help(remaining)
     _ => cmd_main(parsed.positional[:]) // Default to batch fix mode

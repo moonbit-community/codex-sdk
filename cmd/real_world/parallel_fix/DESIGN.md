@@ -329,12 +329,20 @@ parallel_fix retry --failed
 - ✅ Git operations (clone, branch, commit, push, PR)
 - ✅ Error handling and summary reporting
 
-### 🚧 Phase 2: Reentrant Operations (Planned)
+### 🚧 Phase 2: Reentrant Operations (In Progress)
 
-- [ ] Reentrant clone/branch/commit operations
-- [ ] Worker manager with database-backed queue
-- [ ] `run` subcommand with state-driven processing
-- [ ] Resume from last state on crash
+- ✅ Worker with state-driven processing in `worker.mbt`
+  - `process_repository_stateful()` with phase handlers
+  - Reentrant clone (checks if already cloned)
+  - Reentrant branch (checks if branch exists)
+  - Reentrant commit (checks if changes exist)
+- ✅ Individual phase handlers (clone, branch, fix, commit, push, PR)
+- ✅ `run` subcommand with worker pool
+  - Batch processing with semaphore-based concurrency
+  - Retry logic with configurable max attempts
+  - Error handling with state transitions to Retry
+- ✅ Resume from last state on crash (all operations check current state)
+- [ ] PR sync integration (requires testing with actual PRs)
 
 ### 📋 Phase 3: PR Integration (Planned)
 
@@ -374,17 +382,21 @@ moon run real_world/parallel_fix -- add repos.txt --task "Fix linting"
 # Check status
 moon run real_world/parallel_fix -- status --verbose
 
-# Start/resume processing (not yet implemented)
-# moon run real_world/parallel_fix -- run --parallelism 8
+# Start/resume processing
+moon run real_world/parallel_fix -- run --parallelism 8
+
+# Sync PR states (planned)
+# moon run real_world/parallel_fix -- sync-prs
 ```
 
 ## Files
 
 **Implementation**
 - `main.mbt` - CLI entry point, subcommand routing, quick mode
-- `commands.mbt` - Subcommand handlers (init, add, status)
+- `commands.mbt` - Subcommand handlers (init, add, status, run)
+- `worker.mbt` - State-driven worker with phase handlers
 - `schema.mbt` - SQLite database schema
-- `state.mbt` - State manager and RepoState enum
+- `state.mbt` - State manager and RepoState enum  
 - `repo.mbt` - Git operations
 - `task.mbt` - AI agent task execution
 
