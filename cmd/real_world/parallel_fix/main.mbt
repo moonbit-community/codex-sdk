@@ -16,6 +16,81 @@ struct Arguments {
 
 ///|
 async fn main {
+  // First pass: check for subcommands using stop_early
+  let initial_args = @args.parse(
+    @sys.get_cli_args()[1:],
+    flags=["help", "verbose", "v"],
+    options=["work-dir", "task"],
+    stop_early=true,
+  )
+
+  // Check if first positional argument is a subcommand
+  if initial_args.positional.length() > 0 {
+    let maybe_subcommand = initial_args.positional[0].to_string()
+    match maybe_subcommand {
+      "init" => {
+        // Parse remaining args for init command
+        let remaining = @sys.get_cli_args()[2:]
+        let args = @args.parse(
+          remaining,
+          flags=["help"],
+          options=["work-dir"],
+          aliases={ "h": "help" },
+        )
+        if args.flags.get("help") is Some(true) {
+          @stdio.stdout.write(
+            "Usage: init [OPTIONS]\n\nInitialize workspace and database\n\nOptions:\n  --work-dir <path>   Working directory (default: /tmp/parallel-fix)\n  --help, -h          Show this help\n",
+          )
+          return
+        }
+        cmd_init(args)
+        return
+      }
+      "add" => {
+        // Parse remaining args for add command
+        let remaining = @sys.get_cli_args()[2:]
+        let args = @args.parse(
+          remaining,
+          flags=["help"],
+          options=["work-dir", "task"],
+          aliases={ "h": "help" },
+        )
+        if args.flags.get("help") is Some(true) {
+          @stdio.stdout.write(
+            "Usage: add <repos-file> [OPTIONS]\n\nAdd repositories to the queue\n\nOptions:\n  --task <desc>       Task description (required)\n  --work-dir <path>   Working directory (default: /tmp/parallel-fix)\n  --help, -h          Show this help\n",
+          )
+          return
+        }
+        cmd_add(args)
+        return
+      }
+      "status" => {
+        // Parse remaining args for status command
+        let remaining = @sys.get_cli_args()[2:]
+        let args = @args.parse(
+          remaining,
+          flags=["help", "verbose", "v"],
+          options=["work-dir"],
+          aliases={ "h": "help" },
+        )
+        if args.flags.get("help") is Some(true) {
+          @stdio.stdout.write(
+            "Usage: status [OPTIONS]\n\nShow current state of all repositories\n\nOptions:\n  --work-dir <path>   Working directory (default: /tmp/parallel-fix)\n  --verbose, -v       Show detailed output\n  --help, -h          Show this help\n",
+          )
+          return
+        }
+        cmd_status(args)
+        return
+      }
+      "help" => {
+        show_subcommand_help()
+        return
+      }
+      _ => () // Not a subcommand, fall through to original behavior
+    }
+  }
+
+  // Original behavior: quick one-off batch fix
   // Parse CLI arguments
   let help_message =
     #|Usage: moon run real_world/parallel_fix -- [OPTIONS] <repos-file>
@@ -29,6 +104,9 @@ async fn main {
     #|  --work-dir <path>              Working directory for clones (default: /tmp/parallel-fix)
     #|  --force-fresh                  Delete existing clones and start fresh
     #|  --help                         Print this help message
+    #|
+    #|Subcommands (for stateful mode):
+    #|  init, add, status, help
     #|
     #|Example:
     #|  moon run real_world/parallel_fix -- repos.txt --task "Fix linting errors" --parallelism 8

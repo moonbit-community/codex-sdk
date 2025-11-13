@@ -86,7 +86,6 @@ async fn clone_repository(
     }
     repo
   }
-  
   RepoInfo::{ git: git_repo, url, name: repo_name }
 }
 
@@ -179,16 +178,16 @@ async fn has_staged_changes(repo : RepoInfo) -> Bool {
 async fn commit_changes(repo : RepoInfo, message : String) -> Bool {
   // Use GitRepo's commit method which handles adding changes
   if repo.git.commit(message) {
-    @stdio.stdout.write("info [\{repo.name}] - Changes committed successfully\n")
+    @stdio.stdout.write(
+      "info [\{repo.name}] - Changes committed successfully\n",
+    )
     true
-  } else {
     // Check if there were no changes to commit
-    if !has_staged_changes(repo) {
-      @stdio.stdout.write("info [\{repo.name}] - No changes to commit\n")
-      false
-    } else {
-      @error.fail("Failed to commit changes")
-    }
+  } else if !has_staged_changes(repo) {
+    @stdio.stdout.write("info [\{repo.name}] - No changes to commit\n")
+    false
+  } else {
+    @error.fail("Failed to commit changes")
   }
 }
 
