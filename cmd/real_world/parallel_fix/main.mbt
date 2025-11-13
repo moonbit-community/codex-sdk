@@ -15,103 +15,9 @@ struct Arguments {
 } derive(Default)
 
 ///|
-async fn main {
-  // First pass: check for subcommands using stop_early
-  let initial_args = @args.parse(
-    @sys.get_cli_args()[1:],
-    flags=["help", "verbose", "v"],
-    options=["work-dir", "task"],
-    stop_early=true,
-  )
-
-  // Check if first positional argument is a subcommand
-
-  match initial_args.positional {
-    ["init", .. remaining] => {
-      let args = @args.parse(remaining, flags=["help"], options=["work-dir"], aliases={
-        "h": "help",
-      })
-      if args.flags.get("help") is Some(true) {
-        @stdio.stdout.write(
-          (
-            #|Usage: init [OPTIONS]
-            #|
-            #|Initialize workspace and database
-            #|
-            #|Options:
-            #|  --work-dir <path>   Working directory (default: /tmp/parallel-fix)
-            #|  --help, -h          Show this help
-            #|
-          ),
-        )
-        return
-      }
-      cmd_init(args)
-      return
-    }
-    ["add", .. remaining] => {
-      // Parse remaining args for add command
-      let args = @args.parse(
-        remaining,
-        flags=["help"],
-        options=["work-dir", "task"],
-        aliases={ "h": "help" },
-      )
-      if args.flags.get("help") is Some(true) {
-        @stdio.stdout.write(
-          (
-            #|Usage: add <repos-file> [OPTIONS]
-            #|
-            #|Add repositories to the queue
-            #|
-            #|Options:
-            #|  --task <desc>       Task description (required)
-            #|  --work-dir <path>   Working directory (default: /tmp/parallel-fix)
-            #|  --help, -h          Show this help
-            #|
-          ),
-        )
-        return
-      }
-      cmd_add(args)
-      return
-    }
-    ["status", .. remaining] => {
-      // Parse remaining args for status command
-      let args = @args.parse(
-        remaining,
-        flags=["help", "verbose", "v"],
-        options=["work-dir"],
-        aliases={ "h": "help" },
-      )
-      if args.flags.get("help") is Some(true) {
-        @stdio.stdout.write(
-          (
-            #|Usage: status [OPTIONS]
-            #|
-            #|Show current state of all repositories
-            #|
-            #|Options:
-            #|  --work-dir <path>   Working directory (default: /tmp/parallel-fix)
-            #|  --verbose, -v       Show detailed output
-            #|  --help, -h          Show this help
-            #|
-          ),
-        )
-        return
-      }
-      cmd_status(args)
-      return
-    }
-    ["help", ..] => {
-      show_subcommand_help()
-      return
-    }
-    _ => () // Not a subcommand, fall through to original behavior
-  }
-
-  // Original behavior: quick one-off batch fix
-  // Parse CLI arguments
+/// Handle the default command (batch fix mode)
+/// Processes repositories in parallel for quick one-off fixes
+pub async fn cmd_main(args : ArrayView[String]) -> Unit {
   let help_message =
     #|Usage: moon run real_world/parallel_fix -- [OPTIONS] <repos-file>
     #|
@@ -131,36 +37,42 @@ async fn main {
     #|Example:
     #|  moon run real_world/parallel_fix -- repos.txt --task "Fix linting errors" --parallelism 8
     #|
-  let args = @args.parse(
-    @sys.get_cli_args()[1:],
+
+  // Parse arguments
+  let parsed_args = @args.parse(
+    args,
     flags=["help", "resume", "force-fresh"],
     options=["task", "parallelism", "branch-prefix", "work-dir"],
     aliases={ "h": "help" },
   )
-  if args.flags.get("help") is Some(true) {
-    @stdio.stdout.write("\{help_message}\n")
+
+  // Handle help flag
+  if parsed_args.flags.get("help") is Some(true) {
+    @stdio.stdout.write(help_message)
     return
   }
-  guard args.positional is [repos_file] else {
+
+  // Main logic
+  guard parsed_args.positional is [repos_file] else {
     @error.fail(
-      "Missing required positional argument: <repos-file>\n\{help_message}\n",
+      "Missing required positional argument: <repos-file>\n\{help_message}",
     )
   }
-  guard args.options.get("task") is Some(task_description) else {
+  guard parsed_args.options.get("task") is Some(task_description) else {
     @error.fail(
-      "Missing required option: --task <description>\n\{help_message}\n",
+      "Missing required option: --task <description>\n\{help_message}",
     )
   }
-  let parallelism = args.options.get("parallelism").unwrap_or("4")
+  let parallelism = parsed_args.options.get("parallelism").unwrap_or("4")
   let argument = Arguments::{
     repos_file,
     parallelism: @strconv.parse_int(parallelism) catch {
       e => @error.fail_with("Invalid parallelism value", e)
     },
     task_description,
-    branch_prefix: args.options.get("branch-prefix").unwrap_or("ai-fix"),
-    work_dir: args.options.get("work-dir").unwrap_or("/tmp/parallel-fix"),
-    force_fresh: args.flags.get("force-fresh") is Some(true),
+    branch_prefix: parsed_args.options.get("branch-prefix").unwrap_or("ai-fix"),
+    work_dir: parsed_args.options.get("work-dir").unwrap_or("/tmp/parallel-fix"),
+    force_fresh: parsed_args.flags.get("force-fresh") is Some(true),
   }
 
   // Read repository list
@@ -227,6 +139,29 @@ async fn main {
 
   // Print summary
   print_summary(results)
+}
+
+///|
+async fn main {
+  let args = @sys.get_cli_args()[1:]
+
+  // Parse global arguments using stop_early to detect subcommands
+  // This allows for future global flags like --verbose, --config, etc.
+  let parsed = @args.parse(
+    args,
+    flags=[], // Global flags can be added here in the future
+    options=[], // Global options can be added here in the future
+    stop_early=true,
+  )
+
+  // Check if first positional argument is a subcommand
+  match parsed.positional {
+    ["init", .. remaining] => cmd_init(remaining)
+    ["add", .. remaining] => cmd_add(remaining)
+    ["status", .. remaining] => cmd_status(remaining)
+    ["help", .. remaining] => cmd_help(remaining)
+    _ => cmd_main(parsed.positional[:]) // Default to batch fix mode
+  }
 }
 
 ///|

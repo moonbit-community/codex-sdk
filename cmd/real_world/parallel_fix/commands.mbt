@@ -4,8 +4,32 @@
 ///|
 /// Handle the 'init' subcommand
 /// Initializes the database and working directory
-pub async fn cmd_init(args : @args.Args) -> Unit {
-  let work_dir = args.options.get("work-dir").unwrap_or("/tmp/parallel-fix")
+pub async fn cmd_init(args : ArrayView[String]) -> Unit {
+  let help_message =
+    #|Usage: init [OPTIONS]
+    #|
+    #|Initialize workspace and database
+    #|
+    #|Options:
+    #|  --work-dir <path>   Working directory (default: /tmp/parallel-fix)
+    #|  --help, -h          Show this help
+    #|
+
+  // Parse arguments
+  let parsed_args = @args.parse(args, flags=["help"], options=["work-dir"], aliases={
+    "h": "help",
+  })
+
+  // Handle help flag
+  if parsed_args.flags.get("help") is Some(true) {
+    @stdio.stdout.write(help_message)
+    return
+  }
+
+  // Main logic
+  let work_dir = parsed_args.options
+    .get("work-dir")
+    .unwrap_or("/tmp/parallel-fix")
   let db_path = "\{work_dir}/parallel-fix.db"
   @stdio.stdout.write("Initializing parallel fix workspace...\n")
   @stdio.stdout.write("  Work directory: \{work_dir}\n")
@@ -47,21 +71,49 @@ pub async fn cmd_init(args : @args.Args) -> Unit {
 ///|
 /// Handle the 'add' subcommand
 /// Adds repositories from a file to the database
-pub async fn cmd_add(args : @args.Args) -> Unit {
-  let work_dir = args.options.get("work-dir").unwrap_or("/tmp/parallel-fix")
+pub async fn cmd_add(args : ArrayView[String]) -> Unit {
+  let help_message =
+    #|Usage: add <repos-file> [OPTIONS]
+    #|
+    #|Add repositories to the queue
+    #|
+    #|Options:
+    #|  --task <desc>       Task description (required)
+    #|  --work-dir <path>   Working directory (default: /tmp/parallel-fix)
+    #|  --help, -h          Show this help
+    #|
+
+  // Parse arguments
+  let parsed_args = @args.parse(
+    args,
+    flags=["help"],
+    options=["work-dir", "task"],
+    aliases={ "h": "help" },
+  )
+
+  // Handle help flag
+  if parsed_args.flags.get("help") is Some(true) {
+    @stdio.stdout.write(help_message)
+    return
+  }
+
+  // Main logic
+  let work_dir = parsed_args.options
+    .get("work-dir")
+    .unwrap_or("/tmp/parallel-fix")
   let db_path = "\{work_dir}/parallel-fix.db"
 
   // Get repos file
-  guard args.positional.length() > 0 else {
-    @error.fail(
-      "Missing required argument: <repos-file>\nUsage: add <repos-file> --task \"description\"",
-    )
+  guard parsed_args.positional.length() > 0 else {
+    @error.fail("Missing required argument: <repos-file>\n\{help_message}")
   }
-  let repos_file = args.positional[0].to_string()
+  let repos_file = parsed_args.positional[0].to_string()
 
   // Get task description
-  guard args.options.get("task") is Some(task_description) else {
-    @error.fail("Missing required option: --task <description>")
+  guard parsed_args.options.get("task") is Some(task_description) else {
+    @error.fail(
+      "Missing required option: --task <description>\n\{help_message}",
+    )
   }
 
   // Check if database exists
@@ -111,11 +163,39 @@ pub async fn cmd_add(args : @args.Args) -> Unit {
 ///|
 /// Handle the 'status' subcommand
 /// Shows current state of all repositories
-pub async fn cmd_status(args : @args.Args) -> Unit {
-  let work_dir = args.options.get("work-dir").unwrap_or("/tmp/parallel-fix")
+pub async fn cmd_status(args : ArrayView[String]) -> Unit {
+  let help_message =
+    #|Usage: status [OPTIONS]
+    #|
+    #|Show current state of all repositories
+    #|
+    #|Options:
+    #|  --work-dir <path>   Working directory (default: /tmp/parallel-fix)
+    #|  --verbose, -v       Show detailed output
+    #|  --help, -h          Show this help
+    #|
+
+  // Parse arguments
+  let parsed_args = @args.parse(
+    args,
+    flags=["help", "verbose", "v"],
+    options=["work-dir"],
+    aliases={ "h": "help" },
+  )
+
+  // Handle help flag
+  if parsed_args.flags.get("help") is Some(true) {
+    @stdio.stdout.write(help_message)
+    return
+  }
+
+  // Main logic
+  let work_dir = parsed_args.options
+    .get("work-dir")
+    .unwrap_or("/tmp/parallel-fix")
   let db_path = "\{work_dir}/parallel-fix.db"
-  let verbose = args.flags.get("verbose") is Some(true) ||
-    args.flags.get("v") is Some(true)
+  let verbose = parsed_args.flags.get("verbose") is Some(true) ||
+    parsed_args.flags.get("v") is Some(true)
 
   // Check if database exists
   let state_mgr = StateManager::new(db_path)
@@ -188,9 +268,10 @@ pub async fn cmd_status(args : @args.Args) -> Unit {
 }
 
 ///|
-/// Show help for subcommands
-pub async fn show_subcommand_help() -> Unit {
-  let help =
+/// Handle the 'help' subcommand
+/// Shows help for subcommands
+pub async fn cmd_help(_args : ArrayView[String]) -> Unit {
+  let help_message =
     #|Usage: moon run real_world/parallel_fix -- <subcommand> [OPTIONS]
     #|
     #|Subcommands:
@@ -217,5 +298,5 @@ pub async fn show_subcommand_help() -> Unit {
     #|
     #|Note: The original 'run' command (without subcommand) still works for quick one-off fixes.
     #|
-  @stdio.stdout.write(help)
+  @stdio.stdout.write(help_message)
 }
