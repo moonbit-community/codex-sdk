@@ -146,20 +146,30 @@ async fn main {
   let args = @sys.get_cli_args()[1:]
 
   // Parse global arguments using stop_early to detect subcommands
-  // This allows for future global flags like --verbose, --config, etc.
   let parsed = @args.parse(
     args,
-    flags=[], // Global flags can be added here in the future
-    options=[], // Global options can be added here in the future
+    flags=["help"],
+    options=["work-dir", "data-dir"],
+    aliases={ "h": "help" },
     stop_early=true,
   )
 
+  // Extract global options with defaults
+  let work_dir = parsed.options.get("work-dir").unwrap_or("/tmp/parallel-fix")
+  let data_dir = parsed.options.get("data-dir").unwrap_or("~/.parallel-fix")
+
+  // Show help if requested
+  if parsed.flags.get("help") is Some(true) {
+    cmd_help([])
+    return
+  }
+
   // Check if first positional argument is a subcommand
   match parsed.positional {
-    ["init", .. remaining] => cmd_init(remaining)
-    ["add", .. remaining] => cmd_add(remaining)
-    ["run", .. remaining] => cmd_run(remaining)
-    ["status", .. remaining] => cmd_status(remaining)
+    ["init", .. remaining] => cmd_init(remaining, work_dir, data_dir)
+    ["add", .. remaining] => cmd_add(remaining, work_dir, data_dir)
+    ["run", .. remaining] => cmd_run(remaining, work_dir, data_dir)
+    ["status", .. remaining] => cmd_status(remaining, work_dir, data_dir)
     ["help", .. remaining] => cmd_help(remaining)
     _ => cmd_main(parsed.positional[:]) // Default to batch fix mode
   }
