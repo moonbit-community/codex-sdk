@@ -25,69 +25,89 @@ async fn main {
   )
 
   // Check if first positional argument is a subcommand
-  if initial_args.positional.length() > 0 {
-    let maybe_subcommand = initial_args.positional[0].to_string()
-    match maybe_subcommand {
-      "init" => {
-        // Parse remaining args for init command
-        let remaining = @sys.get_cli_args()[2:]
-        let args = @args.parse(
-          remaining,
-          flags=["help"],
-          options=["work-dir"],
-          aliases={ "h": "help" },
+
+  match initial_args.positional {
+    ["init", .. remaining] => {
+      let args = @args.parse(remaining, flags=["help"], options=["work-dir"], aliases={
+        "h": "help",
+      })
+      if args.flags.get("help") is Some(true) {
+        @stdio.stdout.write(
+          (
+            #|Usage: init [OPTIONS]
+            #|
+            #|Initialize workspace and database
+            #|
+            #|Options:
+            #|  --work-dir <path>   Working directory (default: /tmp/parallel-fix)
+            #|  --help, -h          Show this help
+            #|
+          ),
         )
-        if args.flags.get("help") is Some(true) {
-          @stdio.stdout.write(
-            "Usage: init [OPTIONS]\n\nInitialize workspace and database\n\nOptions:\n  --work-dir <path>   Working directory (default: /tmp/parallel-fix)\n  --help, -h          Show this help\n",
-          )
-          return
-        }
-        cmd_init(args)
         return
       }
-      "add" => {
-        // Parse remaining args for add command
-        let remaining = @sys.get_cli_args()[2:]
-        let args = @args.parse(
-          remaining,
-          flags=["help"],
-          options=["work-dir", "task"],
-          aliases={ "h": "help" },
-        )
-        if args.flags.get("help") is Some(true) {
-          @stdio.stdout.write(
-            "Usage: add <repos-file> [OPTIONS]\n\nAdd repositories to the queue\n\nOptions:\n  --task <desc>       Task description (required)\n  --work-dir <path>   Working directory (default: /tmp/parallel-fix)\n  --help, -h          Show this help\n",
-          )
-          return
-        }
-        cmd_add(args)
-        return
-      }
-      "status" => {
-        // Parse remaining args for status command
-        let remaining = @sys.get_cli_args()[2:]
-        let args = @args.parse(
-          remaining,
-          flags=["help", "verbose", "v"],
-          options=["work-dir"],
-          aliases={ "h": "help" },
-        )
-        if args.flags.get("help") is Some(true) {
-          @stdio.stdout.write(
-            "Usage: status [OPTIONS]\n\nShow current state of all repositories\n\nOptions:\n  --work-dir <path>   Working directory (default: /tmp/parallel-fix)\n  --verbose, -v       Show detailed output\n  --help, -h          Show this help\n",
-          )
-          return
-        }
-        cmd_status(args)
-        return
-      }
-      "help" => {
-        show_subcommand_help()
-        return
-      }
-      _ => () // Not a subcommand, fall through to original behavior
+      cmd_init(args)
+      return
     }
+    ["add", .. remaining] => {
+      // Parse remaining args for add command
+      let args = @args.parse(
+        remaining,
+        flags=["help"],
+        options=["work-dir", "task"],
+        aliases={ "h": "help" },
+      )
+      if args.flags.get("help") is Some(true) {
+        @stdio.stdout.write(
+          (
+            #|Usage: add <repos-file> [OPTIONS]
+            #|
+            #|Add repositories to the queue
+            #|
+            #|Options:
+            #|  --task <desc>       Task description (required)
+            #|  --work-dir <path>   Working directory (default: /tmp/parallel-fix)
+            #|  --help, -h          Show this help
+            #|
+          ),
+        )
+        return
+      }
+      cmd_add(args)
+      return
+    }
+    ["status", .. remaining] => {
+      // Parse remaining args for status command
+      let args = @args.parse(
+        remaining,
+        flags=["help", "verbose", "v"],
+        options=["work-dir"],
+        aliases={ "h": "help" },
+      )
+      if args.flags.get("help") is Some(true) {
+        @stdio.stdout.write(
+          (
+            #|Usage: status [OPTIONS]
+            #|
+            #|Show current state of all repositories
+            #|
+            #|Options:
+            #|  --work-dir <path>   Working directory (default: /tmp/parallel-fix)
+            #|  --verbose, -v       Show detailed output
+            #|  --help, -h          Show this help
+            #|
+          ),
+        )
+        return
+      }
+      cmd_status(args)
+      return
+    }
+    ["help", ..] => {
+      show_subcommand_help()
+      return
+    }
+    _ => () // Not a subcommand, fall through to original behavior
   }
 
   // Original behavior: quick one-off batch fix
