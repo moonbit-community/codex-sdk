@@ -163,7 +163,7 @@ async fn execute_fix_phase(
   )
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(
-      working_directory=repo.local_path,
+      working_directory=repo.local_path(),
       sandbox_mode=WorkspaceWrite,
     ),
   )
@@ -173,7 +173,7 @@ async fn execute_fix_phase(
     task_description,
     repo_name,
     branch_name,
-    repo.default_branch,
+    repo.default_branch(),
   )
 
   // Execute task with retries
@@ -220,9 +220,9 @@ async fn format_repository(repo : RepoInfo) -> Unit {
   let repo_name = repo.name
 
   // Try moon fmt for MoonBit projects
-  if @fs.exists("\{repo.local_path}/moon.mod.json") {
+  if @fs.exists("\{repo.local_path()}/moon.mod.json") {
     @stdio.stdout.write("info [\{repo_name}] - Running moon fmt...\n")
-    let status = @process.run("moon", ["fmt"], cwd=repo.local_path) catch {
+    let status = @process.run("moon", ["fmt"], cwd=repo.local_path()) catch {
       e => @error.reraise(e)
     }
     if status != 0 {
@@ -240,9 +240,9 @@ async fn update_repository_info(repo : RepoInfo) -> Unit {
   let repo_name = repo.name
 
   // Try moon info for MoonBit projects
-  if @fs.exists("\{repo.local_path}/moon.mod.json") {
+  if @fs.exists("\{repo.local_path()}/moon.mod.json") {
     @stdio.stdout.write("info [\{repo_name}] - Running moon info...\n")
-    let status = @process.run("moon", ["info"], cwd=repo.local_path) catch {
+    let status = @process.run("moon", ["info"], cwd=repo.local_path()) catch {
       e => @error.reraise(e)
     }
     if status != 0 {

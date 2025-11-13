@@ -12,5 +12,6 @@
     "moonbitlang/async/stdio",
     "peter-jerry-ye/codex/x/args",
     "peter-jerry-ye/codex/x/error",
+    "peter-jerry-ye/codex/x/git"
   ]
 }

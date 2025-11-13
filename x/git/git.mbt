@@ -13,10 +13,43 @@
 // limitations under the License.
 
 ///|
+/// Extract repository name from URL
+///
+/// # Arguments
+/// * `url` - Repository URL (e.g., https://github.com/user/repo.git)
+///
+/// # Returns
+/// Repository name without .git suffix
+pub fn extract_repo_name(url : String) -> String {
+  // Handle URLs like:
+  // - https://github.com/user/repo.git
+  // - https://github.com/user/repo
+  // - git@github.com:user/repo.git
+  let parts = url.split("/").collect()
+  let last = if parts.length() > 0 {
+    parts[parts.length() - 1].to_string()
+  } else {
+    url
+  }
+  // Remove .git suffix if present
+  if last.has_suffix(".git") {
+    try! last[0:last.length() - 4].to_string()
+  } else {
+    last
+  }
+}
+
+///|
 /// Represents a Git repository
 pub struct GitRepo {
   /// Path to the repository root
   path : String
+  /// Optional repository URL
+  url : String?
+  /// Optional repository name (extracted from URL)
+  name : String?
+  /// Optional default branch name
+  default_branch : String?
 }
 
 ///|
@@ -36,16 +69,48 @@ pub struct IsolatedWorkspace {
 /// # Arguments
 /// * `url` - Remote repository URL
 /// * `destination` - Local path to clone into
+/// * `get_default_branch` - Whether to fetch and set default branch (default true)
 ///
 /// # Returns
 /// GitRepo instance for the cloned repository
-pub async fn GitRepo::clone(url : String, destination : String) -> GitRepo? {
+pub async fn GitRepo::clone(
+  url : String,
+  destination : String,
+  get_default_branch? : Bool = true,
+) -> GitRepo? {
   let status = @process.run("git", ["clone", url, destination])
-  if status == 0 {
-    Some(GitRepo::{ path: destination })
+  if status != 0 {
+    return None
+  }
+  let repo_name = extract_repo_name(url)
+  let default_branch = if get_default_branch {
+    // Get default branch from remote
+    let (pipe, process_write) = @process.read_from_process()
+    let status2 = @process.run(
+      "git",
+      ["symbolic-ref", "refs/remotes/origin/HEAD", "--short"],
+      stdout=process_write,
+      cwd=destination,
+    )
+    if status2 == 0 {
+      let full = pipe.read_all().text().trim_space().to_string()
+      if full.has_prefix("origin/") {
+        Some(try! full[7:].to_string())
+      } else {
+        Some(full)
+      }
+    } else {
+      None
+    }
   } else {
     None
   }
+  Some(GitRepo::{
+    path: destination,
+    url: Some(url),
+    name: Some(repo_name),
+    default_branch,
+  })
 }
 
 ///|
@@ -63,7 +128,7 @@ pub async fn GitRepo::discover(path : String) -> GitRepo? {
     cwd=path,
   )
   if status == 0 {
-    Some(GitRepo::{ path, })
+    Some(GitRepo::{ path, url: None, name: None, default_branch: None })
   } else {
     None
   }
@@ -260,6 +325,106 @@ pub async fn GitRepo::current_branch(self : GitRepo) -> String? {
   } else {
     Some(output)
   }
+}
+
+///|
+/// Get default branch from remote
+///
+/// # Arguments
+/// * `remote` - Remote name (default "origin")
+///
+/// # Returns
+/// Default branch name or None if unable to determine
+pub async fn GitRepo::get_default_branch(
+  self : GitRepo,
+  remote? : String = "origin",
+) -> String? {
+  let (pipe, process_write) = @process.read_from_process()
+  let status = @process.run(
+    "git",
+    ["symbolic-ref", "refs/remotes/\{remote}/HEAD", "--short"],
+    stdout=process_write,
+    cwd=self.path,
+  )
+  if status != 0 {
+    return None
+  }
+  let default_branch_full = pipe.read_all().text().trim_space().to_string()
+  // Extract branch name from "origin/main" -> "main"
+  let prefix = "\{remote}/"
+  if default_branch_full.has_prefix(prefix) {
+    Some(try! default_branch_full[prefix.length():].to_string())
+  } else {
+    Some(default_branch_full)
+  }
+}
+
+///|
+/// Fetch from remote
+///
+/// # Arguments
+/// * `remote` - Remote name (default "origin")
+/// * `branch` - Optional specific branch to fetch
+///
+/// # Returns
+/// True if successful, false otherwise
+pub async fn GitRepo::fetch(
+  self : GitRepo,
+  remote? : String = "origin",
+  branch? : String,
+) -> Bool {
+  let args = ["fetch", remote]
+  if branch is Some(b) {
+    args.push(b)
+  }
+  @process.run("git", args, cwd=self.path) == 0
+}
+
+///|
+/// Pull from remote
+///
+/// # Arguments
+/// * `remote` - Remote name (default "origin")
+/// * `branch` - Optional specific branch to pull
+///
+/// # Returns
+/// True if successful, false otherwise
+pub async fn GitRepo::pull(
+  self : GitRepo,
+  remote? : String = "origin",
+  branch? : String,
+) -> Bool {
+  let args = ["pull", remote]
+  if branch is Some(b) {
+    args.push(b)
+  }
+  @process.run("git", args, cwd=self.path) == 0
+}
+
+///|
+/// Check if there are staged changes ready to commit
+///
+/// # Returns
+/// True if there are staged changes, false otherwise
+pub async fn GitRepo::has_staged_changes(self : GitRepo) -> Bool {
+  let status = @process.run(
+    "git",
+    ["diff", "--cached", "--quiet"],
+    cwd=self.path,
+  )
+  // git diff --cached --quiet returns 0 if no staged changes, 1 if staged changes exist
+  status != 0
+}
+
+///|
+/// Check if there are any uncommitted changes (staged or unstaged)
+///
+/// # Returns
+/// True if there are uncommitted changes, false otherwise
+pub async fn GitRepo::has_changes(self : GitRepo) -> Bool {
+  let status = @process.run("git", ["diff", "--quiet"], cwd=self.path)
+  // git diff --quiet returns 0 if no changes, 1 if changes exist
+  status != 0
 }
 
 ///|
