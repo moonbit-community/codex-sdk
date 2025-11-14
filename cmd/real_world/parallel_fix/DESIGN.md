@@ -82,26 +82,63 @@ The tool separates working files from persistent data:
 
 ## State Machine
 
+**Main Flow:**
+
 ```
-PENDING → CLONING → BRANCHING → FIXING → COMMITTING → PUSHING → PR_CREATING
-                                                                       ↓
-                                                                   PR_OPEN ←─────┐
-                                                                       ↓         │
-                                      ┌────────────────────────────────┼─────────┤
-                                      │                                │         │
-                                      ▼                                ▼         │
-                              PR_CHANGES_REQUESTED              PR_CONFLICTS     │
-                                      │                                │         │
-                                      └────────────▶ FIXING ◀──────────┘         │
-                                                       │                         │
-                                                   PR_APPROVED                   │
-                                                       │                         │
-                                                   PR_MERGED ────────────────────┘
-                                                       │         (rebase +        
-                                                       │          check work)
-                                                       ▼
-                                                   COMPLETE
+PENDING → CLONING → BRANCHING → FIXING → COMMITTING → PUSHING → PR_CREATING → PR_OPEN
+                                   ↓                                              ↓
+                                   ↓                                [AI fetches PR state
+                                   ↓                                 and decides action]
+                                   ↓                                              ↓
+                                   └──────────────────────────────────────────> COMPLETE
 ```
+
+**Control Flow Philosophy:**
+
+**Before PR (AI Full Control):**
+
+- States: PENDING → CLONING → BRANCHING → FIXING → COMMITTING → PUSHING →
+  PR_CREATING
+- AI has full control over the workflow
+- During FIXING: AI can decide to go directly to COMPLETE if there's nothing to
+  fix
+- Transitions are deterministic based on task completion
+
+**After PR (AI Decides, GitHub Informs):**
+
+- State: PR_OPEN
+- GitHub manages the actual PR state (reviews, merges, conflicts)
+- When processing PR_OPEN: AI fetches current PR information from GitHub
+- AI decides based on fetched state:
+  - If merged → transition to COMPLETE
+  - If changes requested or conflicts → go back to FIXING to address issues
+  - If approved or still open with no issues → transition to COMPLETE
+- For the current iteration, AI controls the decision-making, GitHub provides
+  the state
+
+**State Descriptions:**
+
+- `PENDING`: Initial state, waiting to be processed
+- `CLONING`: Repository being cloned to work directory
+- `BRANCHING`: Feature branch being created
+- `FIXING`: AI agent running fixes on the codebase
+  - **AI Decision Point**: Check if there's actually work to do
+    - If no changes needed → transition to `COMPLETE` (task done, no PR
+      required)
+    - If changes found → transition to `COMMITTING`
+- `COMMITTING`: Changes being committed to the branch
+- `PUSHING`: Branch being pushed to remote
+- `PR_CREATING`: Creating or finding the pull request
+- `PR_OPEN`: PR exists and AI needs to decide next action
+  - **AI Decision Point**: Fetch PR state from GitHub and decide:
+    - If merged → transition to `COMPLETE`
+    - If changes requested or conflicts → go back to `FIXING`
+    - If approved or open with no issues → transition to `COMPLETE`
+  - AI makes the decision, but uses GitHub as the information source
+- `COMPLETE`: Task finished successfully
+  - Either: no changes needed (no PR created)
+  - Or: PR decision made (merged, approved, or AI determined complete)
+- `RETRY`: Transient error during current run, will be retried
 
 **Error Handling:**
 
@@ -111,11 +148,17 @@ PENDING → CLONING → BRANCHING → FIXING → COMMITTING → PUSHING → PR_C
 
 **Key Design Decisions:**
 
-- No intermediate "completed" states (CLONED, BRANCHED, FIXED, COMMITTED,
-  PUSHED)
-- No FAILED state - failures are transient, not persisted across runs
-- Each action state transitions directly to the next action state
-- Simpler flow: repos don't get stuck between states
+- **AI has control throughout**: Before PR, AI controls workflow. After PR, AI
+  controls decisions based on GitHub state.
+- **Simplified PR states**: No explicit PR_CHANGES_REQUESTED, PR_APPROVED,
+  PR_CONFLICTS, PR_MERGED states - just PR_OPEN with dynamic fetching
+- **Two AI decision points**:
+  - During FIXING: AI decides if work is needed
+  - During PR_OPEN: AI fetches GitHub state and decides next action
+- Direct action-to-action transitions: No intermediate states for clone, branch,
+  commit, push
+- No `FAILED` state - failures are transient, not persisted across runs
+- Simpler flow: repos don't get stuck in multiple PR-related states
 - Better concurrency: fewer state transitions reduce database contention
 - Fresh start philosophy: Each run processes all repositories without historical
   failure baggage
@@ -178,30 +221,67 @@ fn ensure_cloned(repo_id) {
 }
 ```
 
-### 2. PR Lifecycle Management
+### 2. GitHub as Source of Truth (After PR Creation)
+
+Once a PR is created, GitHub's actual state becomes the source of truth. The
+system syncs state from GitHub:
 
 ```moonbit
-fn sync_pr_state(repo_id) {
+fn sync_pr_state(repo_id, pr_number) {
+  // Fetch actual PR state from GitHub
   pr = gh_api.get_pr(pr_number)
   
-  if pr.review_decision == "CHANGES_REQUESTED" {
-    transition(PrChangesRequested)
-    schedule_ai_fix()
-  }
-  
-  if pr.mergeable == false {
-    transition(PrConflicts)
-    schedule_rebase()
-  }
-  
-  if pr.merged {
-    transition(PrMerged)
-    handle_merged()  // New iteration or complete
+  // Update database state to match GitHub reality
+  match pr.state {
+    "OPEN" => {
+      if pr.review_decision == "CHANGES_REQUESTED" {
+        transition(PR_CHANGES_REQUESTED)
+      } else if pr.review_decision == "APPROVED" {
+        transition(PR_APPROVED)
+      } else if pr.merged {
+        transition(PR_MERGED)
+      } else {
+        transition(PR_OPEN)  // Still open
+      }
+    }
+    "MERGED" => transition(PR_MERGED)
+    "CLOSED" => transition(PR_OPEN)  // Reopen or handle
   }
 }
 ```
 
-### 3. Automatic Iterations
+**Key insight**: After PR creation, AI completes its current work, but database
+state is determined by GitHub, not AI decision. This prevents inconsistency
+between database and actual PR state.
+
+### 3. AI Autonomy in FIXING Phase
+
+Before any PR is created, AI has full autonomy to decide if the task is
+complete:
+
+```moonbit
+fn do_fix(config, repo) {
+  // Run AI fix...
+  thread.run(task)
+  
+  // Check if there are changes
+  if !has_changes() {
+    transition(COMPLETE)  // AI decides: task is done, no PR needed
+    return
+  }
+  
+  transition(COMMITTING)  // Have changes to commit and PR
+}
+```
+
+**Why this design:**
+
+- AI has clear decision authority before PR creation
+- If task is truly complete, no unnecessary PR is created
+- Reduces PR clutter in repositories
+- Clean separation: task completion (no PR) vs work in progress (needs PR)
+
+### 4. Automatic Iterations
 
 ```moonbit
 fn handle_merged_pr(repo_id) {
@@ -217,7 +297,7 @@ fn handle_merged_pr(repo_id) {
 }
 ```
 
-### 4. Transient Error Handling
+### 5. Transient Error Handling
 
 ```moonbit
 fn handle_error(repo_id, error) {
@@ -382,11 +462,9 @@ moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/.parallel
   - repositories, state_transitions, work_log, task_queue, config
   - Indexes for performance
   - No attempt_count field - fresh start each run
-- ✅ State manager with simplified 14-state machine
-  - States: Pending, Cloning, Branching, Fixing, Committing, Pushing,
-    PrCreating, PrOpen, PrChangesRequested, PrApproved, PrConflicts, PrMerged,
-    Complete, Retry
-  - Direct transitions: CLONING→BRANCHING→FIXING→COMMITTING→PUSHING→PR_CREATING
+- ✅ State manager with simplified 10-state machine
+  - Active states: Pending, Cloning, Branching, Fixing, Committing, Pushing, PrCreating, PrOpen, Complete, Retry
+  - Deprecated states (auto-migrated): PrChangesRequested, PrApproved, PrConflicts, PrMerged
   - `transition()`, `get_repos_in_state()`, `count_by_state()`
   - Automatic state transition logging
   - Semaphore-based locking to prevent database concurrency issues
@@ -402,6 +480,7 @@ moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/.parallel
 - ✅ `status` - Show current state (with --verbose)
   - Displays task description for each repository
   - Shows last error if any
+  - Groups by task
 - ✅ `help` - Show subcommand documentation
 - ✅ Global options: `--work-dir` and `--data-dir`
   - Set before subcommand
@@ -409,7 +488,7 @@ moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/.parallel
 - ✅ Subcommand routing using `stop_early=true`
 - ✅ Only stateful mode supported
 
-### 🚧 Phase 2: Reentrant Operations (In Progress)
+### ✅ Phase 2: Reentrant Operations (Complete)
 
 - ✅ Worker with state-driven processing in `worker.mbt`
   - `process_repository_stateful()` with phase handlers
@@ -434,14 +513,24 @@ moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/.parallel
   - No attempt_count persistence
   - No max_retries configuration
   - Each run processes all non-complete repos regardless of previous failures
-- [ ] PR sync integration (requires testing with actual PRs)
 
-### 📋 Phase 3: PR Integration (Planned)
+### ✅ Phase 3: PR Integration (Complete)
 
-- [ ] GitHub API integration via `gh api`
-- [ ] `sync-prs` command to update PR states
-- [ ] Handle review states (changes requested, approved)
-- [ ] Conflict detection and resolution
+- ✅ **AI Decision Points Implemented**
+  - During FIXING: AI can transition directly to COMPLETE if no changes needed
+  - During PR_OPEN: AI fetches GitHub state and decides next action
+  - Enhanced task prompt instructs AI to check if work is needed
+  - Simple heuristic detection for "NO_CHANGES_NEEDED" response
+- ✅ **PR State Management via GitHub API**
+  - `fetch_pr_state()` function using `gh pr view --json state,mergeable,reviewDecision`
+  - Parses fields: state (OPEN/MERGED/CLOSED), mergeable (MERGEABLE/CONFLICTING/UNKNOWN), reviewDecision (APPROVED/CHANGES_REQUESTED/REVIEW_REQUIRED or empty)
+  - Used in PR_OPEN state to make intelligent decisions
+  - Handles: state==MERGED → Complete, reviewDecision==CHANGES_REQUESTED → Fixing, mergeable==CONFLICTING → Fixing
+  - Graceful fallback if gh CLI not available
+- ✅ Simplified PR state handling
+  - No separate database states for PR_CHANGES_REQUESTED, PR_APPROVED, PR_CONFLICTS, PR_MERGED
+  - Single PR_OPEN state with dynamic GitHub state fetching
+  - AI-driven decision making after PR creation based on current GitHub state
 
 ### 🎯 Phase 4: Advanced Features (Planned)
 

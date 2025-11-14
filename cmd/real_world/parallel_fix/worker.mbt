@@ -68,19 +68,22 @@ pub async fn process_repository_stateful(
           }
       }
     PrCreating | PrOpen =>
-      do_create_pr(config, repo) catch {
+      do_handle_pr(config, repo) catch {
         e =>
-          handle_error(config, repo_id, repo_name, "PR creation", e.to_string()) catch {
+          handle_error(config, repo_id, repo_name, "PR handling", e.to_string()) catch {
             err => @error.reraise(err)
           }
       }
-    PrChangesRequested | PrApproved | PrConflicts =>
+    PrChangesRequested | PrApproved | PrConflicts | PrMerged => {
+      // These states are deprecated - should not appear in new design
       @stdio.stdout.write(
-        "info [\{repo_name}] - PR is in state \{repo.state}, no action needed\n",
+        "warning [\{repo_name}] - Deprecated state \{repo.state}, transitioning to PR_OPEN\n",
       )
-    PrMerged => {
-      @stdio.stdout.write("info [\{repo_name}] - PR merged, marking complete\n")
-      config.state_mgr.transition(repo_id, Complete, Some("PR merged")) catch {
+      config.state_mgr.transition(
+        repo_id,
+        PrOpen,
+        Some("Migrating from deprecated state"),
+      ) catch {
         e => @error.reraise(e)
       }
     }
@@ -264,6 +267,7 @@ async fn do_branch(
 
 ///|
 /// Perform AI fix
+/// AI can decide to go directly to Complete if there's nothing to fix
 async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
   guard repo.local_path is Some(clone_path) else {
     @error.fail("No local path set")
@@ -282,8 +286,22 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
     ),
   )
 
+  // Add instruction for AI to decide if work is needed
+  let enhanced_task =
+    #|Task: \{task}
+    #|
+    #|Important: Before making any changes, analyze if this task is actually needed.
+    #|If you determine that:
+    #|1. The issue described doesn't exist in this codebase, OR
+    #|2. The requested changes have already been completed, OR
+    #|3. The task is not applicable to this repository
+    #|
+    #|Then respond with "NO_CHANGES_NEEDED" and explain why.
+    #|Otherwise, proceed with the task normally.
+    #|
+
   // Run thread to execute the fix
-  let _result = thread.run(task) catch { e => @error.reraise(e) }
+  let result = thread.run(enhanced_task) catch { e => @error.reraise(e) }
 
   // Save thread ID if available
   if thread.id() is Some(thread_id) {
@@ -292,6 +310,27 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
       e => @error.reraise(e)
     }
   }
+
+  // Check if AI determined no changes are needed
+  // This is a simple heuristic - in practice, we'd need more sophisticated detection
+  let response_lower = result.final_response.to_lower()
+  if response_lower.contains("no_changes_needed") ||
+    response_lower.contains("no changes needed") ||
+    response_lower.contains("not applicable") {
+    @stdio.stdout.write(
+      "info [\{repo.name}] - AI determined no changes needed, marking complete\n",
+    )
+    config.state_mgr.transition(
+      repo.id,
+      Complete,
+      Some("AI determined no changes needed"),
+    ) catch {
+      e => @error.reraise(e)
+    }
+    return
+  }
+
+  // AI made changes, proceed to committing
   config.state_mgr.transition(repo.id, Committing, Some("AI fix completed")) catch {
     e => @error.reraise(e)
   }
@@ -362,8 +401,12 @@ async fn do_push(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
 }
 
 ///|
-/// Perform PR creation
-async fn do_create_pr(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
+/// Handle PR creation and post-PR state management
+/// This function creates a PR if in PrCreating state, or fetches PR state and decides next action if in PrOpen
+async fn do_handle_pr(
+  config : WorkerConfig,
+  repo : RepositoryRecord,
+) -> Unit raise Error {
   guard repo.local_path is Some(clone_path) else {
     @error.fail("No local path set")
   }
@@ -381,40 +424,163 @@ async fn do_create_pr(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
   let which_status = @process.run("which", ["gh"]) catch { _ => 1 }
   if which_status != 0 {
     @stdio.stdout.write(
-      "warning [\{repo.name}] - GitHub CLI not found, marking as pushed\n",
+      "warning [\{repo.name}] - GitHub CLI not found, cannot manage PR\n",
     )
-    config.state_mgr.transition(repo.id, PrOpen, Some("No gh CLI")) catch {
+    config.state_mgr.transition(repo.id, Complete, Some("No gh CLI available")) catch {
       e => @error.reraise(e)
     }
     return
   }
-  @stdio.stdout.write("info [\{repo.name}] - Creating pull request\n")
 
-  // Create PR using gh
-  let title = "AI fix: \{task}"
-  let body = "This PR was automatically generated to address:\n\n\{task}"
-  let (pipe, process_read) = @process.read_from_process()
-  let status = @process.run(
-    "gh",
-    [
-      "pr", "create", "--title", title, "--body", body, "--base", default_branch,
-      "--head", branch,
-    ],
-    stdout=process_read,
-    cwd=clone_path,
-  ) catch {
-    e => @error.reraise(e)
+  // If we're in PrCreating state, create the PR first
+  if repo.state == PrCreating {
+    @stdio.stdout.write("info [\{repo.name}] - Creating pull request\n")
+
+    // Create PR using gh
+    let title = "AI fix: \{task}"
+    let body = "This PR was automatically generated to address:\n\n\{task}"
+    let (pipe, process_read) = @process.read_from_process()
+    let status = @process.run(
+      "gh",
+      [
+        "pr", "create", "--title", title, "--body", body, "--base", default_branch,
+        "--head", branch,
+      ],
+      stdout=process_read,
+      cwd=clone_path,
+    ) catch {
+      e => @error.reraise(e)
+    }
+    if status != 0 {
+      @error.fail("gh pr create failed")
+    }
+    let pr_url = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
+    @stdio.stdout.write("info [\{repo.name}] - PR created: \{pr_url}\n")
+
+    // Extract PR number from URL (e.g., https://github.com/owner/repo/pull/123)
+    // Example: https://github.com/owner/repo/pull/123 -> 123
+    let pr_number_opt : Int? = {
+      let parts = pr_url.split("/").to_array()
+      if parts.length() > 0 {
+        let last = parts[parts.length() - 1].to_string()
+        let num = @strconv.parse_int(last) catch { _ => -1 }
+        if num > 0 {
+          Some(num)
+        } else {
+          None
+        }
+      } else {
+        None
+      }
+    }
+
+    // Update repository with PR info
+    let updates = match pr_number_opt {
+      Some(num) =>
+        [
+          ("pr_url", pr_url),
+          ("pr_state", "open"),
+          ("pr_number", num.to_string()),
+        ]
+      None => [("pr_url", pr_url), ("pr_state", "open")]
+    }
+    config.state_mgr.update_repository(repo.id, updates) catch {
+      e => @error.reraise(e)
+    }
+
+    // Transition to PrOpen for next processing
+    config.state_mgr.transition(repo.id, PrOpen, Some("PR created")) catch {
+      e => @error.reraise(e)
+    }
+    @stdio.stdout.write(
+      "info [\{repo.name}] - Transitioned to PR_OPEN, will fetch state on next run\n",
+    )
+    return
   }
-  if status != 0 {
-    @error.fail("gh pr create failed")
+
+  // We're in PrOpen state - fetch current PR state and let AI decide
+  @stdio.stdout.write("info [\{repo.name}] - Fetching PR state from GitHub\n")
+
+  // Get PR number
+  guard repo.pr_number is Some(pr_number) else {
+    @stdio.stdout.write(
+      "warning [\{repo.name}] - No PR number, marking complete\n",
+    )
+    config.state_mgr.transition(
+      repo.id,
+      Complete,
+      Some("No PR number available"),
+    ) catch {
+      e => @error.reraise(e)
+    }
+    return
   }
-  let pr_url = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-  @stdio.stdout.write("info [\{repo.name}] - PR created: \{pr_url}\n")
-  let updates = [("pr_url", pr_url), ("pr_state", "open")]
-  config.state_mgr.update_repository(repo.id, updates) catch {
-    e => @error.reraise(e)
-  }
-  config.state_mgr.transition(repo.id, PrOpen, Some("PR created")) catch {
-    e => @error.reraise(e)
+
+  // Fetch PR state
+  match fetch_pr_state(clone_path, pr_number) {
+    Some(pr_info) => {
+      let review_str = if pr_info.review_decision.is_empty() {
+        "none"
+      } else {
+        pr_info.review_decision
+      }
+      @stdio.stdout.write(
+        "info [\{repo.name}] - PR state: \{pr_info.state}, mergeable: \{pr_info.mergeable}, review: \{review_str}\n",
+      )
+
+      // AI Decision Point: Decide what to do based on PR state
+      if pr_info.state == "MERGED" {
+        @stdio.stdout.write("info [\{repo.name}] - PR merged, task complete\n")
+        config.state_mgr.transition(repo.id, Complete, Some("PR merged")) catch {
+          e => @error.reraise(e)
+        }
+      } else if pr_info.review_decision == "CHANGES_REQUESTED" {
+        @stdio.stdout.write(
+          "info [\{repo.name}] - Changes requested, going back to fixing\n",
+        )
+        config.state_mgr.transition(
+          repo.id,
+          Fixing,
+          Some("Changes requested by reviewers"),
+        ) catch {
+          e => @error.reraise(e)
+        }
+      } else if pr_info.mergeable == "CONFLICTING" {
+        @stdio.stdout.write(
+          "info [\{repo.name}] - PR has conflicts, going back to fixing\n",
+        )
+        config.state_mgr.transition(
+          repo.id,
+          Fixing,
+          Some("Merge conflicts detected"),
+        ) catch {
+          e => @error.reraise(e)
+        }
+      } else {
+        // PR is open, approved, or no issues - consider task complete
+        @stdio.stdout.write(
+          "info [\{repo.name}] - PR is \{pr_info.state} with no issues, task complete\n",
+        )
+        config.state_mgr.transition(
+          repo.id,
+          Complete,
+          Some("PR in good state (\{pr_info.state})"),
+        ) catch {
+          e => @error.reraise(e)
+        }
+      }
+    }
+    None => {
+      @stdio.stdout.write(
+        "warning [\{repo.name}] - Could not fetch PR state, marking complete\n",
+      )
+      config.state_mgr.transition(
+        repo.id,
+        Complete,
+        Some("Could not fetch PR state"),
+      ) catch {
+        e => @error.reraise(e)
+      }
+    }
   }
 }

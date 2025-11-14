@@ -265,7 +265,6 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
       state_mgr.count_by_task_and_state(task, Pushing) +
       state_mgr.count_by_task_and_state(task, PrCreating) +
       state_mgr.count_by_task_and_state(task, PrOpen) +
-      state_mgr.count_by_task_and_state(task, PrMerged) +
       state_mgr.count_by_task_and_state(task, Complete) +
       state_mgr.count_by_task_and_state(task, Retry)
     @stdio.stdout.write("  \"\{task}\" - \{task_total} repos\n")
@@ -283,7 +282,6 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
     (Pushing, "Pushing"),
     (PrCreating, "PR Creating"),
     (PrOpen, "PR Open"),
-    (PrMerged, "PR Merged"),
     (Complete, "Complete"),
     (Retry, "Retry"),
   ]
