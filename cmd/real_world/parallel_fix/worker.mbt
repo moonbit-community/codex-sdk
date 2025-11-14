@@ -50,35 +50,35 @@ pub async fn process_repository_stateful(
             err => @error.reraise(err)
           }
       }
-    Cloning | Cloned =>
+    Cloning =>
       do_clone(config, repo) catch {
         e =>
           handle_error(config, repo_id, repo_name, "cloning", e.to_string()) catch {
             err => @error.reraise(err)
           }
       }
-    Branching | Branched =>
+    Branching =>
       do_branch(config, repo) catch {
         e =>
           handle_error(config, repo_id, repo_name, "branching", e.to_string()) catch {
             err => @error.reraise(err)
           }
       }
-    Fixing | Fixed =>
+    Fixing =>
       do_fix(config, repo) catch {
         e =>
           handle_error(config, repo_id, repo_name, "fixing", e.to_string()) catch {
             err => @error.reraise(err)
           }
       }
-    Committing | Committed =>
+    Committing =>
       do_commit(config, repo) catch {
         e =>
           handle_error(config, repo_id, repo_name, "committing", e.to_string()) catch {
             err => @error.reraise(err)
           }
       }
-    Pushing | Pushed =>
+    Pushing =>
       do_push(config, repo) catch {
         e =>
           handle_error(config, repo_id, repo_name, "pushing", e.to_string()) catch {
@@ -174,11 +174,10 @@ async fn do_clone(
         config.state_mgr.update_repository(repo.id, updates) catch {
           e => @error.reraise(e)
         }
-        // If already in Cloned state, move to Branching to advance the workflow
-        let next_state = if repo.state == Cloned { Branching } else { Cloned }
+        // Always advance to Branching when clone is verified
         config.state_mgr.transition(
           repo.id,
-          next_state,
+          Branching,
           Some("Repository discovered"),
         ) catch {
           e => @error.reraise(e)
@@ -245,7 +244,8 @@ async fn do_branch(
       config.state_mgr.update_repository(repo.id, updates) catch {
         e => @error.reraise(e)
       }
-      config.state_mgr.transition(repo.id, Branched, Some("Branch exists")) catch {
+      // Always advance to Fixing when branch is verified
+      config.state_mgr.transition(repo.id, Fixing, Some("Branch exists")) catch {
         e => @error.reraise(e)
       }
       return
@@ -274,7 +274,7 @@ async fn do_branch(
   config.state_mgr.update_repository(repo.id, updates) catch {
     e => @error.reraise(e)
   }
-  config.state_mgr.transition(repo.id, Branched, Some("Branch created")) catch {
+  config.state_mgr.transition(repo.id, Fixing, Some("Branch created")) catch {
     e => @error.reraise(e)
   }
   @stdio.stdout.write("info [\{repo.name}] - Branch created successfully\n")
@@ -310,7 +310,7 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
       e => @error.reraise(e)
     }
   }
-  config.state_mgr.transition(repo.id, Fixed, Some("AI fix completed")) catch {
+  config.state_mgr.transition(repo.id, Committing, Some("AI fix completed")) catch {
     e => @error.reraise(e)
   }
   @stdio.stdout.write("info [\{repo.name}] - AI fix completed\n")
@@ -337,7 +337,7 @@ async fn do_commit(
   // Check if there are changes
   if !git_repo.has_changes() {
     @stdio.stdout.write("warning [\{repo.name}] - No changes to commit\n")
-    config.state_mgr.transition(repo.id, Committed, Some("No changes")) catch {
+    config.state_mgr.transition(repo.id, Pushing, Some("No changes")) catch {
       e => @error.reraise(e)
     }
     return
@@ -349,7 +349,7 @@ async fn do_commit(
   if !git_repo.commit(commit_msg) {
     @error.fail("Failed to commit changes")
   }
-  config.state_mgr.transition(repo.id, Committed, Some("Changes committed")) catch {
+  config.state_mgr.transition(repo.id, Pushing, Some("Changes committed")) catch {
     e => @error.reraise(e)
   }
   @stdio.stdout.write("info [\{repo.name}] - Changes committed successfully\n")
@@ -373,7 +373,7 @@ async fn do_push(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
   if !git_repo.push(branch~, set_upstream=true) {
     @error.fail("Failed to push branch")
   }
-  config.state_mgr.transition(repo.id, Pushed, Some("Branch pushed")) catch {
+  config.state_mgr.transition(repo.id, PrCreating, Some("Branch pushed")) catch {
     e => @error.reraise(e)
   }
   @stdio.stdout.write("info [\{repo.name}] - Branch pushed successfully\n")

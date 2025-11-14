@@ -52,15 +52,15 @@ The tool separates working files from persistent data:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     CLI Interface                        │
+│                     CLI Interface                       │
 │  init │ add │ run │ status │ retry │ clean │ sync-prs   │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
-│                  Worker Manager                          │
-│  - Picks tasks from queue                                │
-│  - Manages parallelism                                   │
-│  - State-driven processing                               │
+│                  Worker Manager                         │
+│  - Picks tasks from queue                               │
+│  - Manages parallelism                                  │
+│  - State-driven processing                              │
 └────────────────────┬────────────────────────────────────┘
                      │
          ┌───────────┴───────────┐
@@ -76,41 +76,33 @@ The tool separates working files from persistent data:
 ## State Machine
 
 ```
-PENDING → CLONING → CLONED → BRANCHING → BRANCHED
-                                             ↓
-                                          FIXING
-                                             ↓
-                                          FIXED
-                                             ↓
-                                        COMMITTING
-                                             ↓
-                                        COMMITTED
-                                             ↓
-                                         PUSHING
-                                             ↓
-                                         PUSHED
-                                             ↓
-                                       PR_CREATING
-                                             ↓
-                                         PR_OPEN ←─────┐
-                                             ↓          │
-                    ┌────────────────────────┼──────────┤
-                    │                        │          │
-                    ▼                        ▼          │
-            PR_CHANGES_REQUESTED      PR_CONFLICTS     │
-                    │                        │          │
-                    └────────▶ FIXING ◀──────┘          │
-                                  │                     │
-                              PR_APPROVED               │
-                                  │                     │
-                              PR_MERGED ────────────────┘
-                                  │        (rebase +    
-                                  │         check work)
-                                  ▼
-                              COMPLETE
+PENDING → CLONING → BRANCHING → FIXING → COMMITTING → PUSHING → PR_CREATING
+                                                                       ↓
+                                                                   PR_OPEN ←─────┐
+                                                                       ↓         │
+                                      ┌────────────────────────────────┼─────────┤
+                                      │                                │         │
+                                      ▼                                ▼         │
+                              PR_CHANGES_REQUESTED              PR_CONFLICTS     │
+                                      │                                │         │
+                                      └────────────▶ FIXING ◀──────────┘         │
+                                                       │                         │
+                                                   PR_APPROVED                   │
+                                                       │                         │
+                                                   PR_MERGED ────────────────────┘
+                                                       │         (rebase +        
+                                                       │          check work)
+                                                       ▼
+                                                   COMPLETE
 ```
 
 Error states from any point: `FAILED`, `RETRY`
+
+**Key Changes:**
+- Removed intermediate "completed" states (CLONED, BRANCHED, FIXED, COMMITTED, PUSHED)
+- Each action state transitions directly to the next action state
+- Simpler flow: repos don't get stuck between states
+- Better concurrency: fewer state transitions reduce database contention
 
 ## Database Schema (SQLite)
 
@@ -155,8 +147,8 @@ Every operation checks state first:
 fn ensure_cloned(repo_id) {
   match get_state(repo_id) {
     Pending | Retry => clone_and_transition()
-    Cloning => wait_or_verify()  // Another worker
-    _ if >= Cloned => discover_existing()
+    Cloning => discover_existing()  // Reentrant - verify and advance
+    _ if >= Branching => already_advanced()
   }
 }
 ```
@@ -192,7 +184,7 @@ fn handle_merged_pr(repo_id) {
   
   if still_has_issues() {
     increment_iteration()
-    transition(Branched)  // Start fresh cycle
+    transition(Branching)  // Start fresh cycle
   } else {
     transition(Complete)
     archive()
@@ -355,9 +347,12 @@ parallel_fix retry --failed
 - ✅ Database schema with 5 tables
   - repositories, state_transitions, work_log, task_queue, config
   - Indexes for performance
-- ✅ State manager with 20-state machine
+- ✅ State manager with simplified 15-state machine
+  - Removed intermediate states: CLONED, BRANCHED, FIXED, COMMITTED, PUSHED
+  - Direct transitions: CLONING→BRANCHING→FIXING→COMMITTING→PUSHING→PR_CREATING
   - `transition()`, `get_repos_in_state()`, `count_by_state()`
   - Automatic state transition logging
+  - Semaphore-based locking to prevent database concurrency issues
 
 **CLI Subcommands**
 - ✅ `init` - Initialize workspace and database
@@ -389,6 +384,12 @@ parallel_fix retry --failed
   - Retry logic with configurable max attempts
   - Error handling with state transitions to Retry
 - ✅ Resume from last state on crash (all operations check current state)
+- ✅ Simplified state machine - removed intermediate "completed" states
+  - No more stuck repositories in CLONED, BRANCHED, FIXED, etc.
+  - Direct flow from action to action
+- ✅ Database concurrency fixes
+  - Semaphore-based locking in StateManager
+  - All DB operations serialized to prevent "database is locked" errors
 - [ ] PR sync integration (requires testing with actual PRs)
 
 ### 📋 Phase 3: PR Integration (Planned)

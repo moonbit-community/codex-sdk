@@ -258,15 +258,17 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   @stdio.stdout.write("BREAKDOWN BY TASK:\n")
   for task in all_tasks {
     let task_total = state_mgr.count_by_task_and_state(task, Pending) +
+      state_mgr.count_by_task_and_state(task, Cloning) +
+      state_mgr.count_by_task_and_state(task, Branching) +
+      state_mgr.count_by_task_and_state(task, Fixing) +
+      state_mgr.count_by_task_and_state(task, Committing) +
+      state_mgr.count_by_task_and_state(task, Pushing) +
+      state_mgr.count_by_task_and_state(task, PrCreating) +
+      state_mgr.count_by_task_and_state(task, PrOpen) +
+      state_mgr.count_by_task_and_state(task, PrMerged) +
       state_mgr.count_by_task_and_state(task, Complete) +
       state_mgr.count_by_task_and_state(task, Failed) +
-      state_mgr.count_by_task_and_state(task, Retry) +
-      state_mgr.count_by_task_and_state(task, Cloning) +
-      state_mgr.count_by_task_and_state(task, Cloned) +
-      state_mgr.count_by_task_and_state(task, Fixing) +
-      state_mgr.count_by_task_and_state(task, Committed) +
-      state_mgr.count_by_task_and_state(task, PrOpen) +
-      state_mgr.count_by_task_and_state(task, PrMerged)
+      state_mgr.count_by_task_and_state(task, Retry)
     @stdio.stdout.write("  \"\{task}\" - \{task_total} repos\n")
   }
   @stdio.stdout.write("\n")
@@ -276,9 +278,11 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   let states_to_show = [
     (Pending, "Pending"),
     (Cloning, "Cloning"),
-    (Cloned, "Cloned"),
+    (Branching, "Branching"),
     (Fixing, "Fixing"),
-    (Committed, "Committed"),
+    (Committing, "Committing"),
+    (Pushing, "Pushing"),
+    (PrCreating, "PR Creating"),
     (PrOpen, "PR Open"),
     (PrMerged, "PR Merged"),
     (Complete, "Complete"),

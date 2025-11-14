@@ -3,15 +3,10 @@
 pub enum RepoState {
   Pending
   Cloning
-  Cloned
   Branching
-  Branched
   Fixing
-  Fixed
   Committing
-  Committed
   Pushing
-  Pushed
   PrCreating
   PrOpen
   PrChangesRequested
@@ -29,15 +24,10 @@ pub fn RepoState::to_string(self : RepoState) -> String {
   match self {
     Pending => "PENDING"
     Cloning => "CLONING"
-    Cloned => "CLONED"
     Branching => "BRANCHING"
-    Branched => "BRANCHED"
     Fixing => "FIXING"
-    Fixed => "FIXED"
     Committing => "COMMITTING"
-    Committed => "COMMITTED"
     Pushing => "PUSHING"
-    Pushed => "PUSHED"
     PrCreating => "PR_CREATING"
     PrOpen => "PR_OPEN"
     PrChangesRequested => "PR_CHANGES_REQUESTED"
@@ -56,15 +46,10 @@ pub fn RepoState::from_string(s : String) -> RepoState? {
   match s {
     "PENDING" => Some(Pending)
     "CLONING" => Some(Cloning)
-    "CLONED" => Some(Cloned)
     "BRANCHING" => Some(Branching)
-    "BRANCHED" => Some(Branched)
     "FIXING" => Some(Fixing)
-    "FIXED" => Some(Fixed)
     "COMMITTING" => Some(Committing)
-    "COMMITTED" => Some(Committed)
     "PUSHING" => Some(Pushing)
-    "PUSHED" => Some(Pushed)
     "PR_CREATING" => Some(PrCreating)
     "PR_OPEN" => Some(PrOpen)
     "PR_CHANGES_REQUESTED" => Some(PrChangesRequested)
@@ -104,12 +89,16 @@ pub struct RepositoryRecord {
 /// State manager for repository processing
 pub struct StateManager {
   db : @sqlite.Database
+  db_lock : @semaphore.Semaphore // Semaphore with value 1 acts as a mutex
 }
 
 ///|
 /// Create a new state manager
 pub fn StateManager::new(db_path : String) -> StateManager {
-  StateManager::{ db: @sqlite.Database::new(db_path) }
+  StateManager::{
+    db: @sqlite.Database::new(db_path),
+    db_lock: @semaphore.Semaphore::new(1), // Only 1 concurrent DB operation
+  }
 }
 
 ///|
@@ -143,7 +132,9 @@ pub async fn StateManager::add_repository(
   // Get the last inserted row ID
   // If it was ignored (duplicate), last_insert_rowid() returns 0
   let id_str = self.db.exec_string("SELECT last_insert_rowid();")
-  let id = @strconv.parse_int(id_str) catch { e => @error.reraise(e) }
+  let id = @strconv.parse_int(id_str.trim(chars=" \r\n\t")) catch {
+    e => @error.reraise(e)
+  }
   if id == 0 {
     None // Was a duplicate
   } else {
@@ -159,11 +150,13 @@ pub async fn StateManager::transition(
   to_state : RepoState,
   details : String?,
 ) -> Unit {
+  self.db_lock.acquire()
+  defer self.db_lock.release()
   let now = now()
   let state_str = to_state.to_string()
 
   // Get current state for logging
-  let from_state = match self.get_repo_state(repo_id) {
+  let from_state = match self.get_repo_state_unlocked(repo_id) {
     Some(state) => state.to_string()
     None => "NULL"
   }
@@ -189,13 +182,24 @@ pub async fn StateManager::transition(
 }
 
 ///|
-/// Get the current state of a repository
-pub async fn StateManager::get_repo_state(
+/// Get the current state of a repository (internal, no lock)
+async fn StateManager::get_repo_state_unlocked(
   self : StateManager,
   repo_id : Int,
 ) -> RepoState? {
   let sql = "SELECT state FROM repositories WHERE id = \{repo_id};"
   RepoState::from_string(self.db.exec_string(sql))
+}
+
+///|
+/// Get the current state of a repository
+pub async fn StateManager::get_repo_state(
+  self : StateManager,
+  repo_id : Int,
+) -> RepoState? {
+  self.db_lock.acquire()
+  defer self.db_lock.release()
+  self.get_repo_state_unlocked(repo_id)
 }
 
 ///|
@@ -323,6 +327,8 @@ pub async fn StateManager::log(
   level : String,
   message : String,
 ) -> Unit {
+  self.db_lock.acquire()
+  defer self.db_lock.release()
   let now = now()
   let escaped_level = level.replace(old="'", new="''")
   let escaped_message = message.replace(old="'", new="''")
@@ -354,6 +360,8 @@ pub async fn StateManager::increment_attempts(
   self : StateManager,
   repo_id : Int,
 ) -> Unit {
+  self.db_lock.acquire()
+  defer self.db_lock.release()
   let now = now()
   let sql = "UPDATE repositories SET attempt_count = attempt_count + 1, updated_at = '\{now}' WHERE id = \{repo_id};"
   self.db.exec(sql) catch {
@@ -453,11 +461,14 @@ pub async fn StateManager::update_repository(
   if updates.is_empty() {
     return
   }
+  self.db_lock.acquire()
+  defer self.db_lock.release()
   let now = now()
   let set_clauses = []
   for update in updates {
     let (field, value) = update
-    set_clauses.push("\{field} = '\{value}'")
+    let escaped_value = value.replace(old="'", new="''")
+    set_clauses.push("\{field} = '\{escaped_value}'")
   }
   set_clauses.push("updated_at = '\{now}'")
   let separator = ", "
@@ -476,9 +487,9 @@ pub async fn StateManager::get_processable_repos(
   include_failed : Bool,
 ) -> Array[RepositoryRecord] {
   let states = if include_failed {
-    "('PENDING', 'RETRY', 'CLONED', 'BRANCHED', 'FIXED', 'COMMITTED', 'PUSHED', 'FAILED')"
+    "('PENDING', 'RETRY', 'CLONING', 'BRANCHING', 'FIXING', 'COMMITTING', 'PUSHING', 'FAILED')"
   } else {
-    "('PENDING', 'RETRY', 'CLONED', 'BRANCHED', 'FIXED', 'COMMITTED', 'PUSHED')"
+    "('PENDING', 'RETRY', 'CLONING', 'BRANCHING', 'FIXING', 'COMMITTING', 'PUSHING')"
   }
   let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, attempt_count, iteration FROM repositories WHERE state IN \{states} ORDER BY attempt_count ASC, created_at ASC LIMIT \{limit};"
   let rows = self.db.query(sql)
