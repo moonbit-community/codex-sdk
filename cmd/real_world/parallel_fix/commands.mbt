@@ -32,23 +32,10 @@ pub async fn cmd_init(
     @stdio.stdout.write(help_message)
     return
   }
-
-  // Main logic - expand ~ in data_dir
-  let expanded_data_dir = if data_dir.has_prefix("~") {
-    let (pipe, process_read) = @process.read_from_process()
-    let _status = @process.run("sh", ["-c", "echo $HOME"], stdout=process_read) catch {
-      _ => 1
-    }
-    let home = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-    let home_final = if home.is_empty() { "/tmp" } else { home }
-    "\{home_final}\{data_dir[1:].to_string()}"
-  } else {
-    data_dir
-  }
-  let db_path = "\{expanded_data_dir}/parallel-fix.db"
+  let db_path = "\{data_dir}/parallel-fix.db"
   @stdio.stdout.write("Initializing parallel fix workspace...\n")
   @stdio.stdout.write("  Work directory (clones): \{work_dir}\n")
-  @stdio.stdout.write("  Data directory (database): \{expanded_data_dir}\n")
+  @stdio.stdout.write("  Data directory (database): \{data_dir}\n")
   @stdio.stdout.write("  Database: \{db_path}\n")
 
   // Check if sqlite3 is available
@@ -60,7 +47,7 @@ pub async fn cmd_init(
   @stdio.stdout.write("✓ sqlite3 found\n")
 
   // Create data directory
-  ensure_work_dir(expanded_data_dir) catch {
+  ensure_work_dir(data_dir) catch {
     e => @error.fail_with("Failed to create data directory", e)
   }
   @stdio.stdout.write("✓ Data directory created\n")
@@ -73,36 +60,36 @@ pub async fn cmd_init(
 
   // Initialize database
   let state_mgr = StateManager::new(db_path)
-  if !state_mgr.init() {
-    @error.fail("Failed to initialize database")
+  state_mgr.init() catch {
+    e => @error.fail_with("Failed to initialize database", e)
   }
   @stdio.stdout.write("✓ Database initialized\n")
-
-  // Save configuration
-  if !state_mgr.db.exec(
+  try {
+    // Save configuration
+    state_mgr.db.exec(
       "INSERT OR REPLACE INTO config (key, value, updated_at) VALUES ('work_dir', '\{work_dir}', '\{now()}');",
-    ) {
-    @stdio.stdout.write("Warning: Failed to save work_dir configuration\n")
+    )
+    state_mgr.db.exec(
+      "INSERT OR REPLACE INTO config (key, value, updated_at) VALUES ('data_dir', '\{data_dir}', '\{now()}');",
+    )
+  } catch {
+    e => @error.fail_with("Failed to save configuration", e)
   }
-  if !state_mgr.db.exec(
-      "INSERT OR REPLACE INTO config (key, value, updated_at) VALUES ('data_dir', '\{expanded_data_dir}', '\{now()}');",
-    ) {
-    @stdio.stdout.write("Warning: Failed to save data_dir configuration\n")
-  }
-  @stdio.stdout.write("\n✓ Workspace initialized successfully!\n")
   @stdio.stdout.write(
-    "\nNext steps:\n  1. Add repositories: moon run real_world/parallel_fix -- add repos.txt --task \"Your task\"\n  2. Start processing: moon run real_world/parallel_fix -- run\n",
+    (
+      #|✓ Workspace initialized successfully!
+      #|
+      #|Next steps:
+      #|1. Add repositories: moon run real_world/parallel_fix -- add repos.txt --task "Your task"
+      #|2. Start processing: moon run real_world/parallel_fix -- run
+    ),
   )
 }
 
 ///|
 /// Handle the 'add' subcommand
 /// Adds repositories from a file to the database
-pub async fn cmd_add(
-  args : ArrayView[String],
-  work_dir : String,
-  data_dir : String,
-) -> Unit {
+pub async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   let help_message =
     #|Usage: add <repos-file> [OPTIONS]
     #|
@@ -127,20 +114,7 @@ pub async fn cmd_add(
     @stdio.stdout.write(help_message)
     return
   }
-
-  // Main logic - expand ~ in data_dir
-  let expanded_data_dir = if data_dir.has_prefix("~") {
-    let (pipe, process_read) = @process.read_from_process()
-    let _status = @process.run("sh", ["-c", "echo $HOME"], stdout=process_read) catch {
-      _ => 1
-    }
-    let home = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-    let home_final = if home.is_empty() { "/tmp" } else { home }
-    "\{home_final}\{data_dir[1:].to_string()}"
-  } else {
-    data_dir
-  }
-  let db_path = "\{expanded_data_dir}/parallel-fix.db"
+  let db_path = "\{data_dir}/parallel-fix.db"
 
   // Get repos file
   guard parsed_args.positional.length() > 0 else {
@@ -196,21 +170,20 @@ pub async fn cmd_add(
     }
   }
   @stdio.stdout.write(
-    "\n✓ Done! Added \{added} repository-task pairs, skipped \{skipped}\n",
-  )
-  @stdio.stdout.write(
-    "Next: moon run real_world/parallel_fix -- run --parallelism 8\n",
+    (
+      #|
+      $|✓ Done! Added \{added} repository-task pairs, skipped \{skipped}
+      #|
+      #|Next: moon run real_world/parallel_fix -- run --parallelism 8
+      #|
+    ),
   )
 }
 
 ///|
 /// Handle the 'status' subcommand
 /// Shows current state of all repositories
-pub async fn cmd_status(
-  args : ArrayView[String],
-  work_dir : String,
-  data_dir : String,
-) -> Unit {
+pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   let help_message =
     #|Usage: status [OPTIONS]
     #|
@@ -402,6 +375,9 @@ pub async fn cmd_help(_args : ArrayView[String]) -> Unit {
     #|  # Start processing
     #|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes run --parallelism 8
     #|
+    #|  # Retry failed repositories
+    #|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes run --include-failed
+    #|
     #|  # Check status
     #|  moon run real_world/parallel_fix -- --data-dir ~/my-fixes status --verbose
     #|
@@ -427,6 +403,7 @@ pub async fn cmd_run(
     #|  --parallelism <n>      Number of parallel workers (default: 4)
     #|  --max-retries <n>      Maximum retry attempts per repo (default: 3)
     #|  --branch-prefix <p>    Branch name prefix (default: "ai-fix")
+    #|  --include-failed       Include failed repositories for retry
     #|  --help, -h             Show this help
     #|
     #|Global options are set before the subcommand:
@@ -437,7 +414,7 @@ pub async fn cmd_run(
   // Parse arguments
   let parsed_args = @args.parse(
     args,
-    flags=["help"],
+    flags=["help", "include-failed"],
     options=["parallelism", "max-retries", "branch-prefix"],
     aliases={ "h": "help" },
   )
@@ -513,6 +490,17 @@ pub async fn cmd_run(
   }
   @stdio.stdout.write("Total repositories: \{total}\n")
 
+  // Check if we should include failed repos
+  let include_failed = parsed_args.flags.get("include-failed") is Some(true)
+  if include_failed {
+    @stdio.stdout.write(
+      "\n⚠️  Resetting FAILED repositories to RETRY with fresh attempts\n",
+    )
+    // Reset failed repos to Retry state so they can be processed again
+    let reset_sql = "UPDATE repositories SET state = 'RETRY', attempt_count = 0 WHERE state = 'FAILED';"
+    ignore(state_mgr.db.exec(reset_sql))
+  }
+
   // Process repositories in parallel using worker pool
   let mut processed = 0
   let mut successful = 0
@@ -520,7 +508,8 @@ pub async fn cmd_run(
   let mut continue_processing = true
   while continue_processing {
     // Get batch of processable repositories
-    let repos = state_mgr.get_processable_repos(parallelism * 2)
+    // Note: don't pass include_failed to the query since we already reset FAILED to RETRY above
+    let repos = state_mgr.get_processable_repos(parallelism * 2, false)
     if repos.is_empty() {
       @stdio.stdout.write("\nNo more repositories to process.\n")
       continue_processing = false
@@ -537,20 +526,16 @@ pub async fn cmd_run(
         task_group.spawn_bg(allow_failure=true, fn() {
           semaphore.acquire()
           defer semaphore.release()
-          let success = process_repository_stateful(config, repo) catch {
+          processed = processed + 1
+          process_repository_stateful(config, repo) catch {
             e => {
               @stdio.stderr.write(
                 "error [\{repo.name}] - Unexpected error: \{e}\n",
               )
-              false
+              failed = failed + 1
             }
           }
-          processed = processed + 1
-          if success {
-            successful = successful + 1
-          } else {
-            failed = failed + 1
-          }
+          successful = successful + 1
         })
       }
     })

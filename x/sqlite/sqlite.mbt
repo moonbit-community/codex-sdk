@@ -21,51 +21,78 @@ pub async fn check_sqlite3() -> Bool {
 ///|
 /// Execute a SQL statement (no results expected)
 /// Returns true if successful
-pub async fn Database::exec(self : Database, sql : String) -> Bool {
-  let status = @process.run("sqlite3", [self.path, sql]) catch {
-    _ => return false
+pub async fn Database::exec(self : Database, sql : String) -> Unit {
+  let (status, data) = @process.collect_output_merged("sqlite3", [
+    self.path,
+    sql,
+  ]) catch {
+    e => @error.reraise(e)
   }
-  status == 0
+  if status != 0 {
+    @error.fail(
+      (
+        $|Error: \{data.text()}")
+        $|SQL: \{sql}
+        $|
+      ),
+    )
+  }
 }
 
 ///|
 /// Execute a SQL statement and return output as string
 /// Useful for single-value queries
-pub async fn Database::exec_string(self : Database, sql : String) -> String? {
-  let (pipe, process_read) = @process.read_from_process()
-  let status = @process.run("sqlite3", [self.path, sql], stdout=process_read) catch {
-    _ => return None
+pub async fn Database::exec_string(self : Database, sql : String) -> String {
+  let (status, data) = @process.collect_output_merged("sqlite3", [
+    self.path,
+    sql,
+  ]) catch {
+    e => @error.reraise(e)
   }
   if status != 0 {
-    return None
+    @error.fail(
+      (
+        $|Error: \{data.text()}")
+        $|SQL: \{sql}
+        $|
+      ),
+    )
   }
-  let output = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-  Some(output)
+  data.text()
 }
 
 ///|
 /// Query database and return results in JSON mode
 /// Returns rows as array of objects
-pub async fn Database::query(self : Database, sql : String) -> Array[Json]? {
-  let (pipe, process_read) = @process.read_from_process()
+pub async fn Database::query(self : Database, sql : String) -> Array[Json] {
   // Use -json mode for structured output
-  let status = @process.run(
-    "sqlite3",
-    ["-json", self.path, sql],
-    stdout=process_read,
-  ) catch {
-    _ => return None
+  let (status, stdout, stderr) = @process.collect_output("sqlite3", [
+    "-json",
+    self.path,
+    sql,
+  ]) catch {
+    e => @error.reraise(e)
   }
   if status != 0 {
-    return None
+    @error.fail(
+      (
+        $|Error: \{stdout.text()}\{stderr.text()}")
+        $|SQL: \{sql}
+        $|
+      ),
+    )
   }
-  let output = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-
   // Parse JSON array of objects
-  let json = @json.parse(output) catch { _ => return None }
+  let output = stdout.text()
+  if output.is_blank() {
+    return []
+  }
+  let json = @json.parse(output.trim(chars=" \t\r\n")) catch {
+    e => @error.fail_with("Failed to parse: \{output}", e)
+  }
   match json {
-    Array(rows) => Some(rows)
-    _ => None
+    Array(rows) => rows
+    _ => @error.fail("Expected JSON array from query, got: \{json.stringify()}")
   }
 }
 
@@ -73,47 +100,9 @@ pub async fn Database::query(self : Database, sql : String) -> Array[Json]? {
 /// Query database and get a single row as JSON object
 pub async fn Database::query_one(self : Database, sql : String) -> Json? {
   match self.query(sql) {
-    Some([first, ..]) => Some(first)
+    [first, ..] => Some(first)
     _ => None
   }
-}
-
-///|
-/// Query database and return results in CSV mode
-/// More reliable for simple queries
-pub async fn Database::query_csv(
-  self : Database,
-  sql : String,
-) -> Array[Array[String]] {
-  let (pipe, process_read) = @process.read_from_process()
-  // Use -csv mode with headers
-  let status = @process.run(
-    "sqlite3",
-    ["-csv", "-header", self.path, sql],
-    stdout=process_read,
-  ) catch {
-    _ => return []
-  }
-  if status != 0 {
-    return []
-  }
-  let output = pipe.read_all().text()
-
-  // Simple line-based parsing (doesn't handle quoted commas properly, but good enough for most cases)
-  let rows = []
-  let lines = output.split("\n")
-  for line in lines {
-    if !line.is_empty() {
-      let fields = []
-      for field in line.split(",") {
-        fields.push(field.to_string())
-      }
-      if fields.length() > 0 {
-        rows.push(fields)
-      }
-    }
-  }
-  rows
 }
 
 ///|
@@ -121,9 +110,11 @@ pub async fn Database::query_csv(
 pub async fn Database::exec_file(
   self : Database,
   sql_file_path : String,
-) -> Bool {
+) -> Unit {
   // Read SQL file and execute commands line by line
-  let content = @fs.read_file(sql_file_path).text() catch { _ => return false }
+  let content = @fs.read_file(sql_file_path).text() catch {
+    e => @error.reraise(e)
+  }
 
   // Execute all SQL at once
   self.exec(content)
@@ -141,27 +132,27 @@ pub async fn Database::exists(self : Database) -> Bool {
 /// Get the number of rows from a table
 pub async fn Database::count(self : Database, table : String) -> Int {
   let sql = "SELECT COUNT(*) FROM \{table};"
-  match self.exec_string(sql) {
-    Some(count_str) => @strconv.parse_int(count_str) catch { _ => 0 }
-    None => 0
+  let count_str = self.exec_string(sql).trim(chars=" \t\n\r")
+  @strconv.from_str(count_str) catch {
+    e => @error.reraise(e)
   }
 }
 
 ///|
 /// Begin a transaction
-pub async fn Database::begin_transaction(self : Database) -> Bool {
+pub async fn Database::begin_transaction(self : Database) -> Unit {
   self.exec("BEGIN TRANSACTION;")
 }
 
 ///|
 /// Commit a transaction
-pub async fn Database::commit(self : Database) -> Bool {
+pub async fn Database::commit(self : Database) -> Unit {
   self.exec("COMMIT;")
 }
 
 ///|
 /// Rollback a transaction
-pub async fn Database::rollback(self : Database) -> Bool {
+pub async fn Database::rollback(self : Database) -> Unit {
   self.exec("ROLLBACK;")
 }
 
@@ -170,15 +161,19 @@ pub async fn Database::rollback(self : Database) -> Bool {
 pub async fn Database::transaction(
   self : Database,
   statements : Array[String],
-) -> Bool {
-  if !self.begin_transaction() {
-    return false
-  }
-  for stmt in statements {
-    if !self.exec(stmt) {
-      let _rollback = self.rollback()
-      return false
+) -> Unit {
+  self.begin_transaction()
+  try {
+    for stmt in statements {
+      self.exec(stmt)
+    }
+    self.commit()
+  } catch {
+    e => {
+      self.rollback() catch {
+        e => @error.reraise(e)
+      }
+      @error.reraise(e)
     }
   }
-  self.commit()
 }

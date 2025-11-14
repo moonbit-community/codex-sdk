@@ -117,8 +117,10 @@ pub fn StateManager::new(db_path : String) -> StateManager {
 
 ///|
 /// Initialize the database with schema
-pub async fn StateManager::init(self : StateManager) -> Bool {
-  self.db.exec(schema_sql)
+pub async fn StateManager::init(self : StateManager) -> Unit {
+  self.db.exec(schema_sql) catch {
+    e => @error.fail_with("Failed to initialize database schema", e)
+  }
 }
 
 ///|
@@ -130,24 +132,25 @@ pub async fn StateManager::add_repository(
   task_description : String,
 ) -> Int? {
   let now = now()
+  // Escape single quotes in strings to prevent SQL injection
+  let escaped_url = url.replace(old="'", new="''")
+  let escaped_name = name.replace(old="'", new="''")
+  let escaped_task = task_description.replace(old="'", new="''")
+
   // Use INSERT OR IGNORE to handle duplicate (url, task_description) pairs
-  let sql = "INSERT OR IGNORE INTO repositories (url, name, state, task_description, created_at, updated_at) VALUES ('\{url}', '\{name}', 'PENDING', '\{task_description}', '\{now}', '\{now}');"
-  if !self.db.exec(sql) {
-    return None
+  let sql = "INSERT OR IGNORE INTO repositories (url, name, state, task_description, created_at, updated_at) VALUES ('\{escaped_url}', '\{escaped_name}', 'PENDING', '\{escaped_task}', '\{now}', '\{now}');"
+  self.db.exec(sql) catch {
+    e => @error.fail_with("Failed to add repository \{url} to database", e)
   }
 
   // Get the last inserted row ID
   // If it was ignored (duplicate), last_insert_rowid() returns 0
-  match self.db.exec_string("SELECT last_insert_rowid();") {
-    Some(id_str) => {
-      let id = @strconv.parse_int(id_str) catch { _ => return None }
-      if id == 0 {
-        None // Was a duplicate
-      } else {
-        Some(id) // New insertion
-      }
-    }
-    None => None
+  let id_str = self.db.exec_string("SELECT last_insert_rowid();")
+  let id = @strconv.parse_int(id_str) catch { e => @error.reraise(e) }
+  if id == 0 {
+    None // Was a duplicate
+  } else {
+    Some(id) // New insertion
   }
 }
 
@@ -158,7 +161,7 @@ pub async fn StateManager::transition(
   repo_id : Int,
   to_state : RepoState,
   details : String?,
-) -> Bool {
+) -> Unit {
   let now = now()
   let state_str = to_state.to_string()
 
@@ -170,17 +173,22 @@ pub async fn StateManager::transition(
 
   // Update repository state
   let update_sql = "UPDATE repositories SET state = '\{state_str}', updated_at = '\{now}' WHERE id = \{repo_id};"
-  if !self.db.exec(update_sql) {
-    return false
+  self.db.exec(update_sql) catch {
+    e => @error.reraise(e)
   }
 
   // Log transition
   let details_sql = match details {
-    Some(d) => "'\{d}'"
+    Some(d) => {
+      let escaped = d.replace(old="'", new="''")
+      "'\{escaped}'"
+    }
     None => "NULL"
   }
   let log_sql = "INSERT INTO state_transitions (repo_id, from_state, to_state, timestamp, details) VALUES (\{repo_id}, '\{from_state}', '\{state_str}', '\{now}', \{details_sql});"
-  self.db.exec(log_sql)
+  self.db.exec(log_sql) catch {
+    e => @error.reraise(e)
+  }
 }
 
 ///|
@@ -190,10 +198,7 @@ pub async fn StateManager::get_repo_state(
   repo_id : Int,
 ) -> RepoState? {
   let sql = "SELECT state FROM repositories WHERE id = \{repo_id};"
-  match self.db.exec_string(sql) {
-    Some(state_str) => RepoState::from_string(state_str)
-    None => None
-  }
+  RepoState::from_string(self.db.exec_string(sql))
 }
 
 ///|
@@ -203,8 +208,8 @@ pub async fn StateManager::get_repos_in_state(
   state : RepoState,
 ) -> Array[RepositoryRecord] {
   let state_str = state.to_string()
-  let sql = "SELECT id, url, name, state FROM repositories WHERE state = '\{state_str}';"
-  let rows = self.db.query(sql).unwrap_or([])
+  let sql = "SELECT id, url, name, state, task_description, attempt_count, last_error, created_at, updated_at FROM repositories WHERE state = '\{state_str}';"
+  let rows = self.db.query(sql)
   let repos = []
   for row in rows {
     match row {
@@ -225,6 +230,26 @@ pub async fn StateManager::get_repos_in_state(
           Some(String(s)) => s
           _ => continue
         }
+        let task_description = match obj.get("task_description") {
+          Some(String(s)) => Some(s)
+          _ => None
+        }
+        let attempt_count = match obj.get("attempt_count") {
+          Some(Number(n, ..)) => n.to_int()
+          _ => 0
+        }
+        let last_error = match obj.get("last_error") {
+          Some(String(s)) => Some(s)
+          _ => None
+        }
+        let created_at = match obj.get("created_at") {
+          Some(String(s)) => s
+          _ => ""
+        }
+        let updated_at = match obj.get("updated_at") {
+          Some(String(s)) => s
+          _ => ""
+        }
         let repo_state = RepoState::from_string(state_str).unwrap_or(Pending)
         repos.push(RepositoryRecord::{
           id,
@@ -234,16 +259,16 @@ pub async fn StateManager::get_repos_in_state(
           local_path: None,
           default_branch: None,
           current_branch: None,
-          task_description: None,
+          task_description,
           pr_number: None,
           pr_url: None,
           pr_state: None,
           thread_id: None,
-          attempt_count: 0,
+          attempt_count,
           iteration: 1,
-          last_error: None,
-          created_at: "",
-          updated_at: "",
+          last_error,
+          created_at,
+          updated_at,
         })
       }
       _ => continue
@@ -260,9 +285,8 @@ pub async fn StateManager::count_by_state(
 ) -> Int {
   let state_str = state.to_string()
   let sql = "SELECT COUNT(*) FROM repositories WHERE state = '\{state_str}';"
-  match self.db.exec_string(sql) {
-    Some(count_str) => @strconv.parse_int(count_str) catch { _ => 0 }
-    None => 0
+  @strconv.parse_int(self.db.exec_string(sql).trim(chars=" \t\r\n")) catch {
+    e => @error.reraise(e)
   }
 }
 
@@ -276,7 +300,7 @@ pub async fn StateManager::total_count(self : StateManager) -> Int {
 /// Get all unique tasks
 pub async fn StateManager::get_all_tasks(self : StateManager) -> Array[String] {
   let sql = "SELECT DISTINCT task_description FROM repositories ORDER BY task_description;"
-  let rows = self.db.query(sql).unwrap_or([])
+  let rows = self.db.query(sql)
   let tasks = []
   for row in rows {
     match row {
@@ -299,10 +323,15 @@ pub async fn StateManager::count_by_task_and_state(
   state : RepoState,
 ) -> Int {
   let state_str = state.to_string()
-  let sql = "SELECT COUNT(*) FROM repositories WHERE task_description = '\{task}' AND state = '\{state_str}';"
-  match self.db.exec_string(sql) {
-    Some(count_str) => @strconv.parse_int(count_str) catch { _ => 0 }
-    None => 0
+  let escaped_task = task.replace(old="'", new="''")
+  let sql = "SELECT COUNT(*) FROM repositories WHERE task_description = '\{escaped_task}' AND state = '\{state_str}';"
+  let result = self.db.exec_string(sql) catch { e => @error.reraise(e) }
+  @strconv.from_str(result.trim(chars=" \t\r\n")) catch {
+    @strconv.StrConvError(e) =>
+      @error.fail_with(
+        "Failed to parse count \{result} for task \{escaped_task} and state \{state_str}",
+        Failure(e),
+      )
   }
 }
 
@@ -313,10 +342,14 @@ pub async fn StateManager::log(
   repo_id : Int,
   level : String,
   message : String,
-) -> Bool {
+) -> Unit {
   let now = now()
-  let sql = "INSERT INTO work_log (repo_id, timestamp, level, message) VALUES (\{repo_id}, '\{now}', '\{level}', '\{message}');"
-  self.db.exec(sql)
+  let escaped_level = level.replace(old="'", new="''")
+  let escaped_message = message.replace(old="'", new="''")
+  let sql = "INSERT INTO work_log (repo_id, timestamp, level, message) VALUES (\{repo_id}, '\{now}', '\{escaped_level}', '\{escaped_message}');"
+  self.db.exec(sql) catch {
+    e => @error.reraise(e)
+  }
 }
 
 ///|
@@ -326,10 +359,13 @@ pub async fn StateManager::update_field(
   repo_id : Int,
   field : String,
   value : String,
-) -> Bool {
+) -> Unit {
   let now = now()
-  let sql = "UPDATE repositories SET \{field} = '\{value}', updated_at = '\{now}' WHERE id = \{repo_id};"
-  self.db.exec(sql)
+  let escaped_value = value.replace(old="'", new="''")
+  let sql = "UPDATE repositories SET \{field} = '\{escaped_value}', updated_at = '\{now}' WHERE id = \{repo_id};"
+  self.db.exec(sql) catch {
+    e => @error.reraise(e)
+  }
 }
 
 ///|
@@ -337,10 +373,12 @@ pub async fn StateManager::update_field(
 pub async fn StateManager::increment_attempts(
   self : StateManager,
   repo_id : Int,
-) -> Bool {
+) -> Unit {
   let now = now()
   let sql = "UPDATE repositories SET attempt_count = attempt_count + 1, updated_at = '\{now}' WHERE id = \{repo_id};"
-  self.db.exec(sql)
+  self.db.exec(sql) catch {
+    e => @error.reraise(e)
+  }
 }
 
 ///|
@@ -451,9 +489,9 @@ pub async fn StateManager::update_repository(
   self : StateManager,
   repo_id : Int,
   updates : Array[(String, String)],
-) -> Bool {
+) -> Unit {
   if updates.is_empty() {
-    return true
+    return
   }
   let now = now()
   let set_clauses = []
@@ -465,7 +503,9 @@ pub async fn StateManager::update_repository(
   let separator = ", "
   let joined = set_clauses.join(separator)
   let sql = "UPDATE repositories SET \{joined} WHERE id = \{repo_id};"
-  self.db.exec(sql)
+  self.db.exec(sql) catch {
+    e => @error.reraise(e)
+  }
 }
 
 ///|
@@ -473,9 +513,15 @@ pub async fn StateManager::update_repository(
 pub async fn StateManager::get_processable_repos(
   self : StateManager,
   limit : Int,
+  include_failed : Bool,
 ) -> Array[RepositoryRecord] {
-  let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, attempt_count, iteration FROM repositories WHERE state IN ('PENDING', 'RETRY', 'CLONED', 'BRANCHED', 'FIXED', 'COMMITTED', 'PUSHED') ORDER BY attempt_count ASC, created_at ASC LIMIT \{limit};"
-  let rows = self.db.query(sql).unwrap_or([])
+  let states = if include_failed {
+    "('PENDING', 'RETRY', 'CLONED', 'BRANCHED', 'FIXED', 'COMMITTED', 'PUSHED', 'FAILED')"
+  } else {
+    "('PENDING', 'RETRY', 'CLONED', 'BRANCHED', 'FIXED', 'COMMITTED', 'PUSHED')"
+  }
+  let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, attempt_count, iteration FROM repositories WHERE state IN \{states} ORDER BY attempt_count ASC, created_at ASC LIMIT \{limit};"
+  let rows = self.db.query(sql)
   let repos = []
   for row in rows {
     match row {

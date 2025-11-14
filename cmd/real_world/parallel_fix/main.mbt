@@ -24,15 +24,14 @@ async fn main {
   // Check if first positional argument is a subcommand
   match parsed.positional {
     ["init", .. remaining] => cmd_init(remaining, work_dir, data_dir)
-    ["add", .. remaining] => cmd_add(remaining, work_dir, data_dir)
+    ["add", .. remaining] => cmd_add(remaining, data_dir)
     ["run", .. remaining] => cmd_run(remaining, work_dir, data_dir)
-    ["status", .. remaining] => cmd_status(remaining, work_dir, data_dir)
+    ["status", .. remaining] => cmd_status(remaining, data_dir)
     ["help", .. remaining] => cmd_help(remaining)
-    _ => {
+    _ =>
       @error.fail(
         "Unknown subcommand or missing subcommand.\n\nUse --help to see available subcommands.",
       )
-    }
   }
 }
 
@@ -99,4 +98,3 @@ pub fn extract_repo_name(url : String) -> String {
 pub fn get_timestamp() -> String {
   @async.now().to_string()
 }
-

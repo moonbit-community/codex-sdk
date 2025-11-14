@@ -17,7 +17,7 @@ struct WorkerConfig {
 pub async fn process_repository_stateful(
   config : WorkerConfig,
   repo : RepositoryRecord,
-) -> Bool {
+) -> Unit {
   let repo_id = repo.id
   let repo_name = repo.name
   @stdio.stdout.write(
@@ -29,73 +29,80 @@ pub async fn process_repository_stateful(
     @stdio.stderr.write(
       "error [\{repo_name}] - Max retries exceeded (\{repo.attempt_count})\n",
     )
-    ignore(
-      config.state_mgr.transition(repo_id, Failed, Some("Max retries exceeded")) catch {
-        _ => false
-      },
-    )
-    return false
+    config.state_mgr.transition(repo_id, Failed, Some("Max retries exceeded")) catch {
+      e => @error.reraise(e)
+    }
+    @error.fail("Max retries exceeded for \{repo_name}")
   }
 
   // Increment attempt count at start
-  ignore(config.state_mgr.increment_attempts(repo_id) catch { _ => false })
+  config.state_mgr.increment_attempts(repo_id) catch {
+    e => @error.reraise(e)
+  }
 
   // Process based on current state
+  // Note: Failed state should have been reset to Retry before processing
   match repo.state {
-    Pending | Retry =>
+    Pending | Retry | Failed =>
       start_cloning(config, repo) catch {
-        e => handle_error(config, repo_id, repo_name, "cloning", e.to_string())
+        e =>
+          handle_error(config, repo_id, repo_name, "cloning", e.to_string()) catch {
+            err => @error.reraise(err)
+          }
       }
     Cloning | Cloned =>
       do_clone(config, repo) catch {
-        e => handle_error(config, repo_id, repo_name, "cloning", e.to_string())
+        e =>
+          handle_error(config, repo_id, repo_name, "cloning", e.to_string()) catch {
+            err => @error.reraise(err)
+          }
       }
     Branching | Branched =>
       do_branch(config, repo) catch {
         e =>
-          handle_error(config, repo_id, repo_name, "branching", e.to_string())
+          handle_error(config, repo_id, repo_name, "branching", e.to_string()) catch {
+            err => @error.reraise(err)
+          }
       }
     Fixing | Fixed =>
       do_fix(config, repo) catch {
-        e => handle_error(config, repo_id, repo_name, "fixing", e.to_string())
+        e =>
+          handle_error(config, repo_id, repo_name, "fixing", e.to_string()) catch {
+            err => @error.reraise(err)
+          }
       }
     Committing | Committed =>
       do_commit(config, repo) catch {
         e =>
-          handle_error(config, repo_id, repo_name, "committing", e.to_string())
+          handle_error(config, repo_id, repo_name, "committing", e.to_string()) catch {
+            err => @error.reraise(err)
+          }
       }
     Pushing | Pushed =>
       do_push(config, repo) catch {
-        e => handle_error(config, repo_id, repo_name, "pushing", e.to_string())
+        e =>
+          handle_error(config, repo_id, repo_name, "pushing", e.to_string()) catch {
+            err => @error.reraise(err)
+          }
       }
     PrCreating | PrOpen =>
       do_create_pr(config, repo) catch {
         e =>
-          handle_error(config, repo_id, repo_name, "PR creation", e.to_string())
+          handle_error(config, repo_id, repo_name, "PR creation", e.to_string()) catch {
+            err => @error.reraise(err)
+          }
       }
-    PrChangesRequested | PrApproved | PrConflicts => {
+    PrChangesRequested | PrApproved | PrConflicts =>
       @stdio.stdout.write(
         "info [\{repo_name}] - PR is in state \{repo.state}, no action needed\n",
       )
-      true
-    }
     PrMerged => {
       @stdio.stdout.write("info [\{repo_name}] - PR merged, marking complete\n")
-      ignore(
-        config.state_mgr.transition(repo_id, Complete, Some("PR merged")) catch {
-          _ => false
-        },
-      )
-      true
+      config.state_mgr.transition(repo_id, Complete, Some("PR merged")) catch {
+        e => @error.reraise(e)
+      }
     }
-    Complete => {
-      @stdio.stdout.write("info [\{repo_name}] - Already complete\n")
-      true
-    }
-    Failed => {
-      @stdio.stdout.write("info [\{repo_name}] - In failed state, skipping\n")
-      false
-    }
+    Complete => @stdio.stdout.write("info [\{repo_name}] - Already complete\n")
   }
 }
 
@@ -107,49 +114,48 @@ async fn handle_error(
   repo_name : String,
   phase : String,
   error : String,
-) -> Bool {
+) -> Unit raise Error {
   @stdio.stderr.write(
     "error [\{repo_name}] - Failed during \{phase}: \{error}\n",
   )
-  ignore(
-    config.state_mgr.log(repo_id, "ERROR", "Failed during \{phase}: \{error}") catch {
-      _ => false
-    },
-  )
+  config.state_mgr.log(repo_id, "ERROR", "Failed during \{phase}: \{error}") catch {
+    e => @error.reraise(e)
+  }
 
   // Update error and transition to Retry
   let updates = [("last_error", error)]
-  ignore(
-    config.state_mgr.update_repository(repo_id, updates) catch {
-      _ => false
-    },
-  )
-  ignore(
-    config.state_mgr.transition(
-      repo_id,
-      Retry,
-      Some("Retry after \{phase} error"),
-    ) catch {
-      _ => false
-    },
-  )
-  false
+  config.state_mgr.update_repository(repo_id, updates) catch {
+    e => @error.reraise(e)
+  }
+  config.state_mgr.transition(
+    repo_id,
+    Retry,
+    Some("Retry after \{phase} error"),
+  ) catch {
+    e => @error.reraise(e)
+  }
 }
 
 ///|
 /// Start cloning phase
-async fn start_cloning(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
-  ignore(
-    config.state_mgr.transition(repo.id, Cloning, Some("Starting clone")) catch {
-      _ => false
-    },
-  )
-  do_clone(config, repo)
+async fn start_cloning(
+  config : WorkerConfig,
+  repo : RepositoryRecord,
+) -> Unit raise Error {
+  config.state_mgr.transition(repo.id, Cloning, Some("Starting clone")) catch {
+    e => @error.reraise(e)
+  }
+  do_clone(config, repo) catch {
+    e => @error.reraise(e)
+  }
 }
 
 ///|
 /// Perform cloning (reentrant - checks if already cloned)
-async fn do_clone(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
+async fn do_clone(
+  config : WorkerConfig,
+  repo : RepositoryRecord,
+) -> Unit raise Error {
   let clone_path = "\{config.work_dir}/\{repo.name}"
 
   // Check if already cloned
@@ -165,22 +171,20 @@ async fn do_clone(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
           ("local_path", clone_path),
           ("default_branch", default_branch),
         ]
-        ignore(
-          config.state_mgr.update_repository(repo.id, updates) catch {
-            _ => false
-          },
-        )
-        ignore(
-          config.state_mgr.transition(
-            repo.id,
-            Cloned,
-            Some("Repository discovered"),
-          ) catch {
-            _ => false
-          },
-        )
+        config.state_mgr.update_repository(repo.id, updates) catch {
+          e => @error.reraise(e)
+        }
+        // If already in Cloned state, move to Branching to advance the workflow
+        let next_state = if repo.state == Cloned { Branching } else { Cloned }
+        config.state_mgr.transition(
+          repo.id,
+          next_state,
+          Some("Repository discovered"),
+        ) catch {
+          e => @error.reraise(e)
+        }
         @stdio.stdout.write("info [\{repo.name}] - Clone verified\n")
-        return true
+        return
       }
       None => {
         @stdio.stdout.write(
@@ -200,18 +204,13 @@ async fn do_clone(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
         ("local_path", clone_path),
         ("default_branch", default_branch),
       ]
-      ignore(
-        config.state_mgr.update_repository(repo.id, updates) catch {
-          _ => false
-        },
-      )
-      ignore(
-        config.state_mgr.transition(repo.id, Cloned, Some("Clone successful")) catch {
-          _ => false
-        },
-      )
+      config.state_mgr.update_repository(repo.id, updates) catch {
+        e => @error.reraise(e)
+      }
+      config.state_mgr.transition(repo.id, Branching, Some("Clone successful")) catch {
+        e => @error.reraise(e)
+      }
       @stdio.stdout.write("info [\{repo.name}] - Clone successful\n")
-      true
     }
     None => @error.fail("Failed to clone repository")
   }
@@ -219,7 +218,10 @@ async fn do_clone(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
 
 ///|
 /// Perform branching (reentrant - checks if branch exists)
-async fn do_branch(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
+async fn do_branch(
+  config : WorkerConfig,
+  repo : RepositoryRecord,
+) -> Unit raise Error {
   guard repo.local_path is Some(clone_path) else {
     @error.fail("No local path set")
   }
@@ -240,17 +242,13 @@ async fn do_branch(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
         "info [\{repo.name}] - Already on fix branch: \{branch}\n",
       )
       let updates = [("current_branch", branch)]
-      ignore(
-        config.state_mgr.update_repository(repo.id, updates) catch {
-          _ => false
-        },
-      )
-      ignore(
-        config.state_mgr.transition(repo.id, Branched, Some("Branch exists")) catch {
-          _ => false
-        },
-      )
-      return true
+      config.state_mgr.update_repository(repo.id, updates) catch {
+        e => @error.reraise(e)
+      }
+      config.state_mgr.transition(repo.id, Branched, Some("Branch exists")) catch {
+        e => @error.reraise(e)
+      }
+      return
     }
     _ => ()
   }
@@ -261,31 +259,30 @@ async fn do_branch(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
   @stdio.stdout.write("info [\{repo.name}] - Creating branch: \{branch_name}\n")
 
   // Checkout default branch first
-  ignore(git_repo.checkout(default_branch) catch { e => @error.reraise(e) })
-  ignore(git_repo.pull(branch=default_branch) catch { e => @error.reraise(e) })
+  if !git_repo.checkout(default_branch) {
+    @error.fail("Failed to checkout default branch")
+  }
+  if !git_repo.pull(branch=default_branch) {
+    @error.fail("Failed to pull default branch")
+  }
 
   // Create new branch
   if !git_repo.create_branch(branch_name) {
     @error.fail("Failed to create branch")
   }
   let updates = [("current_branch", branch_name)]
-  ignore(
-    config.state_mgr.update_repository(repo.id, updates) catch {
-      _ => false
-    },
-  )
-  ignore(
-    config.state_mgr.transition(repo.id, Branched, Some("Branch created")) catch {
-      _ => false
-    },
-  )
+  config.state_mgr.update_repository(repo.id, updates) catch {
+    e => @error.reraise(e)
+  }
+  config.state_mgr.transition(repo.id, Branched, Some("Branch created")) catch {
+    e => @error.reraise(e)
+  }
   @stdio.stdout.write("info [\{repo.name}] - Branch created successfully\n")
-  true
 }
 
 ///|
 /// Perform AI fix
-async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
+async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
   guard repo.local_path is Some(clone_path) else {
     @error.fail("No local path set")
   }
@@ -309,24 +306,22 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
   // Save thread ID if available
   if thread.id() is Some(thread_id) {
     let updates = [("thread_id", thread_id)]
-    ignore(
-      config.state_mgr.update_repository(repo.id, updates) catch {
-        _ => false
-      },
-    )
+    config.state_mgr.update_repository(repo.id, updates) catch {
+      e => @error.reraise(e)
+    }
   }
-  ignore(
-    config.state_mgr.transition(repo.id, Fixed, Some("AI fix completed")) catch {
-      _ => false
-    },
-  )
+  config.state_mgr.transition(repo.id, Fixed, Some("AI fix completed")) catch {
+    e => @error.reraise(e)
+  }
   @stdio.stdout.write("info [\{repo.name}] - AI fix completed\n")
-  true
 }
 
 ///|
 /// Perform commit (reentrant - checks if changes exist)
-async fn do_commit(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
+async fn do_commit(
+  config : WorkerConfig,
+  repo : RepositoryRecord,
+) -> Unit raise Error {
   guard repo.local_path is Some(clone_path) else {
     @error.fail("No local path set")
   }
@@ -342,12 +337,10 @@ async fn do_commit(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
   // Check if there are changes
   if !git_repo.has_changes() {
     @stdio.stdout.write("warning [\{repo.name}] - No changes to commit\n")
-    ignore(
-      config.state_mgr.transition(repo.id, Committed, Some("No changes")) catch {
-        _ => false
-      },
-    )
-    return true
+    config.state_mgr.transition(repo.id, Committed, Some("No changes")) catch {
+      e => @error.reraise(e)
+    }
+    return
   }
 
   // Commit changes
@@ -356,18 +349,15 @@ async fn do_commit(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
   if !git_repo.commit(commit_msg) {
     @error.fail("Failed to commit changes")
   }
-  ignore(
-    config.state_mgr.transition(repo.id, Committed, Some("Changes committed")) catch {
-      _ => false
-    },
-  )
+  config.state_mgr.transition(repo.id, Committed, Some("Changes committed")) catch {
+    e => @error.reraise(e)
+  }
   @stdio.stdout.write("info [\{repo.name}] - Changes committed successfully\n")
-  true
 }
 
 ///|
 /// Perform push
-async fn do_push(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
+async fn do_push(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
   guard repo.local_path is Some(clone_path) else {
     @error.fail("No local path set")
   }
@@ -383,18 +373,15 @@ async fn do_push(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
   if !git_repo.push(branch~, set_upstream=true) {
     @error.fail("Failed to push branch")
   }
-  ignore(
-    config.state_mgr.transition(repo.id, Pushed, Some("Branch pushed")) catch {
-      _ => false
-    },
-  )
+  config.state_mgr.transition(repo.id, Pushed, Some("Branch pushed")) catch {
+    e => @error.reraise(e)
+  }
   @stdio.stdout.write("info [\{repo.name}] - Branch pushed successfully\n")
-  true
 }
 
 ///|
 /// Perform PR creation
-async fn do_create_pr(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
+async fn do_create_pr(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
   guard repo.local_path is Some(clone_path) else {
     @error.fail("No local path set")
   }
@@ -414,12 +401,10 @@ async fn do_create_pr(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
     @stdio.stdout.write(
       "warning [\{repo.name}] - GitHub CLI not found, marking as pushed\n",
     )
-    ignore(
-      config.state_mgr.transition(repo.id, PrOpen, Some("No gh CLI")) catch {
-        _ => false
-      },
-    )
-    return true
+    config.state_mgr.transition(repo.id, PrOpen, Some("No gh CLI")) catch {
+      e => @error.reraise(e)
+    }
+    return
   }
   @stdio.stdout.write("info [\{repo.name}] - Creating pull request\n")
 
@@ -444,15 +429,10 @@ async fn do_create_pr(config : WorkerConfig, repo : RepositoryRecord) -> Bool {
   let pr_url = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
   @stdio.stdout.write("info [\{repo.name}] - PR created: \{pr_url}\n")
   let updates = [("pr_url", pr_url), ("pr_state", "open")]
-  ignore(
-    config.state_mgr.update_repository(repo.id, updates) catch {
-      _ => false
-    },
-  )
-  ignore(
-    config.state_mgr.transition(repo.id, PrOpen, Some("PR created")) catch {
-      _ => false
-    },
-  )
-  true
+  config.state_mgr.update_repository(repo.id, updates) catch {
+    e => @error.reraise(e)
+  }
+  config.state_mgr.transition(repo.id, PrOpen, Some("PR created")) catch {
+    e => @error.reraise(e)
+  }
 }
