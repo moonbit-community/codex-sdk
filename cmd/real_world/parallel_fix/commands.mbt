@@ -267,7 +267,6 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
       state_mgr.count_by_task_and_state(task, PrOpen) +
       state_mgr.count_by_task_and_state(task, PrMerged) +
       state_mgr.count_by_task_and_state(task, Complete) +
-      state_mgr.count_by_task_and_state(task, Failed) +
       state_mgr.count_by_task_and_state(task, Retry)
     @stdio.stdout.write("  \"\{task}\" - \{task_total} repos\n")
   }
@@ -286,7 +285,6 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
     (PrOpen, "PR Open"),
     (PrMerged, "PR Merged"),
     (Complete, "Complete"),
-    (Failed, "Failed"),
     (Retry, "Retry"),
   ]
   let mut i = 0
@@ -405,21 +403,22 @@ pub async fn cmd_run(
     #|
     #|Options:
     #|  --parallelism <n>      Number of parallel workers (default: 4)
-    #|  --max-retries <n>      Maximum retry attempts per repo (default: 3)
     #|  --branch-prefix <p>    Branch name prefix (default: "ai-fix")
-    #|  --include-failed       Include failed repositories for retry
+    #|  --include-failed       Include failed repositories for retry (deprecated - kept for compatibility)
     #|  --help, -h             Show this help
     #|
     #|Global options are set before the subcommand:
     #|  --work-dir <path>      Working directory for clones (default: /tmp/parallel-fix)
     #|  --data-dir <path>      Data directory for database (default: ~/.parallel-fix)
     #|
+    #|Note: Each run is a fresh start. There is no persistent failure state.
+    #|
 
   // Parse arguments
   let parsed_args = @args.parse(
     args,
-    flags=["help", "include-failed"],
-    options=["parallelism", "max-retries", "branch-prefix"],
+    flags=["help"],
+    options=["parallelism", "branch-prefix"],
     aliases={ "h": "help" },
   )
 
@@ -445,10 +444,6 @@ pub async fn cmd_run(
   let parallelism = @strconv.parse_int(parallelism_str) catch {
     e => @error.fail_with("Invalid parallelism value", e)
   }
-  let max_retries_str = parsed_args.options.get("max-retries").unwrap_or("3")
-  let max_retries = @strconv.parse_int(max_retries_str) catch {
-    e => @error.fail_with("Invalid max-retries value", e)
-  }
   let branch_prefix = parsed_args.options
     .get("branch-prefix")
     .unwrap_or("ai-fix")
@@ -468,7 +463,6 @@ pub async fn cmd_run(
   @stdio.stdout.write("Configuration:\n")
   @stdio.stdout.write("  Work directory: \{work_dir}\n")
   @stdio.stdout.write("  Parallelism: \{parallelism}\n")
-  @stdio.stdout.write("  Max retries: \{max_retries}\n")
   @stdio.stdout.write("  Branch prefix: \{branch_prefix}\n")
   @stdio.stdout.write("\n")
 
@@ -479,7 +473,6 @@ pub async fn cmd_run(
   let config = WorkerConfig::{
     work_dir,
     branch_prefix,
-    max_retries,
     codex,
     state_mgr,
   }
@@ -494,25 +487,12 @@ pub async fn cmd_run(
   }
   @stdio.stdout.write("Total repositories: \{total}\n")
 
-  // Check if we should include failed repos
-  let include_failed = parsed_args.flags.get("include-failed") is Some(true)
-  if include_failed {
-    @stdio.stdout.write(
-      "\n⚠️  Resetting FAILED repositories to RETRY with fresh attempts\n",
-    )
-    // Reset failed repos to Retry state so they can be processed again
-    let reset_sql = "UPDATE repositories SET state = 'RETRY', attempt_count = 0 WHERE state = 'FAILED';"
-    ignore(state_mgr.db.exec(reset_sql))
-  }
-
   // Process repositories in parallel using worker pool
   let mut processed = 0
   let mut successful = 0
-  let mut failed = 0
   let mut continue_processing = true
   while continue_processing {
     // Get batch of processable repositories
-    // Note: don't pass include_failed to the query since we already reset FAILED to RETRY above
     let repos = state_mgr.get_processable_repos(parallelism * 2, false)
     if repos.is_empty() {
       @stdio.stdout.write("\nNo more repositories to process.\n")
@@ -536,7 +516,6 @@ pub async fn cmd_run(
               @stdio.stderr.write(
                 "error [\{repo.name}] - Unexpected error: \{e}\n",
               )
-              failed = failed + 1
             }
           }
           successful = successful + 1
@@ -553,7 +532,6 @@ pub async fn cmd_run(
   @stdio.stdout.write("\n")
   @stdio.stdout.write("  Processed: \{processed}\n")
   @stdio.stdout.write("  Successful: \{successful}\n")
-  @stdio.stdout.write("  Failed: \{failed}\n")
   @stdio.stdout.write("\n")
   @stdio.stdout.write(
     "Run 'moon run real_world/parallel_fix -- status --verbose' for detailed status\n",

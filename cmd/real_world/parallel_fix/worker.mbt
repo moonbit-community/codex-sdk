@@ -6,7 +6,6 @@
 struct WorkerConfig {
   work_dir : String
   branch_prefix : String
-  max_retries : Int
   codex : @codex.Codex
   state_mgr : StateManager
 }
@@ -24,26 +23,9 @@ pub async fn process_repository_stateful(
     "info [\{repo_name}] - Processing from state: \{repo.state}\n",
   )
 
-  // Check retry limit
-  if repo.attempt_count >= config.max_retries {
-    @stdio.stderr.write(
-      "error [\{repo_name}] - Max retries exceeded (\{repo.attempt_count})\n",
-    )
-    config.state_mgr.transition(repo_id, Failed, Some("Max retries exceeded")) catch {
-      e => @error.reraise(e)
-    }
-    @error.fail("Max retries exceeded for \{repo_name}")
-  }
-
-  // Increment attempt count at start
-  config.state_mgr.increment_attempts(repo_id) catch {
-    e => @error.reraise(e)
-  }
-
   // Process based on current state
-  // Note: Failed state should have been reset to Retry before processing
   match repo.state {
-    Pending | Retry | Failed =>
+    Pending | Retry =>
       start_cloning(config, repo) catch {
         e =>
           handle_error(config, repo_id, repo_name, "cloning", e.to_string()) catch {

@@ -1,13 +1,17 @@
 # Parallel Fix - Design & Implementation
 
-> **Note**: This is the single source of documentation for the parallel repository fixer.
-> Implementation status is tracked at the bottom of this document.
+> **Note**: This is the single source of documentation for the parallel
+> repository fixer. Implementation status is tracked at the bottom of this
+> document.
 
 ## Executive Summary
 
-A robust repository fixer that uses AI agents to fix issues across multiple repositories in parallel with persistent state management and reentrant processing.
+A robust repository fixer that uses AI agents to fix issues across multiple
+repositories in parallel with persistent state management and reentrant
+processing.
 
 **Key Features:**
+
 - Stateful processing with SQLite database
 - Support for (repository, task) pairs - same repo can have multiple tasks
 - Reentrant execution - safe to stop and resume
@@ -16,19 +20,20 @@ A robust repository fixer that uses AI agents to fix issues across multiple repo
 
 ## Current Gaps
 
-| Issue | Impact | Solution |
-|-------|--------|----------|
-| No state persistence | Lost progress on crash | SQLite database |
-| Not reentrant | Can't resume mid-operation | State machine |
-| No PR tracking | Manual monitoring needed | GitHub API sync |
-| No iteration support | Can't continue after merge | Automatic rebase + new iteration |
-| Limited error recovery | Failed repos require manual intervention | Smart retry with backoff |
+| Issue                  | Impact                                   | Solution                         |
+| ---------------------- | ---------------------------------------- | -------------------------------- |
+| No state persistence   | Lost progress on crash                   | SQLite database                  |
+| Not reentrant          | Can't resume mid-operation               | State machine                    |
+| No PR tracking         | Manual monitoring needed                 | GitHub API sync                  |
+| No iteration support   | Can't continue after merge               | Automatic rebase + new iteration |
+| Limited error recovery | Failed repos require manual intervention | Smart retry with backoff         |
 
 ## Directory Structure
 
 The tool separates working files from persistent data:
 
 **Work Directory** (`--work-dir`, default: `/tmp/parallel-fix`)
+
 - Stores cloned repositories during processing
 - Can be temporary (e.g., `/tmp`)
 - Safe to delete - repos will be re-cloned as needed
@@ -36,6 +41,7 @@ The tool separates working files from persistent data:
 - Can be cleaned up after PRs are created
 
 **Data Directory** (`--data-dir`, default: `~/.parallel-fix`)
+
 - Stores SQLite database with all state
 - Should be persistent (e.g., home directory)
 - Small size (typically < 10MB)
@@ -43,6 +49,7 @@ The tool separates working files from persistent data:
 - Critical - do not delete unless resetting everything
 
 **Benefits of Separation:**
+
 - Clean up large clones without losing progress
 - Keep database in persistent storage (home directory)
 - Run from different machines with shared database (e.g., network drive)
@@ -96,43 +103,61 @@ PENDING → CLONING → BRANCHING → FIXING → COMMITTING → PUSHING → PR_C
                                                    COMPLETE
 ```
 
-Error states from any point: `FAILED`, `RETRY`
+**Error Handling:**
 
-**Key Changes:**
-- Removed intermediate "completed" states (CLONED, BRANCHED, FIXED, COMMITTED, PUSHED)
+- `RETRY` state: For transient errors that should be retried in the same run
+- No persistent failure state: Failures during a run are transient only
+- Each run is a fresh start: No attempt counting or failure history persisted
+
+**Key Design Decisions:**
+
+- No intermediate "completed" states (CLONED, BRANCHED, FIXED, COMMITTED,
+  PUSHED)
+- No FAILED state - failures are transient, not persisted across runs
 - Each action state transitions directly to the next action state
 - Simpler flow: repos don't get stuck between states
 - Better concurrency: fewer state transitions reduce database contention
+- Fresh start philosophy: Each run processes all repositories without historical
+  failure baggage
 
 ## Database Schema (SQLite)
 
 ### Core Tables
 
 **repositories** - Main tracking table
+
 ```sql
 id, url, name, task_description, state, local_path, default_branch, 
 current_branch, pr_number, pr_url, pr_state, thread_id,
-attempt_count, last_error, iteration, created_at, updated_at
+last_error, iteration, created_at, updated_at
 
 UNIQUE(url, task_description)  -- Same repo can have multiple tasks
 ```
 
-**Key Design**: The primary unit is a **(repository, task) pair**, not just a repository. This allows:
+**Note:** No `attempt_count` field - each run is a fresh start without
+persistent failure tracking.
+
+**Key Design**: The primary unit is a **(repository, task) pair**, not just a
+repository. This allows:
+
 - Same repository with different tasks (e.g., "Fix linting" vs "Update deps")
 - Each pair has independent state tracking
 - Multiple PRs from the same repo for different purposes
 
 **state_transitions** - Audit trail
+
 ```sql
 id, repo_id, from_state, to_state, timestamp, details
 ```
 
 **work_log** - Detailed logs
+
 ```sql
 id, repo_id, timestamp, level, message, context
 ```
 
 **task_queue** - Work scheduling
+
 ```sql
 id, repo_id, priority, scheduled_at, started_at, completed_at, worker_id
 ```
@@ -192,29 +217,35 @@ fn handle_merged_pr(repo_id) {
 }
 ```
 
-### 4. Smart Retry
+### 4. Transient Error Handling
 
 ```moonbit
-fn should_retry(repo_id) {
-  attempts = get_attempts(repo_id)
-  if attempts >= 3 { return false }
+fn handle_error(repo_id, error) {
+  // Log error for current run
+  log_error(repo_id, error)
   
-  backoff = pow(5, attempts) * 60  // 1min, 5min, 15min
-  if now() < last_attempt + backoff { return false }
-  
-  increment_attempts()
+  // Transition to RETRY for same-run retry
+  // No attempt counting - each new run starts fresh
   transition(Retry)
-  true
+  
+  // Next run will pick up from RETRY state as if it's new work
 }
 ```
+
+**Philosophy:** Failures are transient. No persistent failure state or attempt
+counting. Each run processes all non-complete repositories regardless of
+previous failures.
 
 ## CLI Commands
 
 **Global Options** (set before subcommand):
-- `--work-dir <path>` - Working directory for clones (default: `/tmp/parallel-fix`)
+
+- `--work-dir <path>` - Working directory for clones (default:
+  `/tmp/parallel-fix`)
 - `--data-dir <path>` - Data directory for database (default: `~/.parallel-fix`)
 
-**Note**: `work-dir` is for temporary repository clones (can be cleaned), while `data-dir` stores the persistent SQLite database.
+**Note**: `work-dir` is for temporary repository clones (can be cleaned), while
+`data-dir` stores the persistent SQLite database.
 
 ```bash
 # Setup
@@ -234,7 +265,6 @@ parallel_fix --data-dir ~/my-fixes status --repo owner/repo  # Specific (planned
 
 # Manage (planned)
 parallel_fix --data-dir ~/my-fixes sync-prs                  # Update PR states
-parallel_fix --data-dir ~/my-fixes retry --failed            # Retry failures
 parallel_fix --data-dir ~/my-fixes clean --completed         # Remove done repos
 parallel_fix --data-dir ~/my-fixes reset owner/repo --to pending
 
@@ -245,37 +275,40 @@ parallel_fix --data-dir ~/my-fixes iterate --merged          # Force new iterati
 ## Implementation Phases
 
 ### Phase 1: Core Infrastructure (Week 1)
+
 - [ ] SQLite schema and migrations
 - [ ] State manager with transitions
 - [ ] Basic CLI (init, add, status)
 
 ### Phase 2: Reentrant Operations (Week 2)
+
 - [ ] Reentrant clone/branch/commit
 - [ ] Worker manager with queue
 - [ ] Run command with parallelism
 
 ### Phase 3: PR Integration (Week 3)
+
 - [ ] GitHub API integration
 - [ ] PR status synchronization
 - [ ] Review state handling
 
 ### Phase 4: Advanced Features (Week 4)
+
 - [ ] Automatic iterations
 - [ ] Conflict resolution
-- [ ] Smart retry logic
 - [ ] Cleanup automation
 
 ## Benefits Summary
 
-| Feature | Before | After |
-|---------|--------|-------|
-| Crash recovery | ❌ Lost all progress | ✅ Resume from last state |
-| PR monitoring | ❌ Manual checking | ✅ Auto-sync from GitHub |
-| Merged PRs | ❌ Manual cleanup | ✅ Auto-iterate or complete |
-| Failures | ❌ Manual retry | ✅ Smart retry with backoff |
-| Parallel safety | ⚠️ Basic semaphore | ✅ Database-backed queue |
-| Debugging | ⚠️ Console logs | ✅ Persistent audit trail |
-| Progress visibility | ⚠️ End summary only | ✅ Real-time status |
+| Feature             | Before               | After                       |
+| ------------------- | -------------------- | --------------------------- |
+| Crash recovery      | ❌ Lost all progress | ✅ Resume from last state   |
+| PR monitoring       | ❌ Manual checking   | ✅ Auto-sync from GitHub    |
+| Merged PRs          | ❌ Manual cleanup    | ✅ Auto-iterate or complete |
+| Failures            | ❌ Manual retry      | ✅ Fresh start each run     |
+| Parallel safety     | ⚠️ Basic semaphore   | ✅ Database-backed queue    |
+| Debugging           | ⚠️ Console logs      | ✅ Persistent audit trail   |
+| Progress visibility | ⚠️ End summary only  | ✅ Real-time status         |
 
 ## Migration Path
 
@@ -311,7 +344,7 @@ moon run real_world/parallel_fix -- --data-dir ~/.parallel-fix status
 # Output:
 #   Total: 50
 #   Complete: 15 | PR_MERGED: 20 | PR_OPEN: 10
-#   Processing: 3 | Failed: 2
+#   Processing: 3 | Retry: 2
 
 # Sync PR states (planned)
 # moon run real_world/parallel_fix -- --data-dir ~/.parallel-fix sync-prs
@@ -324,8 +357,8 @@ moon run real_world/parallel_fix -- --data-dir ~/.parallel-fix status
 # moon run real_world/parallel_fix -- --data-dir ~/.parallel-fix clean --completed
 # → Removed 15 repos from queue
 
-# Retry failures (planned)
-parallel_fix retry --failed
+# Re-run to process any RETRY repos (fresh start, no failure history)
+moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/.parallel-fix run --parallelism 8
 ```
 
 ## Questions to Consider
@@ -341,20 +374,25 @@ parallel_fix retry --failed
 ### ✅ Phase 1: Foundation (Complete)
 
 **SQLite Infrastructure**
+
 - ✅ CLI-based SQLite wrapper (`x/sqlite/`)
   - `exec()`, `exec_string()`, `query()` with JSON support
   - `query_csv()`, `transaction()`, automatic sqlite3 detection
 - ✅ Database schema with 5 tables
   - repositories, state_transitions, work_log, task_queue, config
   - Indexes for performance
-- ✅ State manager with simplified 15-state machine
-  - Removed intermediate states: CLONED, BRANCHED, FIXED, COMMITTED, PUSHED
+  - No attempt_count field - fresh start each run
+- ✅ State manager with simplified 14-state machine
+  - States: Pending, Cloning, Branching, Fixing, Committing, Pushing,
+    PrCreating, PrOpen, PrChangesRequested, PrApproved, PrConflicts, PrMerged,
+    Complete, Retry
   - Direct transitions: CLONING→BRANCHING→FIXING→COMMITTING→PUSHING→PR_CREATING
   - `transition()`, `get_repos_in_state()`, `count_by_state()`
   - Automatic state transition logging
   - Semaphore-based locking to prevent database concurrency issues
 
 **CLI Subcommands**
+
 - ✅ `init` - Initialize workspace and database
   - Separate work-dir (clones) and data-dir (database)
   - Automatic directory creation with tilde expansion
@@ -363,13 +401,13 @@ parallel_fix retry --failed
   - Support for multiple tasks simultaneously
 - ✅ `status` - Show current state (with --verbose)
   - Displays task description for each repository
-  - Shows attempt count and last error
+  - Shows last error if any
 - ✅ `help` - Show subcommand documentation
 - ✅ Global options: `--work-dir` and `--data-dir`
   - Set before subcommand
   - Passed to all subcommands consistently
 - ✅ Subcommand routing using `stop_early=true`
-- ✅ Removed batch mode - only stateful mode supported now
+- ✅ Only stateful mode supported
 
 ### 🚧 Phase 2: Reentrant Operations (In Progress)
 
@@ -378,18 +416,24 @@ parallel_fix retry --failed
   - Reentrant clone (checks if already cloned)
   - Reentrant branch (checks if branch exists)
   - Reentrant commit (checks if changes exist)
+  - No attempt counting - fresh start each run
 - ✅ Individual phase handlers (clone, branch, fix, commit, push, PR)
 - ✅ `run` subcommand with worker pool
   - Batch processing with semaphore-based concurrency
-  - Retry logic with configurable max attempts
-  - Error handling with state transitions to Retry
+  - Error handling with state transitions to Retry (transient within run)
+  - No persistent failure tracking or max retry limits
 - ✅ Resume from last state on crash (all operations check current state)
-- ✅ Simplified state machine - removed intermediate "completed" states
-  - No more stuck repositories in CLONED, BRANCHED, FIXED, etc.
+- ✅ Simplified state machine with direct action-to-action flow
+  - Repos don't get stuck in intermediate states
   - Direct flow from action to action
+  - Failures are transient only
 - ✅ Database concurrency fixes
   - Semaphore-based locking in StateManager
   - All DB operations serialized to prevent "database is locked" errors
+- ✅ Fresh start philosophy implemented
+  - No attempt_count persistence
+  - No max_retries configuration
+  - Each run processes all non-complete repos regardless of previous failures
 - [ ] PR sync integration (requires testing with actual PRs)
 
 ### 📋 Phase 3: PR Integration (Planned)
@@ -402,7 +446,6 @@ parallel_fix retry --failed
 ### 🎯 Phase 4: Advanced Features (Planned)
 
 - [ ] Automatic iterations after PR merge
-- [ ] `retry --failed` with exponential backoff
 - [ ] `clean --completed` to remove finished repos
 - [ ] `reset` command to change repo state
 - [ ] Cleanup automation
@@ -412,8 +455,10 @@ parallel_fix retry --failed
 ### Stateful Mode
 
 **Key Concepts:**
+
 - `--work-dir`: Temporary directory for cloning repositories (can be cleaned)
-- `--data-dir`: Persistent directory for SQLite database (keeps state across runs)
+- `--data-dir`: Persistent directory for SQLite database (keeps state across
+  runs)
 - **Primary unit**: (repository, task) pair - same repo can have multiple tasks
 - Each (repo, task) pair has independent state tracking
 - Multiple tasks can run simultaneously on different repositories
@@ -495,15 +540,17 @@ moon run real_world/parallel_fix -- \
 ## Files
 
 **Implementation**
+
 - `main.mbt` - CLI entry point, subcommand routing, quick mode
 - `commands.mbt` - Subcommand handlers (init, add, status, run)
 - `worker.mbt` - State-driven worker with phase handlers
 - `schema.mbt` - SQLite database schema
-- `state.mbt` - State manager and RepoState enum  
+- `state.mbt` - State manager and RepoState enum
 - `repo.mbt` - Git operations
 - `task.mbt` - AI agent task execution
 
 **Supporting Modules**
+
 - `x/sqlite/sqlite.mbt` - SQLite CLI wrapper with JSON support
 - `x/git/` - Git repository operations
 - `x/args/` - CLI argument parsing

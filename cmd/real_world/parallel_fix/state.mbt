@@ -14,7 +14,6 @@ pub enum RepoState {
   PrConflicts
   PrMerged
   Complete
-  Failed
   Retry
 } derive(Show, Eq)
 
@@ -35,7 +34,6 @@ pub fn RepoState::to_string(self : RepoState) -> String {
     PrConflicts => "PR_CONFLICTS"
     PrMerged => "PR_MERGED"
     Complete => "COMPLETE"
-    Failed => "FAILED"
     Retry => "RETRY"
   }
 }
@@ -57,7 +55,6 @@ pub fn RepoState::from_string(s : String) -> RepoState? {
     "PR_CONFLICTS" => Some(PrConflicts)
     "PR_MERGED" => Some(PrMerged)
     "COMPLETE" => Some(Complete)
-    "FAILED" => Some(Failed)
     "RETRY" => Some(Retry)
     _ => None
   }
@@ -484,13 +481,11 @@ pub async fn StateManager::update_repository(
 pub async fn StateManager::get_processable_repos(
   self : StateManager,
   limit : Int,
-  include_failed : Bool,
+  _include_failed : Bool,
 ) -> Array[RepositoryRecord] {
-  let states = if include_failed {
-    "('PENDING', 'RETRY', 'CLONING', 'BRANCHING', 'FIXING', 'COMMITTING', 'PUSHING', 'FAILED')"
-  } else {
-    "('PENDING', 'RETRY', 'CLONING', 'BRANCHING', 'FIXING', 'COMMITTING', 'PUSHING')"
-  }
+  // Note: include_failed parameter is kept for API compatibility but ignored
+  // There is no FAILED state - failures are transient within a run
+  let states = "('PENDING', 'RETRY', 'CLONING', 'BRANCHING', 'FIXING', 'COMMITTING', 'PUSHING')"
   let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, attempt_count, iteration FROM repositories WHERE state IN \{states} ORDER BY attempt_count ASC, created_at ASC LIMIT \{limit};"
   let rows = self.db.query(sql)
   let repos = []
