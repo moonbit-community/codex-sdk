@@ -22,6 +22,35 @@ pub fn get_timestamp() -> String {
 }
 
 ///|
+/// Check if GitHub CLI (gh) is available
+/// Returns true if gh is installed, false otherwise
+pub async fn is_gh_available() -> Bool {
+  let (_, discard_read) = @process.read_from_process()
+  let status = @process.run("which", ["gh"], stdout=discard_read) catch {
+    _ => 1
+  }
+  status == 0
+}
+
+///|
+/// Extract PR number from GitHub PR URL
+/// Example: https://github.com/owner/repo/pull/123 -> Some(123)
+pub fn extract_pr_number(pr_url : String) -> Int? {
+  let parts = pr_url.split("/").to_array()
+  if parts.length() > 0 {
+    let last = parts[parts.length() - 1].to_string().trim(char_set=" \t\n\r")
+    let num = @strconv.parse_int(last) catch { _ => -1 }
+    if num > 0 {
+      Some(num)
+    } else {
+      None
+    }
+  } else {
+    None
+  }
+}
+
+///|
 /// PR state information fetched from GitHub
 pub struct PrStateInfo {
   state : String // OPEN, CLOSED, MERGED
@@ -51,7 +80,7 @@ pub async fn fetch_pr_state(
       "view",
       pr_number.to_string(),
       "--json",
-      "state,mergeable,reviewDecision,merged",
+      "state,mergeable,reviewDecision",
     ],
     stdout=process_read,
     cwd=clone_path,

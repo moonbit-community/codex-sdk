@@ -187,7 +187,7 @@ async fn StateManager::get_repo_state_unlocked(
   repo_id : Int,
 ) -> RepoState {
   let sql = "SELECT state FROM repositories WHERE id = \{repo_id};"
-  RepoState::from_str(self.db.exec_string(sql)) catch {
+  RepoState::from_str(self.db.exec_string(sql).trim(chars=" \r\n\t")) catch {
     e => @error.reraise(e)
   }
 }
@@ -212,7 +212,7 @@ pub async fn StateManager::get_repos_in_state(
   state : RepoState,
 ) -> Array[RepositoryRecord] {
   let state_str = state.to_string()
-  let sql = "SELECT id, url, name, state, task_description, attempt_count, last_error, created_at, updated_at FROM repositories WHERE state = '\{state_str}';"
+  let sql = "SELECT id, url, name, state, task_description, pr_number, pr_url, pr_state, attempt_count, created_at, updated_at FROM repositories WHERE state = '\{state_str}';"
   let rows = self.db.query(sql)
   let repos = []
   for row in rows {
@@ -224,8 +224,10 @@ pub async fn StateManager::get_repos_in_state(
           "name": String(name),
           "state": String(state_str),
           "task_description"? : task_description,
+          "pr_number"? : pr_number,
+          "pr_url"? : pr_url,
+          "pr_state"? : pr_state,
           "attempt_count": Number(attempt_count, ..),
-          "last_error"? : last_error,
           "created_at": String(created_at),
           "updated_at": String(updated_at),
           ..
@@ -246,17 +248,22 @@ pub async fn StateManager::get_repos_in_state(
           } else {
             None
           },
-          pr_number: None,
-          pr_url: None,
-          pr_state: None,
+          pr_number: match pr_number {
+            Some(Number(n, ..)) => Some(n.to_int())
+            _ => None
+          },
+          pr_url: match pr_url {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+          pr_state: match pr_state {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
           thread_id: None,
           attempt_count: attempt_count.to_int(),
           iteration: 1,
-          last_error: if last_error is Some(String(s)) {
-            Some(s)
-          } else {
-            None
-          },
+          last_error: None,
           created_at,
           updated_at,
         })
@@ -491,12 +498,10 @@ pub async fn StateManager::update_repository(
 pub async fn StateManager::get_processable_repos(
   self : StateManager,
   limit : Int,
-  _include_failed : Bool,
 ) -> Array[RepositoryRecord] {
-  // Note: include_failed parameter is kept for API compatibility but ignored
-  // There is no FAILED state - failures are transient within a run
-  let states = "('PENDING', 'RETRY', 'CLONING', 'BRANCHING', 'FIXING', 'COMMITTING', 'PUSHING')"
-  let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, attempt_count, iteration FROM repositories WHERE state IN \{states} ORDER BY attempt_count ASC, created_at ASC LIMIT \{limit};"
+  // Get all repositories that are not complete
+  // This includes PR_OPEN repos which need to check their status
+  let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, pr_number, pr_url, pr_state, attempt_count, iteration FROM repositories WHERE state != 'COMPLETE' ORDER BY attempt_count ASC, created_at ASC LIMIT \{limit};"
   let rows = self.db.query(sql)
   let repos = []
   for row in rows {
@@ -511,6 +516,9 @@ pub async fn StateManager::get_processable_repos(
           "default_branch"? : default_branch,
           "current_branch"? : current_branch,
           "task_description"? : task_description,
+          "pr_number"? : pr_number,
+          "pr_url"? : pr_url,
+          "pr_state"? : pr_state,
           "attempt_count": Number(attempt_count, ..),
           "iteration": Number(iteration, ..),
           ..
@@ -539,9 +547,18 @@ pub async fn StateManager::get_processable_repos(
             Some(String(s)) if !s.is_empty() => Some(s)
             _ => None
           },
-          pr_number: None,
-          pr_url: None,
-          pr_state: None,
+          pr_number: match pr_number {
+            Some(Number(n, ..)) => Some(n.to_int())
+            _ => None
+          },
+          pr_url: match pr_url {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+          pr_state: match pr_state {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
           thread_id: None,
           attempt_count: attempt_count.to_int(),
           last_error: None,

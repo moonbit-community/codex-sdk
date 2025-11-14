@@ -27,6 +27,7 @@ async fn main {
     ["add", .. remaining] => cmd_add(remaining, data_dir)
     ["run", .. remaining] => cmd_run(remaining, work_dir, data_dir)
     ["status", .. remaining] => cmd_status(remaining, data_dir)
+    ["sync-prs", .. remaining] => cmd_sync_prs(remaining, work_dir, data_dir)
     ["help", .. remaining] => cmd_help(remaining)
     _ =>
       @error.fail(

@@ -421,8 +421,7 @@ async fn do_handle_pr(
   }
 
   // Check if gh is available
-  let which_status = @process.run("which", ["gh"]) catch { _ => 1 }
-  if which_status != 0 {
+  if !is_gh_available() {
     @stdio.stdout.write(
       "warning [\{repo.name}] - GitHub CLI not found, cannot manage PR\n",
     )
@@ -440,6 +439,7 @@ async fn do_handle_pr(
     let title = "AI fix: \{task}"
     let body = "This PR was automatically generated to address:\n\n\{task}"
     let (pipe, process_read) = @process.read_from_process()
+    let (err_pipe, process_err) = @process.read_from_process()
     let status = @process.run(
       "gh",
       [
@@ -447,31 +447,128 @@ async fn do_handle_pr(
         "--head", branch,
       ],
       stdout=process_read,
+      stderr=process_err,
       cwd=clone_path,
     ) catch {
       e => @error.reraise(e)
     }
+    
     if status != 0 {
-      @error.fail("gh pr create failed")
+      // PR creation failed - check if it's because PR already exists or no changes
+      let error_output = err_pipe.read_all().text().to_string()
+      
+      // Check if PR already exists for this branch
+      if error_output.contains("already exists") {
+        @stdio.stdout.write("info [\{repo.name}] - PR already exists, fetching existing PR\n")
+        
+        // Try to find existing PR for this branch
+        let (list_pipe, list_read) = @process.read_from_process()
+        let list_status = @process.run(
+          "gh",
+          ["pr", "list", "--head", branch, "--json", "number,url", "--limit", "1"],
+          stdout=list_read,
+          cwd=clone_path,
+        ) catch {
+          e => @error.reraise(e)
+        }
+        
+        if list_status == 0 {
+          let list_output = list_pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
+          let json = @json.parse(list_output) catch {
+            _ => {
+              @stdio.stdout.write("warning [\{repo.name}] - Could not parse PR list, marking complete\n")
+              config.state_mgr.transition(repo.id, Complete, Some("PR exists but could not fetch details")) catch {
+                e => @error.reraise(e)
+              }
+              return
+            }
+          }
+          
+          // Parse the array and get first PR
+          match json {
+            Array(prs) if prs.length() > 0 => {
+              match prs[0] {
+                Object(pr_obj) => {
+                  let pr_number_opt = match pr_obj.get("number") {
+                    Some(Number(n, ..)) => Some(n.to_int())
+                    _ => None
+                  }
+                  let pr_url_opt = match pr_obj.get("url") {
+                    Some(String(u)) => Some(u)
+                    _ => None
+                  }
+                  
+                  match (pr_number_opt, pr_url_opt) {
+                    (Some(num), Some(url)) => {
+                      @stdio.stdout.write("info [\{repo.name}] - Found existing PR #\{num}: \{url}\n")
+                      let updates = [
+                        ("pr_url", url),
+                        ("pr_state", "open"),
+                        ("pr_number", num.to_string()),
+                      ]
+                      config.state_mgr.update_repository(repo.id, updates) catch {
+                        e => @error.reraise(e)
+                      }
+                      config.state_mgr.transition(repo.id, PrOpen, Some("Using existing PR")) catch {
+                        e => @error.reraise(e)
+                      }
+                      return
+                    }
+                    _ => {
+                      @stdio.stdout.write("warning [\{repo.name}] - PR exists but could not extract details\n")
+                      config.state_mgr.transition(repo.id, Complete, Some("PR exists but details unavailable")) catch {
+                        e => @error.reraise(e)
+                      }
+                      return
+                    }
+                  }
+                }
+                _ => {
+                  @stdio.stdout.write("warning [\{repo.name}] - PR exists but unexpected format\n")
+                  config.state_mgr.transition(repo.id, Complete, Some("PR exists but unexpected format")) catch {
+                    e => @error.reraise(e)
+                  }
+                  return
+                }
+              }
+            }
+            _ => {
+              @stdio.stdout.write("warning [\{repo.name}] - No PR found in list despite error\n")
+              config.state_mgr.transition(repo.id, Complete, Some("PR creation failed, no existing PR found")) catch {
+                e => @error.reraise(e)
+              }
+              return
+            }
+          }
+        }
+      }
+      
+      // Check if it's because there are no changes (branch same as base)
+      if error_output.contains("no commits") || error_output.contains("No commits") || 
+         error_output.contains("is identical to") || error_output.contains("no changes") {
+        @stdio.stdout.write("info [\{repo.name}] - No changes to create PR, task complete\n")
+        config.state_mgr.transition(repo.id, Complete, Some("No changes needed - branch identical to base")) catch {
+          e => @error.reraise(e)
+        }
+        return
+      }
+      
+      // Other error - fail
+      @error.fail("gh pr create failed: \{error_output}")
     }
+    
     let pr_url = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
     @stdio.stdout.write("info [\{repo.name}] - PR created: \{pr_url}\n")
 
     // Extract PR number from URL (e.g., https://github.com/owner/repo/pull/123)
-    // Example: https://github.com/owner/repo/pull/123 -> 123
-    let pr_number_opt : Int? = {
-      let parts = pr_url.split("/").to_array()
-      if parts.length() > 0 {
-        let last = parts[parts.length() - 1].to_string()
-        let num = @strconv.parse_int(last) catch { _ => -1 }
-        if num > 0 {
-          Some(num)
-        } else {
-          None
-        }
-      } else {
-        None
-      }
+    let pr_number_opt = extract_pr_number(pr_url)
+    match pr_number_opt {
+      Some(num) =>
+        @stdio.stdout.write("info [\{repo.name}] - Extracted PR number: \{num}\n")
+      None =>
+        @stdio.stdout.write(
+          "warning [\{repo.name}] - Could not parse PR number from URL\n",
+        )
     }
 
     // Update repository with PR info
@@ -482,7 +579,12 @@ async fn do_handle_pr(
           ("pr_state", "open"),
           ("pr_number", num.to_string()),
         ]
-      None => [("pr_url", pr_url), ("pr_state", "open")]
+      None => {
+        @stdio.stdout.write(
+          "warning [\{repo.name}] - PR URL saved but no PR number extracted, will need to sync later\n",
+        )
+        [("pr_url", pr_url), ("pr_state", "open")]
+      }
     }
     config.state_mgr.update_repository(repo.id, updates) catch {
       e => @error.reraise(e)
@@ -501,10 +603,39 @@ async fn do_handle_pr(
   // We're in PrOpen state - fetch current PR state and let AI decide
   @stdio.stdout.write("info [\{repo.name}] - Fetching PR state from GitHub\n")
 
-  // Get PR number
-  guard repo.pr_number is Some(pr_number) else {
+  // Get PR number - try from database first, then extract from URL
+  let pr_number_opt = match repo.pr_number {
+    Some(num) => Some(num)
+    None => {
+      // Try to extract from pr_url if available
+      match repo.pr_url {
+        Some(url) => {
+          let extracted = extract_pr_number(url)
+          match extracted {
+            Some(num) => {
+              @stdio.stdout.write(
+                "info [\{repo.name}] - Extracted PR number \{num} from URL\n",
+              )
+              // Save the extracted PR number
+              config.state_mgr.update_field(
+                repo.id,
+                "pr_number",
+                num.to_string(),
+              ) catch {
+                _ => ()
+              }
+              Some(num)
+            }
+            None => None
+          }
+        }
+        None => None
+      }
+    }
+  }
+  guard pr_number_opt is Some(pr_number) else {
     @stdio.stdout.write(
-      "warning [\{repo.name}] - No PR number, marking complete\n",
+      "warning [\{repo.name}] - No PR number and could not extract from URL, marking complete\n",
     )
     config.state_mgr.transition(
       repo.id,
@@ -534,6 +665,11 @@ async fn do_handle_pr(
         config.state_mgr.transition(repo.id, Complete, Some("PR merged")) catch {
           e => @error.reraise(e)
         }
+      } else if pr_info.state == "CLOSED" {
+        @stdio.stdout.write("info [\{repo.name}] - PR closed, task complete\n")
+        config.state_mgr.transition(repo.id, Complete, Some("PR closed")) catch {
+          e => @error.reraise(e)
+        }
       } else if pr_info.review_decision == "CHANGES_REQUESTED" {
         @stdio.stdout.write(
           "info [\{repo.name}] - Changes requested, going back to fixing\n",
@@ -557,17 +693,11 @@ async fn do_handle_pr(
           e => @error.reraise(e)
         }
       } else {
-        // PR is open, approved, or no issues - consider task complete
+        // PR is open with no issues - keep in PR_OPEN state for monitoring
         @stdio.stdout.write(
-          "info [\{repo.name}] - PR is \{pr_info.state} with no issues, task complete\n",
+          "info [\{repo.name}] - PR is \{pr_info.state}, staying in PR_OPEN (waiting for merge or review)\n",
         )
-        config.state_mgr.transition(
-          repo.id,
-          Complete,
-          Some("PR in good state (\{pr_info.state})"),
-        ) catch {
-          e => @error.reraise(e)
-        }
+        // No state transition - stay in PR_OPEN to check again on next run
       }
     }
     None => {

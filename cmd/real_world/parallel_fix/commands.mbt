@@ -323,12 +323,19 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
           for repo in task_repos {
             @stdio.stdout.write("    - \{repo.name}\n")
             @stdio.stdout.write("      URL: \{repo.url}\n")
+            match repo.pr_url {
+              Some(pr_url) => {
+                @stdio.stdout.write("      PR: \{pr_url}\n")
+                match repo.pr_state {
+                  Some(pr_state) =>
+                    @stdio.stdout.write("      PR State: \{pr_state}\n")
+                  None => ()
+                }
+              }
+              None => ()
+            }
             if repo.attempt_count > 0 {
               @stdio.stdout.write("      Attempts: \{repo.attempt_count}\n")
-            }
-            match repo.last_error {
-              Some(err) => @stdio.stdout.write("      Last error: \{err}\n")
-              None => ()
             }
           }
         }
@@ -344,6 +351,182 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
 }
 
 ///|
+/// Handle the 'sync-prs' subcommand
+/// Sync PR status from GitHub for repositories with PR URLs
+pub async fn cmd_sync_prs(
+  args : ArrayView[String],
+  work_dir : String,
+  data_dir : String,
+) -> Unit {
+  let help_message =
+    #|Usage: sync-prs [OPTIONS]
+    #|
+    #|Sync PR status from GitHub for all repositories with PR URLs
+    #|This is useful to restore correct status after errors or interruptions
+    #|
+    #|Options:
+    #|  --help, -h          Show this help
+    #|
+    #|Global options are set before the subcommand:
+    #|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
+    #|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
+    #|
+
+  // Parse arguments
+  let parsed_args = @args.parse(args, flags=["help"], options=[], aliases={
+    "h": "help",
+  })
+
+  // Handle help flag
+  if parsed_args.flags.get("help") is Some(true) {
+    @stdio.stdout.write(help_message)
+    return
+  }
+
+  // Expand ~ in data_dir
+  let expanded_data_dir = if data_dir.has_prefix("~") {
+    let (pipe, process_read) = @process.read_from_process()
+    let _status = @process.run("sh", ["-c", "echo $HOME"], stdout=process_read) catch {
+      _ => 1
+    }
+    let home = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
+    let home_final = if home.is_empty() { "/tmp" } else { home }
+    "\{home_final}\{data_dir[1:].to_string()}"
+  } else {
+    data_dir
+  }
+  let db_path = "\{expanded_data_dir}/parallel-fix.db"
+
+  // Check if database exists
+  let state_mgr = StateManager::new(db_path)
+  if !state_mgr.db.exists() {
+    @error.fail("Database not found. Please run 'init' first.")
+  }
+
+  // Check if gh is available
+  if !is_gh_available() {
+    @error.fail("GitHub CLI (gh) not found. Please install it to sync PRs.")
+  }
+  @stdio.stdout.write("Syncing PR status from GitHub...\n\n")
+
+  // Get all repositories with PR URLs
+  let sql = "SELECT id, url, name, pr_url, pr_number, local_path FROM repositories WHERE pr_url IS NOT NULL AND pr_url != '';"
+  let rows = state_mgr.db.query(sql)
+  let mut synced = 0
+  let mut updated = 0
+  let mut failed = 0
+  for row in rows {
+    match row {
+      Object(
+        {
+          "id": Number(id, ..),
+          "name": String(name),
+          "pr_url": String(pr_url),
+          "pr_number"? : pr_number_val,
+          "local_path"? : local_path_val,
+          ..
+        }
+      ) => {
+        let repo_id = id.to_int()
+        synced = synced + 1
+        @stdio.stdout.write("[\{name}] Syncing PR: \{pr_url}\n")
+
+        // Extract PR number from URL if not in database
+        let pr_number_opt = match pr_number_val {
+          Some(Number(n, ..)) => Some(n.to_int())
+          _ => extract_pr_number(pr_url)
+        }
+        guard pr_number_opt is Some(pr_number) else {
+          @stdio.stdout.write(
+            "  Warning: Could not extract PR number from URL\n",
+          )
+          failed = failed + 1
+          continue
+        }
+
+        // Get local_path - if not set, try to infer from work_dir and name
+        let clone_path = match local_path_val {
+          Some(String(p)) if !p.is_empty() => p
+          _ => "\{work_dir}/\{name}"
+        }
+
+        // Fetch PR state from GitHub
+        match fetch_pr_state(clone_path, pr_number) {
+          Some(pr_info) => {
+            @stdio.stdout.write(
+              "  PR #\{pr_number}: state=\{pr_info.state}, mergeable=\{pr_info.mergeable}, review=\{pr_info.review_decision}\n",
+            )
+
+            // Determine the correct state based on PR info
+            let new_state = if pr_info.state == "MERGED" {
+              Complete
+            } else if pr_info.state == "CLOSED" {
+              Complete
+            } else if pr_info.review_decision == "CHANGES_REQUESTED" {
+              Fixing
+            } else if pr_info.mergeable == "CONFLICTING" {
+              Fixing
+            } else {
+              // PR is open and no issues
+              PrOpen
+            }
+
+            // Update repository
+            let updates = [
+              ("pr_number", pr_number.to_string()),
+              ("pr_state", pr_info.state),
+            ]
+            state_mgr.update_repository(repo_id, updates) catch {
+              e => {
+                @stdio.stdout.write("  Error updating repository: \{e}\n")
+                failed = failed + 1
+                continue
+              }
+            }
+
+            // Get current state
+            let current_state = state_mgr.get_repo_state(repo_id) catch {
+              _ => Pending
+            }
+            if current_state != new_state {
+              state_mgr.transition(
+                repo_id,
+                new_state,
+                Some("Synced from GitHub"),
+              ) catch {
+                e => {
+                  @stdio.stdout.write("  Error transitioning state: \{e}\n")
+                  failed = failed + 1
+                  continue
+                }
+              }
+              @stdio.stdout.write(
+                "  Updated: \{current_state} -> \{new_state}\n",
+              )
+              updated = updated + 1
+            } else {
+              @stdio.stdout.write("  Already in correct state: \{new_state}\n")
+            }
+          }
+          None => {
+            @stdio.stdout.write("  Warning: Could not fetch PR state\n")
+            failed = failed + 1
+          }
+        }
+      }
+      _ => continue
+    }
+  }
+  @stdio.stdout.write("\n")
+  @stdio.stdout.write("=".repeat(60))
+  @stdio.stdout.write("\n")
+  @stdio.stdout.write("Sync complete!\n")
+  @stdio.stdout.write("  Total PRs checked: \{synced}\n")
+  @stdio.stdout.write("  States updated: \{updated}\n")
+  @stdio.stdout.write("  Failed: \{failed}\n")
+}
+
+///|
 /// Handle the 'help' subcommand
 /// Shows help for subcommands
 pub async fn cmd_help(_args : ArrayView[String]) -> Unit {
@@ -355,6 +538,7 @@ pub async fn cmd_help(_args : ArrayView[String]) -> Unit {
     #|  add <repos-file>  Add repositories to the queue
     #|  run               Start/resume processing repositories
     #|  status            Show current state of all repositories
+    #|  sync-prs          Sync PR status from GitHub
     #|  help              Show this help message
     #|
     #|Global Options (set before subcommand):
@@ -375,8 +559,8 @@ pub async fn cmd_help(_args : ArrayView[String]) -> Unit {
     #|  # Start processing
     #|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes run --parallelism 8
     #|
-    #|  # Retry failed repositories
-    #|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes run --include-failed
+    #|  # Sync PR status from GitHub
+    #|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes sync-prs
     #|
     #|  # Check status
     #|  moon run real_world/parallel_fix -- --data-dir ~/my-fixes status --verbose
@@ -468,12 +652,7 @@ pub async fn cmd_run(
   let codex = @codex.Codex::new()
 
   // Create worker config
-  let config = WorkerConfig::{
-    work_dir,
-    branch_prefix,
-    codex,
-    state_mgr,
-  }
+  let config = WorkerConfig::{ work_dir, branch_prefix, codex, state_mgr }
 
   // Get total count and processable count
   let total = state_mgr.total_count()
@@ -485,42 +664,34 @@ pub async fn cmd_run(
   }
   @stdio.stdout.write("Total repositories: \{total}\n")
 
-  // Process repositories in parallel using worker pool
+  // Get all processable repositories (including PR_OPEN for status check)
+  let all_repos = state_mgr.get_processable_repos(total)
+  if all_repos.is_empty() {
+    @stdio.stdout.write("\nNo repositories to process.\n")
+    return
+  }
+  @stdio.stdout.write(
+    "\nProcessing \{all_repos.length()} repositories...\n\n",
+  )
+
+  // Process all repositories in parallel with bounded concurrency
   let mut processed = 0
   let mut successful = 0
-  let mut continue_processing = true
-  while continue_processing {
-    // Get batch of processable repositories
-    let repos = state_mgr.get_processable_repos(parallelism * 2, false)
-    if repos.is_empty() {
-      @stdio.stdout.write("\nNo more repositories to process.\n")
-      continue_processing = false
-      continue
+  @async.with_task_group(fn(task_group) {
+    let semaphore = @semaphore.Semaphore::new(parallelism)
+    for repo in all_repos {
+      task_group.spawn_bg(allow_failure=true, fn() {
+        semaphore.acquire()
+        defer semaphore.release()
+        processed = processed + 1
+        process_repository_stateful(config, repo) catch {
+          e =>
+            @stdio.stderr.write("error [\{repo.name}] - Unexpected error: \{e}\n")
+        }
+        successful = successful + 1
+      })
     }
-    @stdio.stdout.write(
-      "\nProcessing batch of \{repos.length()} repositories...\n\n",
-    )
-
-    // Process batch in parallel
-    @async.with_task_group(fn(task_group) {
-      let semaphore = @semaphore.Semaphore::new(parallelism)
-      for repo in repos {
-        task_group.spawn_bg(allow_failure=true, fn() {
-          semaphore.acquire()
-          defer semaphore.release()
-          processed = processed + 1
-          process_repository_stateful(config, repo) catch {
-            e => {
-              @stdio.stderr.write(
-                "error [\{repo.name}] - Unexpected error: \{e}\n",
-              )
-            }
-          }
-          successful = successful + 1
-        })
-      }
-    })
-  }
+  })
 
   // Print final summary
   @stdio.stdout.write("\n")
