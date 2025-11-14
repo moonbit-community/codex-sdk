@@ -1,7 +1,4 @@
 ///|
-/// State management for repository processing
-
-///|
 /// Repository processing states
 pub enum RepoState {
   Pending
@@ -213,64 +210,47 @@ pub async fn StateManager::get_repos_in_state(
   let repos = []
   for row in rows {
     match row {
-      Object(obj) => {
-        let id = match obj.get("id") {
-          Some(Number(n, ..)) => n.to_int()
-          _ => continue
+      Object(
+        {
+          "id": Number(id, ..),
+          "url": String(url),
+          "name": String(name),
+          "state": String(state_str),
+          "task_description"? : task_description,
+          "attempt_count": Number(attempt_count, ..),
+          "last_error"? : last_error,
+          "created_at": String(created_at),
+          "updated_at": String(updated_at),
+          ..
         }
-        let url = match obj.get("url") {
-          Some(String(s)) => s
-          _ => continue
-        }
-        let name = match obj.get("name") {
-          Some(String(s)) => s
-          _ => continue
-        }
-        let state_str = match obj.get("state") {
-          Some(String(s)) => s
-          _ => continue
-        }
-        let task_description = match obj.get("task_description") {
-          Some(String(s)) => Some(s)
-          _ => None
-        }
-        let attempt_count = match obj.get("attempt_count") {
-          Some(Number(n, ..)) => n.to_int()
-          _ => 0
-        }
-        let last_error = match obj.get("last_error") {
-          Some(String(s)) => Some(s)
-          _ => None
-        }
-        let created_at = match obj.get("created_at") {
-          Some(String(s)) => s
-          _ => ""
-        }
-        let updated_at = match obj.get("updated_at") {
-          Some(String(s)) => s
-          _ => ""
-        }
-        let repo_state = RepoState::from_string(state_str).unwrap_or(Pending)
+      ) =>
         repos.push(RepositoryRecord::{
-          id,
+          id: id.to_int(),
           url,
           name,
-          state: repo_state,
+          state: RepoState::from_string(state_str).unwrap_or(Pending),
           local_path: None,
           default_branch: None,
           current_branch: None,
-          task_description,
+          task_description: if task_description is Some(String(s)) {
+            Some(s)
+          } else {
+            None
+          },
           pr_number: None,
           pr_url: None,
           pr_state: None,
           thread_id: None,
-          attempt_count,
+          attempt_count: attempt_count.to_int(),
           iteration: 1,
-          last_error,
+          last_error: if last_error is Some(String(s)) {
+            Some(s)
+          } else {
+            None
+          },
           created_at,
           updated_at,
         })
-      }
       _ => continue
     }
   }
@@ -396,89 +376,69 @@ pub async fn StateManager::get_repository_full(
           "url": String(url),
           "name": String(name),
           "state": String(state_str),
-          "local_path": local_path,
-          "default_branch": default_branch,
-          "current_branch": current_branch,
-          "task_description": task_description,
-          "pr_number": pr_number,
-          "pr_url": pr_url,
-          "pr_state": pr_state,
-          "thread_id": thread_id,
+          "local_path"? : local_path,
+          "default_branch"? : default_branch,
+          "current_branch"? : current_branch,
+          "task_description"? : task_description,
+          "pr_number"? : pr_number,
+          "pr_url"? : pr_url,
+          "pr_state"? : pr_state,
+          "thread_id"? : thread_id,
           "attempt_count": Number(attempt_count, ..),
-          "last_error": last_error,
+          "last_error"? : last_error,
           "iteration": Number(iteration, ..),
           "created_at": String(created_at),
           "updated_at": String(updated_at),
           ..
         }
       )
-    ) => {
-      let state = RepoState::from_string(state_str).unwrap_or(Pending)
-      let local_path = match local_path {
-        String(s) if !s.is_empty() => Some(s)
-        Null => None
-        _ => panic()
-      }
-      let default_branch = match default_branch {
-        String(s) if !s.is_empty() => Some(s)
-        Null => None
-        _ => panic()
-      }
-      let current_branch = match current_branch {
-        String(s) if !s.is_empty() => Some(s)
-        Null => None
-        _ => panic()
-      }
-      let task_description = match task_description {
-        String(s) if !s.is_empty() => Some(s)
-        Null => None
-        _ => panic()
-      }
-      let pr_number = match pr_number {
-        Number(n, ..) => Some(n.to_int())
-        Null => None
-        _ => panic()
-      }
-      let pr_url = match pr_url {
-        String(s) if !s.is_empty() => Some(s)
-        Null => None
-        _ => panic()
-      }
-      let pr_state = match pr_state {
-        String(s) if !s.is_empty() => Some(s)
-        Null => None
-        _ => panic()
-      }
-      let thread_id = match thread_id {
-        String(s) if !s.is_empty() => Some(s)
-        Null => None
-        _ => panic()
-      }
-      let last_error = match last_error {
-        String(s) if !s.is_empty() => Some(s)
-        Null => None
-        _ => panic()
-      }
+    ) =>
       Some(RepositoryRecord::{
         id: id.to_int(),
         url,
         name,
-        state,
-        local_path,
-        default_branch,
-        current_branch,
-        task_description,
-        pr_number,
-        pr_url,
-        pr_state,
-        thread_id,
+        state: RepoState::from_string(state_str).unwrap_or(Pending),
+        local_path: match local_path {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          _ => None
+        },
+        default_branch: match default_branch {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          _ => None
+        },
+        current_branch: match current_branch {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          _ => None
+        },
+        task_description: match task_description {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          _ => None
+        },
+        pr_number: match pr_number {
+          Some(Number(n, ..)) => Some(n.to_int())
+          _ => None
+        },
+        pr_url: match pr_url {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          _ => None
+        },
+        pr_state: match pr_state {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          _ => None
+        },
+        thread_id: match thread_id {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          _ => None
+        },
         attempt_count: attempt_count.to_int(),
-        last_error,
+        last_error: match last_error {
+          Some(String(s)) if !s.is_empty() => Some(s)
+          _ => None
+        },
         iteration: iteration.to_int(),
         created_at,
         updated_at,
       })
-    }
     _ => None
   }
 }
@@ -525,72 +485,52 @@ pub async fn StateManager::get_processable_repos(
   let repos = []
   for row in rows {
     match row {
-      Object(obj) => {
-        let id = match obj.get("id") {
-          Some(Number(n, ..)) => n.to_int()
-          _ => continue
+      Object(
+        {
+          "id": Number(id, ..),
+          "url": String(url),
+          "name": String(name),
+          "state": String(state_str),
+          "local_path"? : local_path,
+          "default_branch"? : default_branch,
+          "current_branch"? : current_branch,
+          "task_description"? : task_description,
+          "attempt_count": Number(attempt_count, ..),
+          "iteration": Number(iteration, ..),
+          ..
         }
-        let url = match obj.get("url") {
-          Some(String(s)) => s
-          _ => continue
-        }
-        let name = match obj.get("name") {
-          Some(String(s)) => s
-          _ => continue
-        }
-        let state_str = match obj.get("state") {
-          Some(String(s)) => s
-          _ => continue
-        }
-        let state = RepoState::from_string(state_str).unwrap_or(Pending)
-        let local_path = match obj.get("local_path") {
-          Some(String(s)) if !s.is_empty() => Some(s)
-          Some(Null) | None => None
-          _ => None
-        }
-        let default_branch = match obj.get("default_branch") {
-          Some(String(s)) if !s.is_empty() => Some(s)
-          Some(Null) | None => None
-          _ => None
-        }
-        let current_branch = match obj.get("current_branch") {
-          Some(String(s)) if !s.is_empty() => Some(s)
-          Some(Null) | None => None
-          _ => None
-        }
-        let task_description = match obj.get("task_description") {
-          Some(String(s)) if !s.is_empty() => Some(s)
-          Some(Null) | None => None
-          _ => None
-        }
-        let attempt_count = match obj.get("attempt_count") {
-          Some(Number(n, ..)) => n.to_int()
-          _ => 0
-        }
-        let iteration = match obj.get("iteration") {
-          Some(Number(n, ..)) => n.to_int()
-          _ => 1
-        }
+      ) =>
         repos.push(RepositoryRecord::{
-          id,
+          id: id.to_int(),
           url,
           name,
-          state,
-          local_path,
-          default_branch,
-          current_branch,
-          task_description,
+          state: RepoState::from_string(state_str).unwrap_or(Pending),
+          local_path: match local_path {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+          default_branch: match default_branch {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+          current_branch: match current_branch {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+          task_description: match task_description {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
           pr_number: None,
           pr_url: None,
           pr_state: None,
           thread_id: None,
-          attempt_count,
+          attempt_count: attempt_count.to_int(),
           last_error: None,
-          iteration,
+          iteration: iteration.to_int(),
           created_at: "",
           updated_at: "",
         })
-      }
       _ => continue
     }
   }
