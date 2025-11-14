@@ -1,18 +1,18 @@
 # MoonBit Codex SDK
 
-This is the codex SDK for MoonBit, ported from the typescript SDK.
+This is the Codex SDK for MoonBit, ported from the TypeScript SDK.
 
-The SDK communicates with the codex by spawning codex in the non-interactive
-mode with `codex exec`. The targeted codex version is 0.46.0
+The SDK communicates with Codex by spawning it in non-interactive mode using
+`codex exec`. The target Codex version is 0.46.0.
 
-It assumes that the codex is installed.
+Codex must be installed and available on your PATH.
 
 ## Usage
 
-To simplest way to use the codex is to create the `@codex.Codex` and start a
-`@codex.Thread`. Then create `@codex.Turn` based on the `@codex.Thread` by using
-`@codex.Thread::run`. By default, the `OPENAI_API_KEY` is read from the
-environment.
+The simplest way to use Codex is to create a `@codex.Codex` and start a
+`@codex.Thread`. Then create a `@codex.Turn` from the thread using
+`@codex.Thread::run`. By default, the `OPENAI_API_KEY` environment variable is
+read.
 
 ```moonbit
 ///|
@@ -30,7 +30,7 @@ async test {
 }
 ```
 
-To use it in an incremental way, import the `@generator` package, and use
+For incremental usage, import the `@generator` package and use
 `@codex.Thread::run_streamed`.
 
 ```moonbit
