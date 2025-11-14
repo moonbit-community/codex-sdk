@@ -1,147 +1,4 @@
 ///|
-struct Arguments {
-  /// Path to file containing list of repositories (one per line)
-  repos_file : String
-  /// Number of parallel tasks
-  parallelism : Int
-  /// Task description to send to AI agent
-  task_description : String
-  /// Branch name prefix for fix branches
-  branch_prefix : String
-  /// Base directory for cloning repositories
-  work_dir : String
-  /// Whether to force fresh clone (delete existing)
-  force_fresh : Bool
-} derive(Default)
-
-///|
-/// Handle the default command (batch fix mode)
-/// Processes repositories in parallel for quick one-off fixes
-pub async fn cmd_main(args : ArrayView[String]) -> Unit {
-  let help_message =
-    #|Usage: moon run real_world/parallel_fix -- [OPTIONS] <repos-file>
-    #|
-    #|<repos-file>    Path to file containing repository URLs (one per line)
-    #|
-    #|Options:
-    #|  --task <description>           Task description for AI agent (required)
-    #|  --parallelism <n>              Number of parallel tasks (default: 4)
-    #|  --branch-prefix <prefix>       Branch name prefix (default: "ai-fix")
-    #|  --work-dir <path>              Working directory for clones (default: /tmp/parallel-fix)
-    #|  --force-fresh                  Delete existing clones and start fresh
-    #|  --help                         Print this help message
-    #|
-    #|Subcommands (for stateful mode):
-    #|  init, add, status, help
-    #|
-    #|Example:
-    #|  moon run real_world/parallel_fix -- repos.txt --task "Fix linting errors" --parallelism 8
-    #|
-
-  // Parse arguments
-  let parsed_args = @args.parse(
-    args,
-    flags=["help", "resume", "force-fresh"],
-    options=["task", "parallelism", "branch-prefix", "work-dir"],
-    aliases={ "h": "help" },
-  )
-
-  // Handle help flag
-  if parsed_args.flags.get("help") is Some(true) {
-    @stdio.stdout.write(help_message)
-    return
-  }
-
-  // Main logic
-  guard parsed_args.positional is [repos_file] else {
-    @error.fail(
-      "Missing required positional argument: <repos-file>\n\{help_message}",
-    )
-  }
-  guard parsed_args.options.get("task") is Some(task_description) else {
-    @error.fail(
-      "Missing required option: --task <description>\n\{help_message}",
-    )
-  }
-  let parallelism = parsed_args.options.get("parallelism").unwrap_or("4")
-  let argument = Arguments::{
-    repos_file,
-    parallelism: @strconv.parse_int(parallelism) catch {
-      e => @error.fail_with("Invalid parallelism value", e)
-    },
-    task_description,
-    branch_prefix: parsed_args.options.get("branch-prefix").unwrap_or("ai-fix"),
-    work_dir: parsed_args.options.get("work-dir").unwrap_or("/tmp/parallel-fix"),
-    force_fresh: parsed_args.flags.get("force-fresh") is Some(true),
-  }
-
-  // Read repository list
-  let repos = read_repos_file(argument.repos_file) catch {
-    e => @error.fail_with("Failed to read repos file", e)
-  }
-  if repos.is_empty() {
-    @stdio.stdout.write("No repositories found in \{argument.repos_file}\n")
-    return
-  }
-  @stdio.stdout.write(
-    "Loaded \{repos.length()} repositories from \{argument.repos_file}\n",
-  )
-
-  // Prepare environment
-  let codex = @codex.Codex::new()
-  ensure_work_dir(argument.work_dir) catch {
-    e => @error.fail_with("Failed to create work directory", e)
-  }
-
-  // Process repositories in parallel
-  @stdio.stdout.write(
-    "Starting parallel processing with \{argument.parallelism} concurrent tasks...\n\n",
-  )
-  let results : Array[TaskResult] = []
-  @async.with_task_group(fn(task_group) {
-    let semaphore = @semaphore.Semaphore::new(argument.parallelism)
-    for i, repo in repos {
-      task_group.spawn_bg(allow_failure=true, fn() {
-        semaphore.acquire()
-        defer semaphore.release()
-        @stdio.stdout.write(
-          "info [\{i + 1}/\{repos.length()}] \{repo} - Acquired semaphore, starting fix...\n",
-        )
-        let result = process_repository(
-          codex,
-          repo,
-          argument.task_description,
-          argument.branch_prefix,
-          argument.work_dir,
-          argument.force_fresh,
-        ) catch {
-          e => {
-            @stdio.stderr.write(
-              "error [\{i + 1}/\{repos.length()}] \{repo} - Task failed: \{e}\n",
-            )
-            TaskResult::{
-              repo,
-              success: false,
-              error: e.to_string(),
-              pr_url: None,
-              thread_id: None,
-            }
-          }
-        }
-        results.push(result)
-        let status = if result.success { "✓" } else { "✗" }
-        @stdio.stdout.write(
-          "\{status} [\{i + 1}/\{repos.length()}] \{repo} - Task finished\n",
-        )
-      })
-    }
-  })
-
-  // Print summary
-  print_summary(results)
-}
-
-///|
 async fn main {
   let args = @sys.get_cli_args()[1:]
 
@@ -171,13 +28,17 @@ async fn main {
     ["run", .. remaining] => cmd_run(remaining, work_dir, data_dir)
     ["status", .. remaining] => cmd_status(remaining, work_dir, data_dir)
     ["help", .. remaining] => cmd_help(remaining)
-    _ => cmd_main(parsed.positional[:]) // Default to batch fix mode
+    _ => {
+      @error.fail(
+        "Unknown subcommand or missing subcommand.\n\nUse --help to see available subcommands.",
+      )
+    }
   }
 }
 
 ///|
 /// Read repository URLs from file
-async fn read_repos_file(path : String) -> Array[String] {
+pub async fn read_repos_file(path : String) -> Array[String] {
   let content = @fs.read_file(path).text() catch { e => @error.reraise(e) }
   let repos = []
   for line in content.split("\n") {
@@ -192,7 +53,7 @@ async fn read_repos_file(path : String) -> Array[String] {
 
 ///|
 /// Ensure work directory exists
-async fn ensure_work_dir(path : String) -> Unit {
+pub async fn ensure_work_dir(path : String) -> Unit {
   if @fs.exists(path) {
     return
   }
@@ -217,37 +78,25 @@ async fn ensure_work_dir(path : String) -> Unit {
 }
 
 ///|
-/// Print summary of results
-async fn print_summary(results : Array[TaskResult]) -> Unit {
-  let successful = results.filter(fn(r) { r.success })
-  let failed = results.filter(fn(r) { !r.success })
-  let sep = "=".repeat(80)
-  @stdio.stdout.write(
-    (
-      $|
-      $|\{sep}
-      $|SUMMARY
-      $|\{sep}
-      $|Total repositories: \{results.length()}
-      $|Successful: \{successful.length()}
-      $|Failed: \{failed.length()}
-      $|
-    ),
-  )
-  if successful.length() > 0 {
-    @stdio.stdout.write("\n✓ Successful repositories:\n")
-    for r in successful {
-      let pr_info = match r.pr_url {
-        Some(url) => " → \{url}"
-        None => ""
-      }
-      @stdio.stdout.write("  - \{r.repo}\{pr_info}\n")
-    }
+/// Extract repository name from URL
+pub fn extract_repo_name(url : String) -> String {
+  let without_git = if url.has_suffix(".git") {
+    let chars = url.to_array()
+    let len = chars.length()
+    String::from_array(chars[:len - 4])
+  } else {
+    url
   }
-  if failed.length() > 0 {
-    @stdio.stdout.write("\n✗ Failed repositories:\n")
-    for r in failed {
-      @stdio.stdout.write("  - \{r.repo}: \{r.error}\n")
-    }
+  // Split by '/' and take the last part
+  match without_git.split("/").to_array().last() {
+    Some(name) => name.to_string()
+    None => url
   }
 }
+
+///|
+/// Get current timestamp as string for unique branch names
+pub fn get_timestamp() -> String {
+  @async.now().to_string()
+}
+

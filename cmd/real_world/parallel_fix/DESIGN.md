@@ -5,9 +5,14 @@
 
 ## Executive Summary
 
-A robust batch repository fixer that uses AI agents to fix issues across multiple repositories in parallel. Supports both:
-- **Quick mode**: One-off batch fixes (current implementation)
-- **Stateful mode**: Persistent, reentrant processing with SQLite (foundation complete)
+A robust repository fixer that uses AI agents to fix issues across multiple repositories in parallel with persistent state management and reentrant processing.
+
+**Key Features:**
+- Stateful processing with SQLite database
+- Support for (repository, task) pairs - same repo can have multiple tasks
+- Reentrant execution - safe to stop and resume
+- Parallel processing with configurable concurrency
+- Separation of temporary work directory and persistent data directory
 
 ## Current Gaps
 
@@ -113,10 +118,17 @@ Error states from any point: `FAILED`, `RETRY`
 
 **repositories** - Main tracking table
 ```sql
-id, url, name, state, local_path, default_branch, current_branch,
-task_description, pr_number, pr_url, pr_state, thread_id,
+id, url, name, task_description, state, local_path, default_branch, 
+current_branch, pr_number, pr_url, pr_state, thread_id,
 attempt_count, last_error, iteration, created_at, updated_at
+
+UNIQUE(url, task_description)  -- Same repo can have multiple tasks
 ```
+
+**Key Design**: The primary unit is a **(repository, task) pair**, not just a repository. This allows:
+- Same repository with different tasks (e.g., "Fix linting" vs "Update deps")
+- Each pair has independent state tracking
+- Multiple PRs from the same repo for different purposes
 
 **state_transitions** - Audit trail
 ```sql
@@ -291,36 +303,36 @@ parallel_fix --data-dir ~/my-fixes iterate --merged          # Force new iterati
 
 ```bash
 # Day 1: Setup and start
-cd /workspace/batch-fixes
-parallel_fix init
-parallel_fix add repos.txt --task "Migrate to new API"
-parallel_fix run --parallelism 8
+cd /workspace/my-fixes
+moon run real_world/parallel_fix -- --data-dir ~/.parallel-fix init
+moon run real_world/parallel_fix -- --data-dir ~/.parallel-fix add repos.txt --task "Migrate to new API"
+moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/.parallel-fix run --parallelism 8
 
 # ... work happens ...
 # ... system crashes ...
 
 # Day 2: Resume seamlessly
-parallel_fix run --parallelism 8  # Continues where it left off
+moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/.parallel-fix run --parallelism 8  # Continues where it left off
 
 # Day 3: Check status
-parallel_fix status
+moon run real_world/parallel_fix -- --data-dir ~/.parallel-fix status
 # Output:
 #   Total: 50
 #   Complete: 15 | PR_MERGED: 20 | PR_OPEN: 10
 #   Processing: 3 | Failed: 2
 
-# Sync PR states
-parallel_fix sync-prs
+# Sync PR states (planned)
+# moon run real_world/parallel_fix -- --data-dir ~/.parallel-fix sync-prs
 
-# Some PRs merged, auto-check for new work
-parallel_fix iterate --merged
+# Some PRs merged, auto-check for new work (planned)
+# moon run real_world/parallel_fix -- --data-dir ~/.parallel-fix iterate --merged
 # → 5 repos need more work, starting iteration 2
 
-# Clean up fully done repos
-parallel_fix clean --completed
+# Clean up fully done repos (planned)
+# moon run real_world/parallel_fix -- --data-dir ~/.parallel-fix clean --completed
 # → Removed 15 repos from queue
 
-# Retry failures
+# Retry failures (planned)
 parallel_fix retry --failed
 ```
 
@@ -330,7 +342,7 @@ parallel_fix retry --failed
 2. **Worker distribution**: Single machine or multi-machine?
 3. **Webhook support**: GitHub webhooks for PR updates?
 4. **UI/Dashboard**: Web interface for monitoring?
-5. **Notification**: Email/Slack when batches complete?
+5. **Notification**: Email/Slack when processing completes?
 
 ## Implementation Status
 
@@ -362,12 +374,7 @@ parallel_fix retry --failed
   - Set before subcommand
   - Passed to all subcommands consistently
 - ✅ Subcommand routing using `stop_early=true`
-
-**Quick Mode (Original)**
-- ✅ Parallel processing with semaphores
-- ✅ Two-phase AI workflow (WorkspaceWrite → DangerFullAccess)
-- ✅ Git operations (clone, branch, commit, push, PR)
-- ✅ Error handling and summary reporting
+- ✅ Removed batch mode - only stateful mode supported now
 
 ### 🚧 Phase 2: Reentrant Operations (In Progress)
 
@@ -401,40 +408,65 @@ parallel_fix retry --failed
 
 ## Usage Examples
 
-### Quick Mode (One-Off Batch Fix)
-
-```bash
-# Direct execution without persistence
-moon run real_world/parallel_fix -- repos.txt \
-  --task "Fix linting errors" \
-  --parallelism 8
-```
-
-### Stateful Mode (Reentrant Processing)
+### Stateful Mode
 
 **Key Concepts:**
 - `--work-dir`: Temporary directory for cloning repositories (can be cleaned)
 - `--data-dir`: Persistent directory for SQLite database (keeps state across runs)
-- Each repository can have its own task description
+- **Primary unit**: (repository, task) pair - same repo can have multiple tasks
+- Each (repo, task) pair has independent state tracking
 - Multiple tasks can run simultaneously on different repositories
 
+**Example 1: Different Tasks on Different Repos**
+
 ```bash
-# Initialize workspace with separate work and data directories
+# Initialize workspace
 moon run real_world/parallel_fix -- \
   --work-dir /tmp/fixes \
   --data-dir ~/.parallel-fix \
   init
 
-# Add repositories with task A
+# Add task A for some repositories
 moon run real_world/parallel_fix -- \
   --data-dir ~/.parallel-fix \
   add repos-task-a.txt --task "Fix linting errors"
 
-# Add more repositories with task B
+# Add task B for different repositories
 moon run real_world/parallel_fix -- \
   --data-dir ~/.parallel-fix \
   add repos-task-b.txt --task "Update dependencies to latest"
+```
 
+**Example 2: Multiple Tasks on Same Repos**
+
+```bash
+# Add same repos with different tasks - creates separate (repo, task) pairs
+moon run real_world/parallel_fix -- \
+  --data-dir ~/.parallel-fix \
+  add repos.txt --task "Fix linting errors"
+
+moon run real_world/parallel_fix -- \
+  --data-dir ~/.parallel-fix \
+  add repos.txt --task "Update dependencies"
+
+# Now each repo has TWO entries with different tasks
+# Status shows breakdown by task
+moon run real_world/parallel_fix -- \
+  --data-dir ~/.parallel-fix \
+  status
+
+# Output:
+#   Total repository-task pairs: 20  (10 repos × 2 tasks)
+#   Unique tasks: 2
+#   
+#   BREAKDOWN BY TASK:
+#     "Fix linting errors" - 10 repos
+#     "Update dependencies" - 10 repos
+```
+
+**Common Operations:**
+
+```bash
 # Check status (shows task for each repository)
 moon run real_world/parallel_fix -- \
   --data-dir ~/.parallel-fix \

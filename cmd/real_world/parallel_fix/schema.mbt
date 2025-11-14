@@ -6,15 +6,15 @@
 pub let schema_sql : String =
   #|CREATE TABLE IF NOT EXISTS repositories (
   #|    id INTEGER PRIMARY KEY AUTOINCREMENT,
-  #|    url TEXT NOT NULL UNIQUE,
+  #|    url TEXT NOT NULL,
   #|    name TEXT NOT NULL,
+  #|    task_description TEXT NOT NULL,
   #|    state TEXT NOT NULL,
   #|    created_at TEXT NOT NULL,
   #|    updated_at TEXT NOT NULL,
   #|    local_path TEXT,
   #|    default_branch TEXT,
   #|    current_branch TEXT,
-  #|    task_description TEXT,
   #|    pr_number INTEGER,
   #|    pr_url TEXT,
   #|    pr_state TEXT,
@@ -23,7 +23,8 @@ pub let schema_sql : String =
   #|    last_error TEXT,
   #|    last_success_at TEXT,
   #|    iteration INTEGER DEFAULT 1,
-  #|    metadata TEXT
+  #|    metadata TEXT,
+  #|    UNIQUE(url, task_description)
   #|);
   #|CREATE TABLE IF NOT EXISTS state_transitions (
   #|    id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,6 +61,8 @@ pub let schema_sql : String =
   #|);
   #|CREATE INDEX IF NOT EXISTS idx_repos_state ON repositories(state);
   #|CREATE INDEX IF NOT EXISTS idx_repos_updated ON repositories(updated_at);
+  #|CREATE INDEX IF NOT EXISTS idx_repos_url ON repositories(url);
+  #|CREATE INDEX IF NOT EXISTS idx_repos_task ON repositories(task_description);
   #|CREATE INDEX IF NOT EXISTS idx_queue_priority ON task_queue(priority DESC, scheduled_at);
   #|CREATE INDEX IF NOT EXISTS idx_transitions_repo ON state_transitions(repo_id, timestamp);
   #|CREATE INDEX IF NOT EXISTS idx_log_repo ON work_log(repo_id, timestamp);

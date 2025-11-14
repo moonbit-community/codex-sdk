@@ -183,16 +183,20 @@ pub async fn cmd_add(
     match state_mgr.add_repository(repo_url, repo_name, task_description) {
       Some(_id) => {
         added = added + 1
-        @stdio.stdout.write("  ✓ Added: \{repo_name}\n")
+        @stdio.stdout.write(
+          "  ✓ Added: \{repo_name} with task: \{task_description}\n",
+        )
       }
       None => {
         skipped = skipped + 1
-        @stdio.stdout.write("  - Skipped (already exists): \{repo_name}\n")
+        @stdio.stdout.write(
+          "  - Skipped (this repo+task pair already exists): \{repo_name}\n",
+        )
       }
     }
   }
   @stdio.stdout.write(
-    "\n✓ Done! Added \{added} repositories, skipped \{skipped}\n",
+    "\n✓ Done! Added \{added} repository-task pairs, skipped \{skipped}\n",
   )
   @stdio.stdout.write(
     "Next: moon run real_world/parallel_fix -- run --parallelism 8\n",
@@ -266,14 +270,36 @@ pub async fn cmd_status(
     return
   }
 
+  // Get all unique tasks
+  let all_tasks = state_mgr.get_all_tasks()
+
   // Count by state
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\nREPOSITORY STATUS\n")
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\n\n")
-  @stdio.stdout.write("Total repositories: \{total}\n\n")
+  @stdio.stdout.write("Total repository-task pairs: \{total}\n")
+  @stdio.stdout.write("Unique tasks: \{all_tasks.length()}\n\n")
 
-  // Show counts for each important state
+  // Show breakdown by task
+  @stdio.stdout.write("BREAKDOWN BY TASK:\n")
+  for task in all_tasks {
+    let task_total = state_mgr.count_by_task_and_state(task, Pending) +
+      state_mgr.count_by_task_and_state(task, Complete) +
+      state_mgr.count_by_task_and_state(task, Failed) +
+      state_mgr.count_by_task_and_state(task, Retry) +
+      state_mgr.count_by_task_and_state(task, Cloning) +
+      state_mgr.count_by_task_and_state(task, Cloned) +
+      state_mgr.count_by_task_and_state(task, Fixing) +
+      state_mgr.count_by_task_and_state(task, Committed) +
+      state_mgr.count_by_task_and_state(task, PrOpen) +
+      state_mgr.count_by_task_and_state(task, PrMerged)
+    @stdio.stdout.write("  \"\{task}\" - \{task_total} repos\n")
+  }
+  @stdio.stdout.write("\n")
+
+  // Show counts for each important state (overall)
+  @stdio.stdout.write("OVERALL STATE COUNTS:\n")
   let states_to_show = [
     (Pending, "Pending"),
     (Cloning, "Cloning"),
@@ -300,36 +326,47 @@ pub async fn cmd_status(
   if verbose {
     @stdio.stdout.write("\n")
     @stdio.stdout.write("=".repeat(60))
-    @stdio.stdout.write("\nDETAILED REPOSITORY LIST\n")
+    @stdio.stdout.write("\nDETAILED LIST (Grouped by Task)\n")
     @stdio.stdout.write("=".repeat(60))
     @stdio.stdout.write("\n\n")
-    let mut i = 0
-    while i < states_to_show.length() {
-      let (state, label) = states_to_show[i]
-      let repos = state_mgr.get_repos_in_state(state)
-      if repos.length() > 0 {
-        @stdio.stdout.write("[\{label}]\n")
-        for repo in repos {
-          let task_info = match repo.task_description {
-            Some(task) => " - Task: \{task}"
-            None => ""
+
+    // Group by task
+    for task in all_tasks {
+      @stdio.stdout.write("TASK: \"\{task}\"\n")
+      @stdio.stdout.write("-".repeat(60))
+      @stdio.stdout.write("\n")
+      let mut i = 0
+      while i < states_to_show.length() {
+        let (state, label) = states_to_show[i]
+        let repos = state_mgr.get_repos_in_state(state)
+        let task_repos = repos.filter(fn(r) {
+          match r.task_description {
+            Some(t) => t == task
+            None => false
           }
-          @stdio.stdout.write("  - \{repo.name}\{task_info}\n")
-          @stdio.stdout.write("    URL: \{repo.url}\n")
-          if repo.attempt_count > 0 {
-            @stdio.stdout.write("    Attempts: \{repo.attempt_count}\n")
-          }
-          match repo.last_error {
-            Some(err) => @stdio.stdout.write("    Last error: \{err}\n")
-            None => ()
+        })
+        if task_repos.length() > 0 {
+          @stdio.stdout.write("  [\{label}]\n")
+          for repo in task_repos {
+            @stdio.stdout.write("    - \{repo.name}\n")
+            @stdio.stdout.write("      URL: \{repo.url}\n")
+            if repo.attempt_count > 0 {
+              @stdio.stdout.write("      Attempts: \{repo.attempt_count}\n")
+            }
+            match repo.last_error {
+              Some(err) => @stdio.stdout.write("      Last error: \{err}\n")
+              None => ()
+            }
           }
         }
-        @stdio.stdout.write("\n")
+        i = i + 1
       }
-      i = i + 1
+      @stdio.stdout.write("\n")
     }
   } else {
-    @stdio.stdout.write("\nUse --verbose or -v for detailed repository list\n")
+    @stdio.stdout.write(
+      "\nUse --verbose or -v for detailed repository list grouped by task\n",
+    )
   }
 }
 

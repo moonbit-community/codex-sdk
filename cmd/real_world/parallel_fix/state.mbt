@@ -130,16 +130,22 @@ pub async fn StateManager::add_repository(
   task_description : String,
 ) -> Int? {
   let now = now()
-  let sql = "INSERT INTO repositories (url, name, state, task_description, created_at, updated_at) VALUES ('\{url}', '\{name}', 'PENDING', '\{task_description}', '\{now}', '\{now}');"
+  // Use INSERT OR IGNORE to handle duplicate (url, task_description) pairs
+  let sql = "INSERT OR IGNORE INTO repositories (url, name, state, task_description, created_at, updated_at) VALUES ('\{url}', '\{name}', 'PENDING', '\{task_description}', '\{now}', '\{now}');"
   if !self.db.exec(sql) {
     return None
   }
 
   // Get the last inserted row ID
+  // If it was ignored (duplicate), last_insert_rowid() returns 0
   match self.db.exec_string("SELECT last_insert_rowid();") {
     Some(id_str) => {
       let id = @strconv.parse_int(id_str) catch { _ => return None }
-      Some(id)
+      if id == 0 {
+        None // Was a duplicate
+      } else {
+        Some(id) // New insertion
+      }
     }
     None => None
   }
@@ -264,6 +270,40 @@ pub async fn StateManager::count_by_state(
 /// Get total repository count
 pub async fn StateManager::total_count(self : StateManager) -> Int {
   self.db.count("repositories")
+}
+
+///|
+/// Get all unique tasks
+pub async fn StateManager::get_all_tasks(self : StateManager) -> Array[String] {
+  let sql = "SELECT DISTINCT task_description FROM repositories ORDER BY task_description;"
+  let rows = self.db.query(sql).unwrap_or([])
+  let tasks = []
+  for row in rows {
+    match row {
+      Object(obj) =>
+        match obj.get("task_description") {
+          Some(String(task)) => tasks.push(task)
+          _ => continue
+        }
+      _ => continue
+    }
+  }
+  tasks
+}
+
+///|
+/// Count repositories by task and state
+pub async fn StateManager::count_by_task_and_state(
+  self : StateManager,
+  task : String,
+  state : RepoState,
+) -> Int {
+  let state_str = state.to_string()
+  let sql = "SELECT COUNT(*) FROM repositories WHERE task_description = '\{task}' AND state = '\{state_str}';"
+  match self.db.exec_string(sql) {
+    Some(count_str) => @strconv.parse_int(count_str) catch { _ => 0 }
+    None => 0
+  }
 }
 
 ///|
