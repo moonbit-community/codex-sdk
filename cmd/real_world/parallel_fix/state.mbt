@@ -15,48 +15,50 @@ pub enum RepoState {
   PrMerged
   Complete
   Retry
-} derive(Show, Eq)
+} derive(Eq)
 
 ///|
 /// Convert RepoState to string for database storage
-pub fn RepoState::to_string(self : RepoState) -> String {
-  match self {
-    Pending => "PENDING"
-    Cloning => "CLONING"
-    Branching => "BRANCHING"
-    Fixing => "FIXING"
-    Committing => "COMMITTING"
-    Pushing => "PUSHING"
-    PrCreating => "PR_CREATING"
-    PrOpen => "PR_OPEN"
-    PrChangesRequested => "PR_CHANGES_REQUESTED"
-    PrApproved => "PR_APPROVED"
-    PrConflicts => "PR_CONFLICTS"
-    PrMerged => "PR_MERGED"
-    Complete => "COMPLETE"
-    Retry => "RETRY"
-  }
+pub impl Show for RepoState with output(self : RepoState, logger) {
+  logger.write_string(
+    match self {
+      Pending => "PENDING"
+      Cloning => "CLONING"
+      Branching => "BRANCHING"
+      Fixing => "FIXING"
+      Committing => "COMMITTING"
+      Pushing => "PUSHING"
+      PrCreating => "PR_CREATING"
+      PrOpen => "PR_OPEN"
+      PrChangesRequested => "PR_CHANGES_REQUESTED"
+      PrApproved => "PR_APPROVED"
+      PrConflicts => "PR_CONFLICTS"
+      PrMerged => "PR_MERGED"
+      Complete => "COMPLETE"
+      Retry => "RETRY"
+    },
+  )
 }
 
 ///|
 /// Parse RepoState from string
-pub fn RepoState::from_string(s : String) -> RepoState? {
+pub impl @strconv.FromStr for RepoState with from_str(s) {
   match s {
-    "PENDING" => Some(Pending)
-    "CLONING" => Some(Cloning)
-    "BRANCHING" => Some(Branching)
-    "FIXING" => Some(Fixing)
-    "COMMITTING" => Some(Committing)
-    "PUSHING" => Some(Pushing)
-    "PR_CREATING" => Some(PrCreating)
-    "PR_OPEN" => Some(PrOpen)
-    "PR_CHANGES_REQUESTED" => Some(PrChangesRequested)
-    "PR_APPROVED" => Some(PrApproved)
-    "PR_CONFLICTS" => Some(PrConflicts)
-    "PR_MERGED" => Some(PrMerged)
-    "COMPLETE" => Some(Complete)
-    "RETRY" => Some(Retry)
-    _ => None
+    "PENDING" => Pending
+    "CLONING" => Cloning
+    "BRANCHING" => Branching
+    "FIXING" => Fixing
+    "COMMITTING" => Committing
+    "PUSHING" => Pushing
+    "PR_CREATING" => PrCreating
+    "PR_OPEN" => PrOpen
+    "PR_CHANGES_REQUESTED" => PrChangesRequested
+    "PR_APPROVED" => PrApproved
+    "PR_CONFLICTS" => PrConflicts
+    "PR_MERGED" => PrMerged
+    "COMPLETE" => Complete
+    "RETRY" => Retry
+    _ => raise @strconv.StrConvError("Unknown RepoState: \{s}")
   }
 }
 
@@ -153,10 +155,10 @@ pub async fn StateManager::transition(
   let state_str = to_state.to_string()
 
   // Get current state for logging
-  let from_state = match self.get_repo_state_unlocked(repo_id) {
-    Some(state) => state.to_string()
-    None => "NULL"
-  }
+  let from_state = self.get_repo_state_unlocked(repo_id).to_string() catch {
+      @strconv.StrConvError(_) => "NULL"
+      e => @error.reraise(e)
+    }
 
   // Update repository state
   let update_sql = "UPDATE repositories SET state = '\{state_str}', updated_at = '\{now}' WHERE id = \{repo_id};"
@@ -183,9 +185,11 @@ pub async fn StateManager::transition(
 async fn StateManager::get_repo_state_unlocked(
   self : StateManager,
   repo_id : Int,
-) -> RepoState? {
+) -> RepoState {
   let sql = "SELECT state FROM repositories WHERE id = \{repo_id};"
-  RepoState::from_string(self.db.exec_string(sql))
+  RepoState::from_str(self.db.exec_string(sql)) catch {
+    e => @error.reraise(e)
+  }
 }
 
 ///|
@@ -193,10 +197,12 @@ async fn StateManager::get_repo_state_unlocked(
 pub async fn StateManager::get_repo_state(
   self : StateManager,
   repo_id : Int,
-) -> RepoState? {
+) -> RepoState {
   self.db_lock.acquire()
   defer self.db_lock.release()
-  self.get_repo_state_unlocked(repo_id)
+  self.get_repo_state_unlocked(repo_id) catch {
+    e => @error.reraise(e)
+  }
 }
 
 ///|
@@ -229,7 +235,9 @@ pub async fn StateManager::get_repos_in_state(
           id: id.to_int(),
           url,
           name,
-          state: RepoState::from_string(state_str).unwrap_or(Pending),
+          state: RepoState::from_str(state_str) catch {
+            StrConvError(_) => Pending
+          },
           local_path: None,
           default_branch: None,
           current_branch: None,
@@ -402,7 +410,9 @@ pub async fn StateManager::get_repository_full(
         id: id.to_int(),
         url,
         name,
-        state: RepoState::from_string(state_str).unwrap_or(Pending),
+        state: RepoState::from_str(state_str) catch {
+          StrConvError(_) => Pending
+        },
         local_path: match local_path {
           Some(String(s)) if !s.is_empty() => Some(s)
           _ => None
@@ -510,7 +520,9 @@ pub async fn StateManager::get_processable_repos(
           id: id.to_int(),
           url,
           name,
-          state: RepoState::from_string(state_str).unwrap_or(Pending),
+          state: RepoState::from_str(state_str) catch {
+            StrConvError(_) => Pending
+          },
           local_path: match local_path {
             Some(String(s)) if !s.is_empty() => Some(s)
             _ => None
