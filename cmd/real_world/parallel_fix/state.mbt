@@ -1,20 +1,23 @@
 ///|
 /// Repository processing states
+/// Simplified: only track major business states in database
+/// Internal steps (commit, push, create PR) are not tracked as states
 pub enum RepoState {
   Pending
   Cloning
   Branching
-  Fixing
+  Fixing // Internal: commit → push → create PR → transition to PrOpen
+  PrOpen // AI continuously monitors and decides next action
+  Complete
+  Retry
+  // Deprecated states (auto-migrated on read)
   Committing
   Pushing
   PrCreating
-  PrOpen
   PrChangesRequested
   PrApproved
   PrConflicts
   PrMerged
-  Complete
-  Retry
 } derive(Eq)
 
 ///|

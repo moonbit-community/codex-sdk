@@ -85,12 +85,14 @@ The tool separates working files from persistent data:
 **Main Flow:**
 
 ```
-PENDING → CLONING → BRANCHING → FIXING → COMMITTING → PUSHING → PR_CREATING → PR_OPEN
-                                   ↓                                              ↓
-                                   ↓                                [AI fetches PR state
-                                   ↓                                 and decides action]
-                                   ↓                                              ↓
-                                   └──────────────────────────────────────────> COMPLETE
+PENDING → CLONING → BRANCHING → FIXING → PR_OPEN → COMPLETE
+                                   ↓         ↓
+                                   ↓         [AI fetches PR state,
+                                   ↓          decides action, may loop back to FIXING]
+                                   ↓         ↓
+                                   └─────────┘
+
+Internal (not tracked in DB): commit → push → create PR happens within FIXING→PR_OPEN transition
 ```
 
 **Control Flow Philosophy:**
@@ -123,21 +125,18 @@ PENDING → CLONING → BRANCHING → FIXING → COMMITTING → PUSHING → PR_C
 - `BRANCHING`: Feature branch being created
 - `FIXING`: AI agent running fixes on the codebase
   - **AI Decision Point**: Check if there's actually work to do
-    - If no changes needed → transition to `COMPLETE` (task done, no PR
-      required)
-    - If changes found → transition to `COMMITTING`
-- `COMMITTING`: Changes being committed to the branch
-- `PUSHING`: Branch being pushed to remote
-- `PR_CREATING`: Creating or finding the pull request
-- `PR_OPEN`: PR exists and AI needs to decide next action
+    - If no changes needed → transition to `COMPLETE` (task done, no PR required)
+    - If changes found → internally commit, push, create PR → transition to `PR_OPEN`
+  - Internal steps (not database states): commit → push → create PR
+- `PR_OPEN`: PR exists, AI continuously monitors and decides next action
   - **AI Decision Point**: Fetch PR state from GitHub and decide:
-    - If merged → transition to `COMPLETE`
-    - If changes requested or conflicts → go back to `FIXING`
-    - If approved or open with no issues → transition to `COMPLETE`
-  - AI makes the decision, but uses GitHub as the information source
+    - If merged or closed → transition to `COMPLETE`
+    - If changes requested, conflicts, or other issues → AI decides whether to go back to `FIXING` or stay in `PR_OPEN`
+    - If approved or still being reviewed → AI decides to wait (stay in `PR_OPEN`) or complete
+  - AI has full autonomy to decide the next action based on current PR state
 - `COMPLETE`: Task finished successfully
   - Either: no changes needed (no PR created)
-  - Or: PR decision made (merged, approved, or AI determined complete)
+  - Or: PR merged/closed, or AI determined no further action needed
 - `RETRY`: Transient error during current run, will be retried
 
 **Error Handling:**
@@ -148,20 +147,20 @@ PENDING → CLONING → BRANCHING → FIXING → COMMITTING → PUSHING → PR_C
 
 **Key Design Decisions:**
 
-- **AI has control throughout**: Before PR, AI controls workflow. After PR, AI
-  controls decisions based on GitHub state.
-- **Simplified PR states**: No explicit PR_CHANGES_REQUESTED, PR_APPROVED,
-  PR_CONFLICTS, PR_MERGED states - just PR_OPEN with dynamic fetching
+- **AI has full autonomy**: Both before and after PR creation, AI makes all decisions
+  - Before PR: AI decides if work is needed
+  - After PR: AI fetches GitHub state and decides next action (wait, fix, or complete)
+- **Simplified state machine**: Only 7 database states (PENDING, CLONING, BRANCHING, FIXING, PR_OPEN, COMPLETE, RETRY)
+  - Removed COMMITTING, PUSHING, PR_CREATING - these are internal steps within FIXING→PR_OPEN transition
+- **Internal transaction**: commit → push → create PR happens atomically when transitioning from FIXING to PR_OPEN
 - **Two AI decision points**:
   - During FIXING: AI decides if work is needed
-  - During PR_OPEN: AI fetches GitHub state and decides next action
-- Direct action-to-action transitions: No intermediate states for clone, branch,
-  commit, push
+  - During PR_OPEN: AI fetches GitHub state and decides next action (loop back to FIXING, stay in PR_OPEN, or complete)
+- **GitHub as information source**: After PR creation, GitHub provides state, AI makes decisions
 - No `FAILED` state - failures are transient, not persisted across runs
-- Simpler flow: repos don't get stuck in multiple PR-related states
+- Simpler flow: fewer database states, more internal logic
 - Better concurrency: fewer state transitions reduce database contention
-- Fresh start philosophy: Each run processes all repositories without historical
-  failure baggage
+- Fresh start philosophy: Each run processes all repositories without historical failure baggage
 
 ## Database Schema (SQLite)
 

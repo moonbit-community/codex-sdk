@@ -404,8 +404,8 @@ pub async fn cmd_sync_prs(
   }
 
   // Check if gh is available
-  if !is_gh_available() {
-    @error.fail("GitHub CLI (gh) not found. Please install it to sync PRs.")
+  ensure_gh_available() catch {
+    e => @error.reraise(e)
   }
   @stdio.stdout.write("Syncing PR status from GitHub...\n\n")
 
@@ -670,9 +670,7 @@ pub async fn cmd_run(
     @stdio.stdout.write("\nNo repositories to process.\n")
     return
   }
-  @stdio.stdout.write(
-    "\nProcessing \{all_repos.length()} repositories...\n\n",
-  )
+  @stdio.stdout.write("\nProcessing \{all_repos.length()} repositories...\n\n")
 
   // Process all repositories in parallel with bounded concurrency
   let mut processed = 0
@@ -686,7 +684,9 @@ pub async fn cmd_run(
         processed = processed + 1
         process_repository_stateful(config, repo) catch {
           e =>
-            @stdio.stderr.write("error [\{repo.name}] - Unexpected error: \{e}\n")
+            @stdio.stderr.write(
+              "error [\{repo.name}] - Unexpected error: \{e}\n",
+            )
         }
         successful = successful + 1
       })

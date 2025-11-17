@@ -24,12 +24,13 @@ pub fn get_timestamp() -> String {
 ///|
 /// Check if GitHub CLI (gh) is available
 /// Returns true if gh is installed, false otherwise
-pub async fn is_gh_available() -> Bool {
-  let (_, discard_read) = @process.read_from_process()
-  let status = @process.run("which", ["gh"], stdout=discard_read) catch {
-    _ => 1
+pub async fn ensure_gh_available() -> Unit {
+  let (status, output) = @process.collect_output_merged("which", ["gh"]) catch {
+    e => @error.reraise(e)
   }
-  status == 0
+  if status != 0 {
+    @error.fail("GitHub CLI (gh) is not available. \{output.text()}")
+  }
 }
 
 ///|
@@ -66,9 +67,8 @@ pub async fn fetch_pr_state(
   pr_number : Int,
 ) -> PrStateInfo? {
   // Check if gh is available
-  let which_status = @process.run("which", ["gh"]) catch { _ => 1 }
-  if which_status != 0 {
-    return None
+  ensure_gh_available() catch {
+    e => @error.reraise(e)
   }
 
   // Fetch PR details using gh api
@@ -111,4 +111,26 @@ pub async fn fetch_pr_state(
     }
     _ => None
   }
+}
+
+///|
+/// Fetch PR review comments from GitHub using gh CLI
+/// Returns the comments as a formatted string, or None if unable to fetch
+pub async fn fetch_pr_comments(clone_path : String, pr_number : Int) -> String {
+  ensure_gh_available() catch {
+    e => @error.reraise(e)
+  }
+
+  // Fetch PR review comments
+  let (status, stdout, stderr) = @process.collect_output(
+    "gh",
+    ["pr", "view", pr_number.to_string(), "--comments"],
+    cwd=clone_path,
+  ) catch {
+    e => @error.fail_with("Failed to fetch PR comments", e)
+  }
+  if status != 0 {
+    @error.fail("Failed to fetch PR comments: \{stdout.text()}\{stderr.text()}")
+  }
+  stdout.text()
 }
