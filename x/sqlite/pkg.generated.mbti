@@ -8,19 +8,18 @@ async fn check_sqlite3() -> Bool
 
 // Types and methods
 type Database
-async fn Database::begin_transaction(Self) -> Bool
-async fn Database::commit(Self) -> Bool
+async fn Database::begin_transaction(Self) -> Unit
+async fn Database::commit(Self) -> Unit
 async fn Database::count(Self, String) -> Int
-async fn Database::exec(Self, String) -> Bool
-async fn Database::exec_file(Self, String) -> Bool
-async fn Database::exec_string(Self, String) -> String?
+async fn Database::exec(Self, String) -> Unit
+async fn Database::exec_file(Self, String) -> Unit
+async fn Database::exec_string(Self, String) -> String
 async fn Database::exists(Self) -> Bool
 fn Database::new(String) -> Self
-async fn Database::query(Self, String) -> Array[Json]?
-async fn Database::query_csv(Self, String) -> Array[Array[String]]
+async fn Database::query(Self, String) -> Array[Json]
 async fn Database::query_one(Self, String) -> Json?
-async fn Database::rollback(Self) -> Bool
-async fn Database::transaction(Self, Array[String]) -> Bool
+async fn Database::rollback(Self) -> Unit
+async fn Database::transaction(Self, Array[String]) -> Unit
 
 // Type aliases
 

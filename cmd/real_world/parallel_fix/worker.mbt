@@ -13,6 +13,7 @@ struct WorkerConfig {
 ///|
 /// Process a repository based on its current state
 /// This is the main state-driven processing function
+/// Continues processing through states until reaches a terminal or async state
 pub async fn process_repository_stateful(
   config : WorkerConfig,
   repo : RepositoryRecord,
@@ -25,48 +26,103 @@ pub async fn process_repository_stateful(
 
   // Process based on current state
   match repo.state {
-    Pending | Retry =>
-      start_cloning(config, repo) catch {
+    Retry => {
+      // RETRY is deprecated - it was used to mark transient errors
+      // We should not restart from the beginning, but determine the actual state
+      // Check what fields are set to infer the real state
+      let actual_state = if repo.pr_url is Some(_) {
+        // Has PR URL, should be in PR_OPEN
+        PrOpen
+      } else if repo.current_branch is Some(_) {
+        // Has current branch, should be in FIXING or later
+        Fixing
+      } else if repo.default_branch is Some(_) {
+        // Has default branch, should be in BRANCHING
+        Branching
+      } else if repo.local_path is Some(_) {
+        // Has local path, should be in CLONING or BRANCHING
+        Cloning
+      } else {
+        // Nothing set, start from beginning
+        Pending
+      }
+      @stdio.stdout.write(
+        "warning [\{repo_name}] - Deprecated RETRY state detected, inferring actual state as \{actual_state}\n",
+      )
+
+      // Update to inferred state
+      config.state_mgr.transition(
+        repo_id,
+        actual_state,
+        Some("Migrated from RETRY to inferred state"),
+      ) catch {
+        e => @error.reraise(e)
+      }
+
+      // Now process from the inferred state by recursing
+      let updated_repo = config.state_mgr.get_repository(repo_id) catch {
+        e => @error.reraise(e)
+      }
+      process_repository_stateful(config, updated_repo)
+    }
+    Pending =>
+      // Start from cloning and continue through all states
+      process_from_cloning(config, repo) catch {
         e =>
-          handle_error(config, repo_id, repo_name, "cloning", e.to_string()) catch {
-            err => @error.reraise(err)
-          }
+          handle_error_transient(
+            config,
+            repo_id,
+            repo_name,
+            "cloning",
+            e.to_string(),
+          )
       }
     Cloning =>
-      do_clone(config, repo) catch {
+      // Continue from current state
+      process_from_cloning(config, repo) catch {
         e =>
-          handle_error(config, repo_id, repo_name, "cloning", e.to_string()) catch {
-            err => @error.reraise(err)
-          }
+          handle_error_transient(
+            config,
+            repo_id,
+            repo_name,
+            "cloning",
+            e.to_string(),
+          )
       }
     Branching =>
-      do_branch(config, repo) catch {
+      process_from_branching(config, repo) catch {
         e =>
-          handle_error(config, repo_id, repo_name, "branching", e.to_string()) catch {
-            err => @error.reraise(err)
-          }
+          handle_error_transient(
+            config,
+            repo_id,
+            repo_name,
+            "branching",
+            e.to_string(),
+          )
       }
     Fixing =>
       // FIXING now handles: AI fix → commit → push → create PR → transition to PR_OPEN
-      do_fix(config, repo) catch {
+      process_from_fixing(config, repo) catch {
         e =>
-          handle_error(config, repo_id, repo_name, "fixing", e.to_string()) catch {
-            err => @error.reraise(err)
-          }
+          handle_error_transient(
+            config,
+            repo_id,
+            repo_name,
+            "fixing",
+            e.to_string(),
+          )
       }
     PrOpen =>
       // AI continuously monitors PR and decides next action
       do_handle_pr(config, repo) catch {
         e =>
-          handle_error(
+          handle_error_transient(
             config,
             repo_id,
             repo_name,
             "PR monitoring",
             e.to_string(),
-          ) catch {
-            err => @error.reraise(err)
-          }
+          )
       }
     // Handle deprecated states - migrate to appropriate current state
     Committing | Pushing | PrCreating => {
@@ -98,47 +154,93 @@ pub async fn process_repository_stateful(
 }
 
 ///|
-/// Handle error during processing
-async fn handle_error(
+/// Process from cloning state and continue through subsequent states
+async fn process_from_cloning(
   config : WorkerConfig,
-  repo_id : Int,
-  repo_name : String,
-  phase : String,
-  error : String,
+  repo : RepositoryRecord,
 ) -> Unit raise Error {
-  @stdio.stderr.write(
-    "error [\{repo_name}] - Failed during \{phase}: \{error}\n",
-  )
-  config.state_mgr.log(repo_id, "ERROR", "Failed during \{phase}: \{error}") catch {
+  // Do clone
+  do_clone(config, repo) catch {
     e => @error.reraise(e)
   }
 
-  // Update error and transition to Retry
-  let updates = [("last_error", error)]
-  config.state_mgr.update_repository(repo_id, updates) catch {
+  // Fetch updated repo to get the new state
+  let updated_repo = config.state_mgr.get_repository(repo.id) catch {
     e => @error.reraise(e)
   }
-  config.state_mgr.transition(
-    repo_id,
-    Retry,
-    Some("Retry after \{phase} error"),
-  ) catch {
+
+  // Continue to branching if clone succeeded
+  if updated_repo.state == Branching {
+    process_from_branching(config, updated_repo) catch {
+      e => @error.reraise(e)
+    }
+  }
+}
+
+///|
+/// Process from branching state and continue through subsequent states
+async fn process_from_branching(
+  config : WorkerConfig,
+  repo : RepositoryRecord,
+) -> Unit raise Error {
+  // Do branch
+  do_branch(config, repo) catch {
+    e => @error.reraise(e)
+  }
+
+  // Fetch updated repo to get the new state
+  let updated_repo = config.state_mgr.get_repository(repo.id) catch {
+    e => @error.reraise(e)
+  }
+
+  // Continue to fixing if branch succeeded
+  if updated_repo.state == Fixing {
+    process_from_fixing(config, updated_repo) catch {
+      e => @error.reraise(e)
+    }
+  }
+}
+
+///|
+/// Process from fixing state (terminal for this flow - AI work is async)
+async fn process_from_fixing(
+  config : WorkerConfig,
+  repo : RepositoryRecord,
+) -> Unit raise Error {
+  // Do fix - this is the AI work, which is async and may take time
+  // After this, state will be either Complete or PrOpen
+  do_fix(config, repo) catch {
     e => @error.reraise(e)
   }
 }
 
 ///|
-/// Start cloning phase
-async fn start_cloning(
+/// Handle error during processing (transient - log but don't change state)
+/// Errors are logged but we don't persist RETRY state to database
+async fn handle_error_transient(
   config : WorkerConfig,
-  repo : RepositoryRecord,
-) -> Unit raise Error {
-  config.state_mgr.transition(repo.id, Cloning, Some("Starting clone")) catch {
-    e => @error.reraise(e)
+  repo_id : Int,
+  repo_name : String,
+  phase : String,
+  error : String,
+) -> Unit {
+  @stdio.stderr.write(
+    "error [\{repo_name}] - Failed during \{phase}: \{error}\n",
+  )
+
+  // Log error for debugging but don't transition to RETRY
+  // The error will be visible in logs but not persisted as state
+  config.state_mgr.log(repo_id, "ERROR", "Failed during \{phase}: \{error}") catch {
+    e => @stdio.stderr.write("warning Failed to log error: \{e}\n")
   }
-  do_clone(config, repo) catch {
-    e => @error.reraise(e)
+
+  // Update last_error field for status visibility
+  let updates = [("last_error", error)]
+  config.state_mgr.update_repository(repo_id, updates) catch {
+    e => @stdio.stderr.write("warning Failed to update error field: \{e}\n")
   }
+
+  // Don't transition to RETRY - let the next run try from current state
 }
 
 ///|

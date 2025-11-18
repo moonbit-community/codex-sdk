@@ -109,6 +109,148 @@ pub async fn StateManager::init(self : StateManager) -> Unit {
   self.db.exec(schema_sql) catch {
     e => @error.fail_with("Failed to initialize database schema", e)
   }
+  
+  // Run migration to handle deprecated states
+  self.migrate_deprecated_states() catch {
+    e => @error.fail_with("Failed to migrate deprecated states", e)
+  }
+}
+
+///|
+/// Migrate deprecated states to current states
+/// This ensures backward compatibility with existing databases
+async fn StateManager::migrate_deprecated_states(self : StateManager) -> Unit {
+  let now = now()
+  
+  // Note: RETRY state is NOT migrated here
+  // Worker code handles RETRY by inferring the actual state from set fields
+  // This prevents losing progress (e.g., RETRY in BRANCHING shouldn't go back to PENDING)
+  
+  // First, recover any corrupted states caused by previous bad migrations
+  // Check all PENDING repos - if they have fields set, they should be in a more advanced state
+  self.recover_corrupted_states() catch {
+    e => {
+      @stdio.stderr.write("warning Failed to recover corrupted states: \{e}\n")
+    }
+  }
+  
+  // Migrate deprecated PR states to PR_OPEN
+  let pr_states = ["PR_CHANGES_REQUESTED", "PR_APPROVED", "PR_CONFLICTS", "PR_MERGED"]
+  for old_state in pr_states {
+    let pr_sql = "UPDATE repositories SET state = 'PR_OPEN', updated_at = '\{now}' WHERE state = '\{old_state}';"
+    self.db.exec(pr_sql) catch {
+      e => @error.reraise(e)
+    }
+    
+    let pr_count_str = self.db.exec_string("SELECT changes();")
+    let pr_count = @strconv.parse_int(pr_count_str.trim(chars=" \r\n\t")) catch {
+      _ => 0
+    }
+    if pr_count > 0 {
+      @stdio.stdout.write("info Migrated \{pr_count} repositories from \{old_state} to PR_OPEN\n")
+    }
+  }
+  
+  // Migrate deprecated intermediate states to FIXING
+  let intermediate_states = ["COMMITTING", "PUSHING", "PR_CREATING"]
+  for old_state in intermediate_states {
+    let int_sql = "UPDATE repositories SET state = 'FIXING', updated_at = '\{now}' WHERE state = '\{old_state}';"
+    self.db.exec(int_sql) catch {
+      e => @error.reraise(e)
+    }
+    
+    let int_count_str = self.db.exec_string("SELECT changes();")
+    let int_count = @strconv.parse_int(int_count_str.trim(chars=" \r\n\t")) catch {
+      _ => 0
+    }
+    if int_count > 0 {
+      @stdio.stdout.write("info Migrated \{int_count} repositories from \{old_state} to FIXING\n")
+    }
+  }
+}
+
+///|
+/// Recover corrupted states caused by bad migrations
+/// This checks if state matches the actual progress (based on set fields)
+async fn StateManager::recover_corrupted_states(self : StateManager) -> Unit {
+  let now = now()
+  
+  // Get all repos that might have corrupted states
+  // A PENDING repo with fields set is likely corrupted
+  let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, pr_url FROM repositories WHERE state IN ('PENDING', 'CLONING', 'BRANCHING');"
+  let rows = self.db.query(sql)
+  
+  let mut recovered = 0
+  
+  for row in rows {
+    match row {
+      Object(
+        {
+          "id": Number(id, ..),
+          "name": String(name),
+          "state": String(current_state),
+          "local_path"? : local_path,
+          "default_branch"? : default_branch,
+          "current_branch"? : current_branch,
+          "pr_url"? : pr_url,
+          ..
+        }
+      ) => {
+        let repo_id = id.to_int()
+        
+        // Infer what state this repo should be in based on fields
+        let inferred_state = if pr_url is Some(String(url)) && !url.is_empty() {
+          "PR_OPEN"
+        } else if current_branch is Some(String(b)) && !b.is_empty() {
+          "FIXING"
+        } else if default_branch is Some(String(db)) && !db.is_empty() {
+          "BRANCHING"
+        } else if local_path is Some(String(lp)) && !lp.is_empty() {
+          "CLONING"
+        } else {
+          "PENDING"
+        }
+        
+        // If inferred state is more advanced than current state, recover it
+        let needs_recovery = match current_state {
+          "PENDING" => inferred_state != "PENDING"
+          "CLONING" => inferred_state != "PENDING" && inferred_state != "CLONING"
+          "BRANCHING" => inferred_state != "PENDING" && inferred_state != "CLONING" && inferred_state != "BRANCHING"
+          _ => false
+        }
+        
+        if needs_recovery {
+          @stdio.stdout.write(
+            "info Recovering corrupted state for [\{name}]: \{current_state} → \{inferred_state}\n",
+          )
+          
+          // Update to inferred state
+          let update_sql = "UPDATE repositories SET state = '\{inferred_state}', updated_at = '\{now}' WHERE id = \{repo_id};"
+          self.db.exec(update_sql) catch {
+            e => {
+              @stdio.stderr.write("warning Failed to recover state for \{name}: \{e}\n")
+              continue
+            }
+          }
+          
+          // Log the recovery
+          let log_sql = "INSERT INTO state_transitions (repo_id, from_state, to_state, timestamp, details) VALUES (\{repo_id}, '\{current_state}', '\{inferred_state}', '\{now}', 'Recovered from corrupted state');"
+          self.db.exec(log_sql) catch {
+            e => {
+              @stdio.stderr.write("warning Failed to log recovery for \{name}: \{e}\n")
+            }
+          }
+          
+          recovered = recovered + 1
+        }
+      }
+      _ => continue
+    }
+  }
+  
+  if recovered > 0 {
+    @stdio.stdout.write("info Recovered \{recovered} repositories from corrupted states\n")
+  }
 }
 
 ///|
@@ -465,6 +607,18 @@ pub async fn StateManager::get_repository_full(
         updated_at,
       })
     _ => None
+  }
+}
+
+///|
+/// Get repository record by ID (alias for get_repository_full that raises error if not found)
+pub async fn StateManager::get_repository(
+  self : StateManager,
+  repo_id : Int,
+) -> RepositoryRecord {
+  match self.get_repository_full(repo_id) {
+    Some(repo) => repo
+    None => @error.fail("Repository with id \{repo_id} not found")
   }
 }
 

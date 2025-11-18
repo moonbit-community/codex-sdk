@@ -233,6 +233,13 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   if !state_mgr.db.exists() {
     @error.fail("Database not found. Please run 'init' first.")
   }
+  
+  // Migrate deprecated states from old databases (silent - no output unless something found)
+  state_mgr.migrate_deprecated_states() catch {
+    e => {
+      @stdio.stderr.write("warning Failed to migrate deprecated states: \{e}\n")
+    }
+  }
 
   // Get total count
   let total = state_mgr.total_count()
@@ -261,12 +268,8 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
       state_mgr.count_by_task_and_state(task, Cloning) +
       state_mgr.count_by_task_and_state(task, Branching) +
       state_mgr.count_by_task_and_state(task, Fixing) +
-      state_mgr.count_by_task_and_state(task, Committing) +
-      state_mgr.count_by_task_and_state(task, Pushing) +
-      state_mgr.count_by_task_and_state(task, PrCreating) +
       state_mgr.count_by_task_and_state(task, PrOpen) +
-      state_mgr.count_by_task_and_state(task, Complete) +
-      state_mgr.count_by_task_and_state(task, Retry)
+      state_mgr.count_by_task_and_state(task, Complete)
     @stdio.stdout.write("  \"\{task}\" - \{task_total} repos\n")
   }
   @stdio.stdout.write("\n")
@@ -278,12 +281,8 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
     (Cloning, "Cloning"),
     (Branching, "Branching"),
     (Fixing, "Fixing"),
-    (Committing, "Committing"),
-    (Pushing, "Pushing"),
-    (PrCreating, "PR Creating"),
     (PrOpen, "PR Open"),
     (Complete, "Complete"),
-    (Retry, "Retry"),
   ]
   let mut i = 0
   while i < states_to_show.length() {
@@ -401,6 +400,13 @@ pub async fn cmd_sync_prs(
   let state_mgr = StateManager::new(db_path)
   if !state_mgr.db.exists() {
     @error.fail("Database not found. Please run 'init' first.")
+  }
+  
+  // Migrate deprecated states from old databases
+  state_mgr.migrate_deprecated_states() catch {
+    e => {
+      @stdio.stderr.write("warning Failed to migrate deprecated states: \{e}\n")
+    }
   }
 
   // Check if gh is available
@@ -638,6 +644,13 @@ pub async fn cmd_run(
       "Database not found. Please run 'init' first:\n  moon run real_world/parallel_fix -- init",
     )
   }
+  
+  // Migrate deprecated states from old databases
+  @stdio.stdout.write("Checking for deprecated states...\n")
+  state_mgr.migrate_deprecated_states() catch {
+    e => @error.fail_with("Failed to migrate deprecated states", e)
+  }
+  
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\nSTARTING PARALLEL REPOSITORY PROCESSING\n")
   @stdio.stdout.write("=".repeat(60))

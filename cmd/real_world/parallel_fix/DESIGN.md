@@ -137,27 +137,35 @@ Internal (not tracked in DB): commit → push → create PR happens within FIXIN
 - `COMPLETE`: Task finished successfully
   - Either: no changes needed (no PR created)
   - Or: PR merged/closed, or AI determined no further action needed
-- `RETRY`: Transient error during current run, will be retried
+- `RETRY`: **Deprecated** - kept for backward compatibility with old databases
+  - Not used in new code
+  - Old records with RETRY state are treated as PENDING
 
 **Error Handling:**
 
-- `RETRY` state: For transient errors that should be retried in the same run
-- No persistent failure state: Failures during a run are transient only
-- Each run is a fresh start: No attempt counting or failure history persisted
+- **No RETRY state persistence**: Errors are logged but don't change repository state
+- `last_error` field updated for visibility in status reports
+- Next run attempts processing from the current state (no state change on failure)
+- Fresh start each run: No attempt counting or failure history persisted
+- Transient philosophy: Failed repos stay in their current state and retry automatically on next run
 
 **Key Design Decisions:**
 
 - **AI has full autonomy**: Both before and after PR creation, AI makes all decisions
   - Before PR: AI decides if work is needed
   - After PR: AI fetches GitHub state and decides next action (wait, fix, or complete)
-- **Simplified state machine**: Only 7 database states (PENDING, CLONING, BRANCHING, FIXING, PR_OPEN, COMPLETE, RETRY)
+- **Simplified state machine**: Only 6 active database states (PENDING, CLONING, BRANCHING, FIXING, PR_OPEN, COMPLETE)
+  - RETRY kept only for backward compatibility, not used in new code
   - Removed COMMITTING, PUSHING, PR_CREATING - these are internal steps within FIXING→PR_OPEN transition
+- **Continuous flow**: Each state handler continues to next state in same iteration
+  - PENDING → CLONING → BRANCHING → FIXING flows in single process call
+  - No waiting for next poll cycle between clone/branch/fix
 - **Internal transaction**: commit → push → create PR happens atomically when transitioning from FIXING to PR_OPEN
 - **Two AI decision points**:
   - During FIXING: AI decides if work is needed
   - During PR_OPEN: AI fetches GitHub state and decides next action (loop back to FIXING, stay in PR_OPEN, or complete)
 - **GitHub as information source**: After PR creation, GitHub provides state, AI makes decisions
-- No `FAILED` state - failures are transient, not persisted across runs
+- No persistent failure state - errors logged but don't prevent retry
 - Simpler flow: fewer database states, more internal logic
 - Better concurrency: fewer state transitions reduce database contention
 - Fresh start philosophy: Each run processes all repositories without historical failure baggage
@@ -630,16 +638,55 @@ moon run real_world/parallel_fix -- \
 **Implementation**
 
 - `main.mbt` - CLI entry point, subcommand routing, quick mode
-- `commands.mbt` - Subcommand handlers (init, add, status, run)
-- `worker.mbt` - State-driven worker with phase handlers
+- `commands.mbt` - Subcommand handlers (init, add, status, run, sync-prs)
+- `worker.mbt` - State-driven worker with phase handlers and continuous flow
 - `schema.mbt` - SQLite database schema
-- `state.mbt` - State manager and RepoState enum
-- `repo.mbt` - Git operations
-- `task.mbt` - AI agent task execution
+- `state.mbt` - State manager, RepoState enum, and migration logic
+- `utils.mbt` - Utility functions
 
 **Supporting Modules**
 
 - `x/sqlite/sqlite.mbt` - SQLite CLI wrapper with JSON support
+- `x/git/` - Git repository operations
+- `x/args/` - CLI argument parsing
+
+## Migration and Backward Compatibility
+
+The tool includes automatic migration logic to handle databases created with older versions:
+
+**Automatic State Migration:**
+
+On every `init`, `run`, `status`, and `sync-prs` command, deprecated states are automatically migrated:
+
+- `RETRY` → **Inferred state** (based on set fields: pr_url → PR_OPEN, current_branch → FIXING, default_branch → BRANCHING, local_path → CLONING, else → PENDING)
+  - Smart inference prevents losing progress
+  - A repo that failed during BRANCHING won't restart from PENDING
+- `COMMITTING` → `FIXING` (internal step, not a state)
+- `PUSHING` → `FIXING` (internal step, not a state)
+- `PR_CREATING` → `FIXING` (internal step, not a state)
+- `PR_CHANGES_REQUESTED` → `PR_OPEN` (simplified PR handling)
+- `PR_APPROVED` → `PR_OPEN` (simplified PR handling)
+- `PR_CONFLICTS` → `PR_OPEN` (simplified PR handling)
+- `PR_MERGED` → `PR_OPEN` (simplified PR handling)
+
+**Migration is:**
+
+- **Automatic**: Runs on database access
+- **Idempotent**: Safe to run multiple times
+- **Informative**: Reports number of migrated repositories
+- **Non-destructive**: Only updates state field, preserves all other data
+- **Smart**: RETRY state is inferred from set fields to preserve progress
+
+**Example migration output:**
+
+```
+Checking for deprecated states...
+info Migrated 2 repositories from COMMITTING to FIXING
+info Migrated 3 repositories from PR_APPROVED to PR_OPEN
+warning [repo-name] - Deprecated RETRY state detected, inferring actual state as BRANCHING
+```
+
+This ensures seamless upgrades from older versions without manual intervention or loss of progress.
 - `x/git/` - Git repository operations
 - `x/args/` - CLI argument parsing
 
