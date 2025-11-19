@@ -27,21 +27,6 @@ fn now() -> String {
 }
 
 ///|
-/// Expand home directory (~) in path
-async fn expand_home_dir(path : String) -> String {
-  if !path.has_prefix("~") {
-    return path
-  }
-  let (pipe, process_read) = @process.read_from_process()
-  let _status = @process.run("sh", ["-c", "echo $HOME"], stdout=process_read) catch {
-    _ => return path
-  }
-  let home = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-  let home_final = if home.is_empty() { "/tmp" } else { home }
-  "\{home_final}\{path[1:].to_string()}"
-}
-
-///|
 /// Escape single quotes for SQL
 fn escape_sql(s : String) -> String {
   s.replace(old="'", new="''")
@@ -108,5 +93,76 @@ async fn ensure_work_dir(path : String) -> Unit {
         e => @error.fail_with("Failed to create directory \{current}", e)
       }
     }
+  }
+}
+
+///|
+/// Ensure repository is cloned and checked out to the specified branch
+/// This is a simple utility that prepares a repository for AI fixing:
+/// 1. Clone repository if it doesn't exist (or discover if it does)
+/// 2. Ensure we're on the exact branch specified
+/// 3. Create branch from default branch if it doesn't exist
+///
+/// # Arguments
+/// * `path` - Local path where repository should be
+/// * `repository` - Repository record with URL
+/// * `branch_name` - Exact branch name to checkout (not a prefix)
+///
+/// # Returns
+/// Unit on success, raises Error on failure
+async fn ensure_repository(
+  path : String,
+  repository : RepositoryRecord,
+) -> Unit raise Error {
+  guard repository.current_branch is Some(branch_name) else {
+    @error.fail("Repository record does not have a current_branch set")
+  }
+  // Step 1: Clone or discover repository
+  let exists = @fs.exists(path) catch { e => @error.reraise(e) }
+  let git_repo = if exists {
+    // Repository already exists, try to discover it
+    let repo = @git.GitRepo::discover(path) catch {
+      e =>
+        @error.fail_with(
+          "Directory exists at \{path} but is not a git repository",
+          e,
+        )
+    }
+    repo
+  } else {
+    // Clone repository
+    @git.GitRepo::clone(repository.url, path) catch {
+      e => @error.reraise(e)
+    }
+  }
+
+  // Step 2: Get default branch (fallback to "main" if not available)
+  let default_branch = git_repo.default_branch.unwrap_or("main")
+
+  // Step 3: Check if we're already on the target branch
+  let current = git_repo.current_branch()
+  if current is Some(branch) && branch == branch_name {
+    // Already on the correct branch
+    return
+  }
+
+  // Step 4: Try to checkout the branch (might already exist)
+  if git_repo.checkout(branch_name) {
+    // Branch exists and we successfully checked it out
+    return
+  }
+
+  // Step 5: Branch doesn't exist - create it from default branch
+  // First ensure we're on default branch and it's up to date
+  if !git_repo.checkout(default_branch) {
+    @error.fail("Failed to checkout default branch: \{default_branch}")
+  }
+  if !git_repo.pull(branch=default_branch) {
+    @error.fail("Failed to pull default branch: \{default_branch}")
+  }
+
+  // Create new branch from default branch
+  if !git_repo.create_branch(branch_name, from_branch=default_branch) {
+    @error.fail("Failed to create branch: \{branch_name}")
   }
 }

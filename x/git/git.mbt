@@ -73,44 +73,46 @@ pub struct IsolatedWorkspace {
 ///
 /// # Returns
 /// GitRepo instance for the cloned repository
-pub async fn GitRepo::clone(
-  url : String,
-  destination : String,
-  get_default_branch? : Bool = true,
-) -> GitRepo? {
-  let status = @process.run("git", ["clone", url, destination])
+pub async fn GitRepo::clone(url : String, destination : String) -> GitRepo {
+  let (status, output) = @process.collect_output_merged("git", [
+    "clone", url, destination,
+  ]) catch {
+    e => @error.reraise(e)
+  }
   if status != 0 {
-    return None
+    @error.fail(
+      (
+        $|Error: Failed to clone repository \{url}")
+        $|Output: \{output.text()}
+        $|
+      ),
+    )
   }
   let repo_name = extract_repo_name(url)
-  let default_branch = if get_default_branch {
-    // Get default branch from remote
-    let (pipe, process_write) = @process.read_from_process()
-    let status2 = @process.run(
+  let mut default_branch = None
+  try {
+    let (status, output) = @process.collect_output_merged(
       "git",
       ["symbolic-ref", "refs/remotes/origin/HEAD", "--short"],
-      stdout=process_write,
       cwd=destination,
     )
-    if status2 == 0 {
-      let full = pipe.read_all().text().trim_space().to_string()
-      if full.has_prefix("origin/") {
-        Some(try! full[7:].to_string())
-      } else {
-        Some(full)
-      }
-    } else {
-      None
+    if status == 0 {
+      default_branch = Some(
+        {
+          let full = output.text().trim_space().to_string()
+          full.strip_prefix("origin/").unwrap_or(full)
+        }.to_string(),
+      )
     }
-  } else {
-    None
+  } catch {
+    _ => ()
   }
-  Some(GitRepo::{
+  GitRepo::{
     path: destination,
     url: Some(url),
     name: Some(repo_name),
     default_branch,
-  })
+  }
 }
 
 ///|
@@ -121,17 +123,42 @@ pub async fn GitRepo::clone(
 ///
 /// # Returns
 /// Some(GitRepo) if found, None otherwise
-pub async fn GitRepo::discover(path : String) -> GitRepo? {
-  let status = @process.run(
+pub async fn GitRepo::discover(path : String) -> GitRepo {
+  let (status, output) = @process.collect_output_merged(
     "git",
     ["rev-parse", "--is-inside-work-tree"],
     cwd=path,
-  )
-  if status == 0 {
-    Some(GitRepo::{ path, url: None, name: None, default_branch: None })
-  } else {
-    None
+  ) catch {
+    e => @error.fail_with("Failed to discover git repository at " + path, e)
   }
+  if status != 0 {
+    @error.fail(
+      (
+        $|Error: Failed to discover git repository at \{path}"),
+        $|Output: \{output.text()}
+      ),
+    )
+  }
+  // Try to get default branch
+  let mut default_branch = None
+  try {
+    let (status, output) = @process.collect_output_merged(
+      "git",
+      ["symbolic-ref", "refs/remotes/origin/HEAD", "--short"],
+      cwd=path,
+    )
+    if status == 0 {
+      default_branch = Some(
+        {
+          let full = output.text().trim_space().to_string()
+          full.strip_prefix("origin/").unwrap_or(full)
+        }.to_string(),
+      )
+    }
+  } catch {
+    _ => ()
+  }
+  GitRepo::{ path, url: None, name: None, default_branch }
 }
 
 ///|
@@ -498,16 +525,4 @@ pub async fn IsolatedWorkspace::cleanup(self : IsolatedWorkspace) -> Unit {
     let force_args = ["worktree", "remove", self.path, "--force"]
     @process.run("git", force_args, cwd=self.repo.path) |> ignore
   }
-}
-
-///|
-/// Remove a directory recursively
-///
-/// # Arguments
-/// * `path` - Path to the directory to remove
-///
-/// # Returns
-/// True if successful, false otherwise
-pub async fn remove_directory(path : String) -> Bool {
-  @process.run("rm", ["-rf", path]) == 0
 }

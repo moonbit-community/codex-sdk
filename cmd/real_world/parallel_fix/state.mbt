@@ -546,7 +546,77 @@ async fn StateManager::get_processable_repos(
 ) -> Array[RepositoryRecord] {
   // Get all repositories that are not complete
   // This includes PR_OPEN repos which need to check their status
-  let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, pr_number, pr_url, pr_state, attempt_count, iteration FROM repositories WHERE state != 'COMPLETE' ORDER BY attempt_count ASC, created_at ASC LIMIT \{limit};"
+  let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, pr_number, pr_url, pr_state, attempt_count, iteration FROM repositories WHERE state != 'COMPLETE' ORDER BY created_at ASC LIMIT \{limit};"
+  let rows = self.db.query(sql)
+  let repos = []
+  for row in rows {
+    match row {
+      Object(
+        {
+          "id": Number(id, ..),
+          "url": String(url),
+          "name": String(name),
+          "state": String(state_str),
+          "local_path"? : local_path,
+          "default_branch"? : default_branch,
+          "current_branch"? : current_branch,
+          "task_description"? : task_description,
+          "pr_number"? : pr_number,
+          "pr_url"? : pr_url,
+          "pr_state"? : pr_state,
+          ..
+        }
+      ) =>
+        repos.push(RepositoryRecord::{
+          id: id.to_int(),
+          url,
+          name,
+          state: RepoState::from_str(state_str) catch {
+            StrConvError(_) => Pending
+          },
+          local_path: match local_path {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+          default_branch: match default_branch {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+          current_branch: match current_branch {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+          task_description: match task_description {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+          pr_number: match pr_number {
+            Some(Number(n, ..)) => Some(n.to_int())
+            _ => None
+          },
+          pr_url: match pr_url {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+          pr_state: match pr_state {
+            Some(String(s)) if !s.is_empty() => Some(s)
+            _ => None
+          },
+        })
+      _ => continue
+    }
+  }
+  repos
+}
+
+///|
+async fn StateManager::get_repos_with_pr(
+  self : StateManager,
+  limit : Int,
+) -> Array[RepositoryRecord] {
+  // Get all repositories that are not complete
+  // This includes PR_OPEN repos which need to check their status
+  let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, task_description, pr_number, pr_url, pr_state, attempt_count, iteration FROM repositories WHERE pr_url IS NOT NULL ORDER BY created_at ASC LIMIT \{limit};"
   let rows = self.db.query(sql)
   let repos = []
   for row in rows {

@@ -9,229 +9,33 @@ async fn process_repository_stateful(
   config : WorkerConfig,
   repo : RepositoryRecord,
 ) -> Unit {
-  let repo_id = repo.id
   let repo_name = repo.name
   @stdio.stdout.write(
     "info [\{repo_name}] - Processing from state: \{repo.state}\n",
   )
+  let mut last_state = None
+  let mut repo = repo
 
   // Process based on current state
-  match repo.state {
-    Retry => {
-      // RETRY is deprecated - it was used to mark transient errors
-      // We should not restart from the beginning, but determine the actual state
-      // Check what fields are set to infer the real state
-      let actual_state = if repo.pr_url is Some(_) {
-        // Has PR URL, should be in PR_OPEN
-        PrOpen
-      } else if repo.current_branch is Some(_) {
-        // Has current branch, should be in FIXING or later
-        Fixing
-      } else if repo.default_branch is Some(_) {
-        // Has default branch, should be in BRANCHING
-        Branching
-      } else if repo.local_path is Some(_) {
-        // Has local path, should be in CLONING or BRANCHING
-        Cloning
-      } else {
-        // Nothing set, start from beginning
-        Pending
-      }
-      @stdio.stdout.write(
-        "warning [\{repo_name}] - Deprecated RETRY state detected, inferring actual state as \{actual_state}\n",
-      )
-
-      // Update to inferred state
-      config.state_mgr.transition(
-        repo_id,
-        actual_state,
-        details="Migrated from RETRY to inferred state",
-      ) catch {
-        e => @error.reraise(e)
-      }
-
-      // Now process from the inferred state by recursing
-      let updated_repo = config.state_mgr.get_repository(repo_id) catch {
-        e => @error.reraise(e)
-      }
-      process_repository_stateful(config, updated_repo)
+  while !(last_state is Some(state) && state == repo.state) {
+    last_state = Some(repo.state)
+    match repo.state {
+      Pending => do_clone(config, repo) catch { e => @error.reraise(e) }
+      Cloning => do_clone(config, repo) catch { e => @error.reraise(e) }
+      Branching => do_branch(config, repo) catch { e => @error.reraise(e) }
+      Fixing => do_fix(config, repo) catch { e => @error.reraise(e) }
+      PrOpen => do_handle_pr(config, repo) catch { e => @error.reraise(e) }
+      Complete =>
+        @stdio.stdout.write("info [\{repo_name}] - Already complete\n")
+      ...
     }
-    Pending =>
-      // Start from cloning and continue through all states
-      process_from_cloning(config, repo) catch {
-        e =>
-          handle_error_transient(
-            config,
-            repo_id,
-            repo_name,
-            "cloning",
-            e.to_string(),
-          )
-      }
-    Cloning =>
-      // Continue from current state
-      process_from_cloning(config, repo) catch {
-        e =>
-          handle_error_transient(
-            config,
-            repo_id,
-            repo_name,
-            "cloning",
-            e.to_string(),
-          )
-      }
-    Branching =>
-      process_from_branching(config, repo) catch {
-        e =>
-          handle_error_transient(
-            config,
-            repo_id,
-            repo_name,
-            "branching",
-            e.to_string(),
-          )
-      }
-    Fixing =>
-      // FIXING now handles: AI fix → commit → push → create PR → transition to PR_OPEN
-      process_from_fixing(config, repo) catch {
-        e =>
-          handle_error_transient(
-            config,
-            repo_id,
-            repo_name,
-            "fixing",
-            e.to_string(),
-          )
-      }
-    PrOpen =>
-      // AI continuously monitors PR and decides next action
-      do_handle_pr(config, repo) catch {
-        e =>
-          handle_error_transient(
-            config,
-            repo_id,
-            repo_name,
-            "PR monitoring",
-            e.to_string(),
-          )
-      }
-    // Handle deprecated states - migrate to appropriate current state
-    Committing | Pushing | PrCreating => {
-      @stdio.stdout.write(
-        "warning [\{repo_name}] - Deprecated state \{repo.state}, transitioning to FIXING\n",
-      )
-      config.state_mgr.transition(
-        repo_id,
-        Fixing,
-        details="Migrating from deprecated state",
-      ) catch {
-        e => @error.reraise(e)
-      }
-    }
-    PrChangesRequested | PrApproved | PrConflicts | PrMerged => {
-      @stdio.stdout.write(
-        "warning [\{repo_name}] - Deprecated PR state \{repo.state}, transitioning to PR_OPEN\n",
-      )
-      config.state_mgr.transition(
-        repo_id,
-        PrOpen,
-        details="Migrating from deprecated PR state",
-      ) catch {
-        e => @error.reraise(e)
-      }
-    }
-    Complete => @stdio.stdout.write("info [\{repo_name}] - Already complete\n")
-  }
-}
-
-///|
-/// Process from cloning state and continue through subsequent states
-async fn process_from_cloning(
-  config : WorkerConfig,
-  repo : RepositoryRecord,
-) -> Unit raise Error {
-  // Do clone
-  do_clone(config, repo) catch {
-    e => @error.reraise(e)
-  }
-
-  // Fetch updated repo to get the new state
-  let updated_repo = config.state_mgr.get_repository(repo.id) catch {
-    e => @error.reraise(e)
-  }
-
-  // Continue to branching if clone succeeded
-  if updated_repo.state == Branching {
-    process_from_branching(config, updated_repo) catch {
+    repo = config.state_mgr.get_repository(repo.id) catch {
       e => @error.reraise(e)
     }
   }
-}
-
-///|
-/// Process from branching state and continue through subsequent states
-async fn process_from_branching(
-  config : WorkerConfig,
-  repo : RepositoryRecord,
-) -> Unit raise Error {
-  // Do branch
-  do_branch(config, repo) catch {
-    e => @error.reraise(e)
-  }
-
-  // Fetch updated repo to get the new state
-  let updated_repo = config.state_mgr.get_repository(repo.id) catch {
-    e => @error.reraise(e)
-  }
-
-  // Continue to fixing if branch succeeded
-  if updated_repo.state == Fixing {
-    process_from_fixing(config, updated_repo) catch {
-      e => @error.reraise(e)
-    }
-  }
-}
-
-///|
-/// Process from fixing state (terminal for this flow - AI work is async)
-async fn process_from_fixing(
-  config : WorkerConfig,
-  repo : RepositoryRecord,
-) -> Unit raise Error {
-  // Do fix - this is the AI work, which is async and may take time
-  // After this, state will be either Complete or PrOpen
-  do_fix(config, repo) catch {
-    e => @error.reraise(e)
-  }
-}
-
-///|
-/// Handle error during processing (transient - log but don't change state)
-/// Errors are logged but we don't persist RETRY state to database
-async fn handle_error_transient(
-  config : WorkerConfig,
-  repo_id : Int,
-  repo_name : String,
-  phase : String,
-  error : String,
-) -> Unit {
-  @stdio.stderr.write(
-    "error [\{repo_name}] - Failed during \{phase}: \{error}\n",
+  @stdio.stdout.write(
+    "info [\{repo_name}] - Finished processing at state: \{repo.state}\n",
   )
-
-  // Log error for debugging but don't transition to RETRY
-  // The error will be visible in logs but not persisted as state
-  config.state_mgr.log(repo_id, "ERROR", "Failed during \{phase}: \{error}") catch {
-    e => @stdio.stderr.write("warning Failed to log error: \{e}\n")
-  }
-
-  // Update last_error field for status visibility
-  let updates = [("last_error", error)]
-  config.state_mgr.update_repository(repo_id, updates) catch {
-    e => @stdio.stderr.write("warning Failed to update error field: \{e}\n")
-  }
-
-  // Don't transition to RETRY - let the next run try from current state
 }
 
 ///|
@@ -247,60 +51,49 @@ async fn do_clone(
     @stdio.stdout.write(
       "info [\{repo.name}] - Already cloned, discovering...\n",
     )
-    match @git.GitRepo::discover(clone_path) {
-      Some(git_repo) => {
-        // Save local path and default branch
-        let default_branch = git_repo.default_branch.unwrap_or("main")
-        let updates = [
-          ("local_path", clone_path),
-          ("default_branch", default_branch),
-        ]
-        config.state_mgr.update_repository(repo.id, updates) catch {
-          e => @error.reraise(e)
-        }
-        // Always advance to Branching when clone is verified
-        config.state_mgr.transition(
-          repo.id,
-          Branching,
-          details="Repository discovered",
-        ) catch {
-          e => @error.reraise(e)
-        }
-        @stdio.stdout.write("info [\{repo.name}] - Clone verified\n")
-        return
-      }
-      None => {
-        @stdio.stdout.write(
-          "warning [\{repo.name}] - Failed to discover, removing and recloning\n",
+    let git_repo = @git.GitRepo::discover(clone_path) catch {
+      e =>
+        @error.fail_with(
+          "Failed to discover Git at \{clone_path} but directory exists",
+          e,
         )
-        ignore(@process.run("rm", ["-rf", clone_path]) catch { _ => 1 })
-      }
     }
+
+    // Save local path and default branch
+    let default_branch = git_repo.default_branch.unwrap_or("main")
+    let updates = [
+      ("local_path", clone_path),
+      ("default_branch", default_branch),
+    ]
+    config.state_mgr.update_repository(repo.id, updates) catch {
+      e => @error.reraise(e)
+    }
+    // Always advance to Branching when clone is verified
+    config.state_mgr.transition(
+      repo.id,
+      Branching,
+      details="Repository discovered",
+    ) catch {
+      e => @error.reraise(e)
+    }
+    @stdio.stdout.write("info [\{repo.name}] - Clone verified\n")
+    return
   }
 
   // Clone repository
   @stdio.stdout.write("info [\{repo.name}] - Cloning to \{clone_path}\n")
-  match @git.GitRepo::clone(repo.url, clone_path) {
-    Some(git_repo) => {
-      let default_branch = git_repo.default_branch.unwrap_or("main")
-      let updates = [
-        ("local_path", clone_path),
-        ("default_branch", default_branch),
-      ]
-      config.state_mgr.update_repository(repo.id, updates) catch {
-        e => @error.reraise(e)
-      }
-      config.state_mgr.transition(
-        repo.id,
-        Branching,
-        details="Clone successful",
-      ) catch {
-        e => @error.reraise(e)
-      }
-      @stdio.stdout.write("info [\{repo.name}] - Clone successful\n")
-    }
-    None => @error.fail("Failed to clone repository")
+  let git_repo = @git.GitRepo::clone(repo.url, clone_path) catch {
+    e => @error.reraise(e)
   }
+  let default_branch = git_repo.default_branch.unwrap_or("main")
+  let updates = [("local_path", clone_path), ("default_branch", default_branch)]
+  config.state_mgr.update_repository(repo.id, updates) catch {
+    e => @error.reraise(e)
+  }
+  config.state_mgr.transition(repo.id, Branching, details="Clone successful") catch {
+    e => @error.reraise(e)
+  }
+  @stdio.stdout.write("info [\{repo.name}] - Clone successful\n")
 }
 
 ///|
@@ -317,8 +110,8 @@ async fn do_branch(
   }
 
   // Discover repository
-  guard @git.GitRepo::discover(clone_path) is Some(git_repo) else {
-    @error.fail("Failed to discover repository at \{clone_path}")
+  let git_repo = @git.GitRepo::discover(clone_path) catch {
+    e => @error.fail_with("Failed to discover repository at \{clone_path}", e)
   }
 
   // Check current branch
@@ -439,8 +232,8 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
   )
 
   // Discover repository
-  guard @git.GitRepo::discover(clone_path) is Some(git_repo) else {
-    @error.fail("Failed to discover repository")
+  let git_repo = @git.GitRepo::discover(clone_path) catch {
+    e => @error.fail_with("Failed to discover repository", e)
   }
 
   // Check if there are changes
@@ -795,8 +588,8 @@ async fn do_handle_pr(
     }
   } else {
     // AI made changes - check if there are actual file modifications
-    guard @git.GitRepo::discover(clone_path) is Some(git_repo) else {
-      @error.fail("Failed to discover repository")
+    let git_repo = @git.GitRepo::discover(clone_path) catch {
+      e => @error.fail_with("Failed to discover repository", e)
     }
     if !git_repo.has_changes() {
       @stdio.stdout.write(

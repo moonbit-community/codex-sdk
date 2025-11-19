@@ -114,7 +114,7 @@ pub async fn get_pr_state(repo_path : String, pr_number : Int) -> PrInfo {
   if status != 0 {
     @error.fail(
       (
-        $|Error: \{stdout.text()}\{stderr.text()}")
+        $|Error: \{stdout.text()}\{stderr.text()}
         $|PR Number: \{pr_number}
         $|
       ),

@@ -400,95 +400,79 @@ async fn cmd_sync_prs(
   @stdio.stdout.write("Syncing PR status from GitHub...\n\n")
 
   // Get all repositories with PR URLs
-  let sql = "SELECT id, url, name, pr_url, pr_number, local_path FROM repositories WHERE pr_url IS NOT NULL AND pr_url != '';"
-  let rows = state_mgr.db.query(sql)
+  let repos = state_mgr.get_repos_with_pr(100)
   let mut synced = 0
   let mut updated = 0
   let mut failed = 0
-  for row in rows {
-    match row {
-      Object(
-        {
-          "id": Number(id, ..),
-          "name": String(name),
-          "pr_url": String(pr_url),
-          "pr_number"? : pr_number_val,
-          "local_path"? : local_path_val,
-          ..
-        }
-      ) => {
-        let repo_id = id.to_int()
-        synced = synced + 1
-        @stdio.stdout.write("[\{name}] Syncing PR: \{pr_url}\n")
+  for repo in repos {
+    synced = synced + 1
+    guard repo.pr_url is Some(pr_url) else { continue }
+    @stdio.stdout.write("info [\{repo.name}] Syncing PR: \{pr_url}\n")
 
-        // Extract PR number from URL if not in database
-        let pr_number_opt = match pr_number_val {
-          Some(Number(n, ..)) => Some(n.to_int())
-          _ => @gh.extract_pr_number(pr_url)
-        }
-        guard pr_number_opt is Some(pr_number) else {
-          @stdio.stdout.write(
-            "  Warning: Could not extract PR number from URL\n",
-          )
+    // Extract PR number from URL if not in database
+    let pr_number_opt = match repo.pr_number {
+      Some(n) => Some(n)
+      _ => @gh.extract_pr_number(pr_url)
+    }
+    guard pr_number_opt is Some(pr_number) else {
+      @stdio.stdout.write("  Warning: Could not extract PR number from URL\n")
+      failed = failed + 1
+      continue
+    }
+
+    // Get local_path - if not set, try to infer from work_dir and name
+    let clone_path = match repo.local_path {
+      Some(p) if !p.is_empty() => p
+      _ => "\{work_dir}/\{repo.name}"
+    }
+    ensure_repository(clone_path, repo)
+
+    // Fetch PR state from GitHub
+    let pr_info = fetch_pr_state(clone_path, pr_number) catch {
+      e => @error.reraise(e)
+    }
+    @stdio.stdout.write(
+      "  PR #\{pr_number}: state=\{pr_info.state}, mergeable=\{pr_info.mergeable}, review=\{pr_info.review_decision}\n",
+    )
+
+    // Determine the correct state based on PR info
+    let new_state = match pr_info.state {
+      "MERGED" => Complete
+      "CLOSED" => Complete
+      "CHANGES_REQUESTED" => Fixing
+      "CONFLICTING" => Fixing
+      _ => PrOpen
+    }
+
+    // Update repository
+    let updates = [
+      ("pr_number", pr_number.to_string()),
+      ("pr_state", pr_info.state),
+    ]
+    state_mgr.update_repository(repo.id, updates) catch {
+      e => {
+        @stdio.stdout.write("  Error updating repository: \{e}\n")
+        failed = failed + 1
+        continue
+      }
+    }
+
+    // Get current state
+    let current_state = state_mgr.get_repo_state(repo.id) catch {
+      e => @error.reraise(e)
+    }
+    if current_state != new_state {
+      state_mgr.transition(repo.id, new_state, details="Synced from GitHub") catch {
+        e => {
+          @stdio.stdout.write("  Error transitioning state: \{e}\n")
           failed = failed + 1
           continue
         }
-
-        // Get local_path - if not set, try to infer from work_dir and name
-        let clone_path = match local_path_val {
-          Some(String(p)) if !p.is_empty() => p
-          _ => "\{work_dir}/\{name}"
-        }
-
-        // Fetch PR state from GitHub
-        let pr_info = fetch_pr_state(clone_path, pr_number) catch {
-          e => @error.reraise(e)
-        }
-        @stdio.stdout.write(
-          "  PR #\{pr_number}: state=\{pr_info.state}, mergeable=\{pr_info.mergeable}, review=\{pr_info.review_decision}\n",
-        )
-
-        // Determine the correct state based on PR info
-        let new_state = match pr_info.state {
-          "MERGED" => Complete
-          "CLOSED" => Complete
-          "CHANGES_REQUESTED" => Fixing
-          "CONFLICTING" => Fixing
-          _ => PrOpen
-        }
-
-        // Update repository
-        let updates = [
-          ("pr_number", pr_number.to_string()),
-          ("pr_state", pr_info.state),
-        ]
-        state_mgr.update_repository(repo_id, updates) catch {
-          e => {
-            @stdio.stdout.write("  Error updating repository: \{e}\n")
-            failed = failed + 1
-            continue
-          }
-        }
-
-        // Get current state
-        let current_state = state_mgr.get_repo_state(repo_id) catch {
-          e => @error.reraise(e)
-        }
-        if current_state != new_state {
-          state_mgr.transition(repo_id, new_state, details="Synced from GitHub") catch {
-            e => {
-              @stdio.stdout.write("  Error transitioning state: \{e}\n")
-              failed = failed + 1
-              continue
-            }
-          }
-          @stdio.stdout.write("  Updated: \{current_state} -> \{new_state}\n")
-          updated = updated + 1
-        } else {
-          @stdio.stdout.write("  Already in correct state: \{new_state}\n")
-        }
       }
-      _ => continue
+      @stdio.stdout.write("  Updated: \{current_state} -> \{new_state}\n")
+      updated = updated + 1
+    } else {
+      @stdio.stdout.write("  Already in correct state: \{new_state}\n")
     }
   }
   @stdio.stdout.write("\n")
@@ -560,7 +544,6 @@ async fn cmd_run(
     #|Options:
     #|  --parallelism <n>      Number of parallel workers (default: 4)
     #|  --branch-prefix <p>    Branch name prefix (default: "ai-fix")
-    #|  --include-failed       Include failed repositories for retry (deprecated - kept for compatibility)
     #|  --help, -h             Show this help
     #|
     #|Global options are set before the subcommand:
@@ -585,15 +568,17 @@ async fn cmd_run(
   }
 
   // Main logic - expand ~ in data_dir
-  let expanded_data_dir = expand_home_dir(data_dir)
   let parallelism_str = parsed_args.options.get("parallelism").unwrap_or("4")
   let parallelism = @strconv.parse_int(parallelism_str) catch {
     e => @error.fail_with("Invalid parallelism value", e)
   }
+  if parallelism <= 0 {
+    @error.fail("Parallelism must be a positive integer")
+  }
   let branch_prefix = parsed_args.options
     .get("branch-prefix")
     .unwrap_or("ai-fix")
-  let db_path = "\{expanded_data_dir}/parallel-fix.db"
+  let db_path = "\{data_dir}/parallel-fix.db"
 
   // Check if database exists
   let state_mgr = StateManager::new(db_path)

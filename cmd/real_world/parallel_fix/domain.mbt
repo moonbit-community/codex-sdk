@@ -11,17 +11,11 @@ priv enum RepoState {
   Cloning
   Branching
   Fixing // Internal: commit → push → create PR → transition to PrOpen
-  PrOpen // AI continuously monitors and decides next action
   Complete
-  Retry
-  // Deprecated states (auto-migrated on read)
   Committing
   Pushing
   PrCreating
-  PrChangesRequested
-  PrApproved
-  PrConflicts
-  PrMerged
+  PrOpen // AI continuously monitors and decides next action
 } derive(Eq)
 
 ///|
@@ -37,12 +31,7 @@ impl Show for RepoState with output(self : RepoState, logger) {
       Pushing => "PUSHING"
       PrCreating => "PR_CREATING"
       PrOpen => "PR_OPEN"
-      PrChangesRequested => "PR_CHANGES_REQUESTED"
-      PrApproved => "PR_APPROVED"
-      PrConflicts => "PR_CONFLICTS"
-      PrMerged => "PR_MERGED"
       Complete => "COMPLETE"
-      Retry => "RETRY"
     },
   )
 }
@@ -59,12 +48,7 @@ impl @strconv.FromStr for RepoState with from_str(s) {
     "PUSHING" => Pushing
     "PR_CREATING" => PrCreating
     "PR_OPEN" => PrOpen
-    "PR_CHANGES_REQUESTED" => PrChangesRequested
-    "PR_APPROVED" => PrApproved
-    "PR_CONFLICTS" => PrConflicts
-    "PR_MERGED" => PrMerged
     "COMPLETE" => Complete
-    "RETRY" => Retry
     _ => raise @strconv.StrConvError("Unknown RepoState: \{s}")
   }
 }
