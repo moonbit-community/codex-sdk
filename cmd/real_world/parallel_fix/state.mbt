@@ -77,6 +77,16 @@ async fn mark_completed(db : @sqlite.Database, repo_id : Int) -> Unit {
 }
 
 ///|
+/// Mark a repository as incomplete
+async fn mark_incomplete(db : @sqlite.Database, repo_id : Int) -> Unit {
+  let now = @async.now()
+  let sql = "UPDATE repositories SET completed = 0, updated_at = '\{now}' WHERE id = \{repo_id};"
+  db.exec(sql) catch {
+    e => @error.reraise(e)
+  }
+}
+
+///|
 /// Update PR number for a repository
 async fn update_pr_number(
   db : @sqlite.Database,

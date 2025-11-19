@@ -53,6 +53,26 @@ async fn process_repository(
       @stdio.stdout.write(
         "info [\{repo_name}] PR #\{pr_num} is \{pr_state}, continuing work...\n",
       )
+
+      // Get branch name from PR
+      let branch_name = get_pr_branch(clone_path, pr_num) catch {
+        e => {
+          @stdio.stderr.write(
+            "error [\{repo_name}] Failed to get PR branch: \{e}\n",
+          )
+          return
+        }
+      }
+
+      // Checkout the PR branch
+      checkout_branch(clone_path, branch_name) catch {
+        e => {
+          @stdio.stderr.write(
+            "error [\{repo_name}] Failed to checkout branch: \{e}\n",
+          )
+          return
+        }
+      }
       let comments = get_pr_comments(clone_path, pr_num)
 
       // Ask AI to work on the task considering PR feedback
@@ -62,16 +82,85 @@ async fn process_repository(
           return
         }
       }
+
+      // Sync changes if any
+      sync_changes(clone_path, repo) catch {
+        e => @stdio.stderr.write("warning Failed to sync changes: \{e}\n")
+      }
     }
     None => {
-      // No PR yet, create a draft PR first
+      // No PR yet, run AI first to see if there's work to do
       @stdio.stdout.write(
-        "info [\{repo_name}] No PR exists, creating draft PR...\n",
+        "info [\{repo_name}] No PR exists, running AI to check if work is needed...\n",
       )
-      let pr_num = create_draft_pr(clone_path, repo, config.branch_prefix) catch {
+
+      // Setup branch for AI to work on
+      let branch_name = setup_work_branch(clone_path, config.branch_prefix) catch {
         e => {
           @stdio.stderr.write(
-            "error [\{repo_name}] Failed to create draft PR: \{e}\n",
+            "error [\{repo_name}] Failed to setup work branch: \{e}\n",
+          )
+          return
+        }
+      }
+
+      // Run AI task
+      run_ai_task(config, repo, clone_path, None) catch {
+        e => {
+          @stdio.stderr.write("error [\{repo_name}] AI task failed: \{e}\n")
+          return
+        }
+      }
+
+      // Check if AI made any changes (committed or uncommitted) on the feature branch
+      let has_changes = check_branch_has_changes(clone_path, branch_name) catch {
+        e => {
+          @stdio.stderr.write(
+            "warning [\{repo_name}] Failed to check changes: \{e}\n",
+          )
+          false
+        }
+      }
+      if not(has_changes) {
+        // No changes needed, mark as completed
+        @stdio.stdout.write(
+          "info [\{repo_name}] No changes needed, marking as completed\n",
+        )
+        mark_completed(config.db, repo.id) catch {
+          e =>
+            @stdio.stderr.write(
+              "warning [\{repo_name}] Failed to mark as completed: \{e}\n",
+            )
+        }
+        return
+      }
+
+      // Commit any remaining uncommitted changes (if AI made file changes but didn't commit)
+      commit_changes(clone_path, repo) catch {
+        e => {
+          @stdio.stderr.write(
+            "error [\{repo_name}] Failed to commit changes: \{e}\n",
+          )
+          return
+        }
+      }
+
+      // Push changes
+      push_branch(clone_path, branch_name) catch {
+        e => {
+          @stdio.stderr.write(
+            "error [\{repo_name}] Failed to push changes: \{e}\n",
+          )
+          return
+        }
+      }
+
+      // Now create PR
+      @stdio.stdout.write("info [\{repo_name}] Changes made, creating PR...\n")
+      let pr_num = create_pr_from_branch(clone_path, repo, branch_name) catch {
+        e => {
+          @stdio.stderr.write(
+            "error [\{repo_name}] Failed to create PR: \{e}\n",
           )
           return
         }
@@ -84,39 +173,62 @@ async fn process_repository(
             "warning [\{repo_name}] Failed to save PR number: \{e}\n",
           )
       }
-      @stdio.stdout.write("info [\{repo_name}] Draft PR #\{pr_num} created\n")
-
-      // Now run AI task
-      run_ai_task(config, repo, clone_path, None) catch {
-        e => {
-          @stdio.stderr.write("error [\{repo_name}] AI task failed: \{e}\n")
-          return
-        }
-      }
+      @stdio.stdout.write("info [\{repo_name}] PR #\{pr_num} created\n")
     }
   }
 }
 
 ///|
-/// Ensure repository is cloned and ready
-async fn ensure_repo_cloned(clone_path : String, url : String) -> Unit {
-  if @fs.exists(clone_path) {
-    return
+/// Get PR branch name from GitHub
+async fn get_pr_branch(clone_path : String, pr_number : Int) -> String {
+  let (status, stdout, stderr) = @process.collect_output(
+    "gh",
+    [
+      "pr",
+      "view",
+      pr_number.to_string(),
+      "--json",
+      "headRefName",
+      "--jq",
+      ".headRefName",
+    ],
+    cwd=clone_path,
+  ) catch {
+    e =>
+      @error.fail_with(
+        "Failed to get PR branch for \{clone_path} #\{pr_number}",
+        e,
+      )
   }
-  @stdio.stdout.write("info Cloning \{url} to \{clone_path}...\n")
-  let _ = @git.GitRepo::clone(url, clone_path) catch {
-    e => @error.fail_with("Failed to clone repository", e)
+  if status != 0 {
+    @error.fail(
+      "Failed to get PR branch for \{clone_path} #\{pr_number}\n\{stderr.text()}",
+    )
   }
-
+  stdout.text().trim(char_set=" \t\n\r").to_string()
 }
 
 ///|
-/// Create a draft PR for the repository
-async fn create_draft_pr(
+/// Checkout a branch
+async fn checkout_branch(clone_path : String, branch_name : String) -> Unit {
+  let git_repo = @git.GitRepo::discover(clone_path) catch {
+    e => @error.fail_with("Failed to discover repository", e)
+  }
+  if !git_repo.checkout(branch_name) {
+    @error.fail("Failed to checkout branch \{branch_name}")
+  }
+  // Pull latest changes
+  if !git_repo.pull(branch=branch_name) {
+    @error.fail("Failed to pull branch \{branch_name}")
+  }
+}
+
+///|
+/// Setup a work branch for AI (without creating PR yet)
+async fn setup_work_branch(
   clone_path : String,
-  repo : RepositoryRecord,
   branch_prefix : String,
-) -> Int {
+) -> String {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
   }
@@ -137,20 +249,100 @@ async fn create_draft_pr(
   git_repo.create_branch(branch_name, from_branch=default_branch) catch {
     e => @error.reraise(e)
   }
+  branch_name
+}
 
-  // Push branch
+///|
+/// Check if the feature branch has any changes compared to base branch
+/// This includes both committed changes and uncommitted changes
+async fn check_branch_has_changes(
+  clone_path : String,
+  branch_name : String,
+) -> Bool {
+  let git_repo = @git.GitRepo::discover(clone_path) catch {
+    e => @error.fail_with("Failed to discover repository", e)
+  }
+
+  // Get default branch
+  let default_branch = git_repo.default_branch.unwrap_or("main")
+
+  // First check if there are uncommitted changes
+  if git_repo.has_changes() {
+    return true
+  }
+
+  // Check if there are committed changes on the branch compared to default
+  let (status, stdout, _) = @process.collect_output(
+    "git",
+    ["rev-list", "--count", "\{default_branch}..\{branch_name}"],
+    cwd=clone_path,
+  ) catch {
+    e => @error.fail_with("Failed to check branch commits", e)
+  }
+  
+  if status != 0 {
+    return false
+  }
+  
+  // Parse commit count
+  let commit_count = @strconv.parse_int(stdout.text().trim(char_set=" \t\n\r")) catch {
+    _ => 0
+  }
+  
+  commit_count > 0
+}
+
+///|
+/// Commit all changes (if there are any uncommitted changes)
+async fn commit_changes(clone_path : String, repo : RepositoryRecord) -> Unit {
+  let git_repo = @git.GitRepo::discover(clone_path) catch {
+    e => @error.fail_with("Failed to discover repository", e)
+  }
+  
+  // Only commit if there are uncommitted changes
+  if git_repo.has_changes() {
+    let commit_msg = "AI work on: \{repo.task}"
+    if !git_repo.commit(commit_msg) {
+      @error.fail("Failed to commit changes")
+    }
+  } else {
+    @stdio.stdout.write("info No uncommitted changes, AI may have already committed\n")
+  }
+}
+
+///|
+/// Push branch to remote
+async fn push_branch(clone_path : String, branch_name : String) -> Unit {
+  let git_repo = @git.GitRepo::discover(clone_path) catch {
+    e => @error.fail_with("Failed to discover repository", e)
+  }
   git_repo.push(branch=branch_name, set_upstream=true) catch {
     e => @error.reraise(e)
   }
+}
 
-  // Create draft PR using gh CLI
+///|
+/// Create a PR from an existing branch (already pushed)
+async fn create_pr_from_branch(
+  clone_path : String,
+  repo : RepositoryRecord,
+  branch_name : String,
+) -> Int {
+  let git_repo = @git.GitRepo::discover(clone_path) catch {
+    e => @error.fail_with("Failed to discover repository", e)
+  }
+
+  // Get default branch
+  let default_branch = git_repo.default_branch.unwrap_or("main")
+
+  // Create PR using gh CLI
   let pr_title = "AI task: \{repo.task}"
-  let pr_body = "This PR was automatically created for:\n\n\{repo.task}\n\nWork in progress..."
+  let pr_body = "This PR was automatically created for:\n\n\{repo.task}"
   let (status, stdout, stderr) = @process.collect_output(
     "gh",
     [
-      "pr", "create", "--draft", "--title", pr_title, "--body", pr_body, "--base",
-      default_branch, "--head", branch_name,
+      "pr", "create", "--title", pr_title, "--body", pr_body, "--base", default_branch,
+      "--head", branch_name,
     ],
     cwd=clone_path,
   ) catch {
@@ -167,6 +359,19 @@ async fn create_draft_pr(
     Some(num) => num
     None => @error.fail("Failed to extract PR number from URL: \{pr_url}")
   }
+}
+
+///|
+/// Ensure repository is cloned and ready
+async fn ensure_repo_cloned(clone_path : String, url : String) -> Unit {
+  if @fs.exists(clone_path) {
+    return
+  }
+  @stdio.stdout.write("info Cloning \{url} to \{clone_path}...\n")
+  let _ = @git.GitRepo::clone(url, clone_path) catch {
+    e => @error.fail_with("Failed to clone repository", e)
+  }
+
 }
 
 ///|
@@ -269,15 +474,10 @@ async fn run_ai_task(
   // Run AI
   let _result = thread.run(task_description) catch { e => @error.reraise(e) }
   @stdio.stdout.write("info AI task completed\n")
-
-  // After AI completes, sync changes (commit and push)
-  sync_changes(clone_path, repo) catch {
-    e => @stdio.stderr.write("warning Failed to sync changes: \{e}\n")
-  }
 }
 
 ///|
-/// Sync changes to remote (commit and push)
+/// Sync changes to remote for existing PR (commit and push)
 async fn sync_changes(clone_path : String, repo : RepositoryRecord) -> Unit {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
@@ -285,7 +485,7 @@ async fn sync_changes(clone_path : String, repo : RepositoryRecord) -> Unit {
 
   // Check if there are changes
   if !git_repo.has_changes() {
-    @stdio.stdout.write("No changes to sync\n")
+    @stdio.stdout.write("info No new changes to sync\n")
     return
   }
 
@@ -299,5 +499,5 @@ async fn sync_changes(clone_path : String, repo : RepositoryRecord) -> Unit {
   git_repo.push() catch {
     e => @error.reraise(e)
   }
-  @stdio.stdout.write("Changes synced to remote\n")
+  @stdio.stdout.write("info Changes synced to remote\n")
 }

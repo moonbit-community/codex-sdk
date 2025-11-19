@@ -27,7 +27,7 @@ async fn main {
     ["add", .. remaining] => cmd_add(remaining, data_dir)
     ["run", .. remaining] => cmd_run(remaining, work_dir, data_dir)
     ["status", .. remaining] => cmd_status(remaining, data_dir)
-    ["sync-prs", .. remaining] => cmd_sync_prs(remaining, data_dir)
+    ["sync-prs", .. remaining] => cmd_sync_prs(remaining, work_dir, data_dir)
     ["help", .. remaining] => cmd_help(remaining)
     _ =>
       @error.fail(
@@ -253,10 +253,8 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
     )
     return
   }
-  
   let completed_count = count_completed(db)
   let incomplete_count = total - completed_count
-
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\nREPOSITORY STATUS\n")
   @stdio.stdout.write("=".repeat(60))
@@ -268,11 +266,10 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   // Show detailed list if verbose
   if verbose {
     let all_repos = get_all_repos(db)
-    
     @stdio.stdout.write("DETAILED LIST:\n")
     @stdio.stdout.write("-".repeat(60))
     @stdio.stdout.write("\n")
-    
+
     // Group by completion status
     @stdio.stdout.write("\n[Incomplete - \{incomplete_count}]\n")
     let mut shown_incomplete = false
@@ -290,7 +287,6 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
     if not(shown_incomplete) {
       @stdio.stdout.write("  (none)\n")
     }
-    
     @stdio.stdout.write("\n[Completed - \{completed_count}]\n")
     let mut shown_completed = false
     for repo in all_repos {
@@ -308,9 +304,7 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
       @stdio.stdout.write("  (none)\n")
     }
   } else {
-    @stdio.stdout.write(
-      "\nUse --verbose or -v for detailed repository list\n",
-    )
+    @stdio.stdout.write("\nUse --verbose or -v for detailed repository list\n")
   }
 }
 
@@ -319,6 +313,7 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
 /// Sync PR status from GitHub for repositories with PR URLs
 async fn cmd_sync_prs(
   args : ArrayView[String],
+  work_dir : String,
   data_dir : String,
 ) -> Unit {
   let help_message =
@@ -357,28 +352,91 @@ async fn cmd_sync_prs(
   @gh.ensure_available() catch {
     e => @error.reraise(e)
   }
-  @stdio.stdout.write("Syncing PR numbers from GitHub...\n\n")
+  @stdio.stdout.write("Syncing PR status from GitHub...\n\n")
 
-  // Get all incomplete repositories that have a PR
+  // Get all repositories that have a PR
   let all_repos = get_all_repos(db)
-  let mut synced = 0
+  let mut checked = 0
+  let mut reopened = 0
+  let mut still_completed = 0
   for repo in all_repos {
     match repo.pr_number {
       Some(pr_num) => {
-        @stdio.stdout.write("[\{repo.url}] Already has PR #\{pr_num}\n")
-        synced = synced + 1
+        checked = checked + 1
+        let repo_name = extract_repo_name(repo.url)
+
+        // Clone or update repository to check PR status
+        let clone_path = "\{work_dir}/\{repo_name}"
+        ensure_repo_cloned(clone_path, repo.url) catch {
+          e => {
+            @stdio.stderr.write(
+              "warning [\{repo_name}] Failed to clone: \{e}\n",
+            )
+            continue
+          }
+        }
+
+        // Get PR state
+        let pr_state = get_pr_state(clone_path, pr_num) catch {
+          e => {
+            @stdio.stderr.write(
+              "warning [\{repo_name}] Failed to get PR state: \{e}\n",
+            )
+            continue
+          }
+        }
+
+        // If completed but PR is still OPEN, reopen it
+        if repo.completed && pr_state == "OPEN" {
+          @stdio.stdout.write(
+            "info [\{repo_name}] PR #\{pr_num} is still OPEN, reopening task\n",
+          )
+          mark_incomplete(db, repo.id) catch {
+            e => {
+              @stdio.stderr.write(
+                "warning [\{repo_name}] Failed to mark as incomplete: \{e}\n",
+              )
+              continue
+            }
+          }
+          reopened = reopened + 1
+        } else if repo.completed &&
+          (pr_state == "MERGED" || pr_state == "CLOSED") {
+          @stdio.stdout.write(
+            "info [\{repo_name}] PR #\{pr_num} is \{pr_state}, task correctly completed\n",
+          )
+          still_completed = still_completed + 1
+        } else if not(repo.completed) &&
+          (pr_state == "MERGED" || pr_state == "CLOSED") {
+          @stdio.stdout.write(
+            "info [\{repo_name}] PR #\{pr_num} is \{pr_state}, marking as completed\n",
+          )
+          mark_completed(db, repo.id) catch {
+            e => {
+              @stdio.stderr.write(
+                "warning [\{repo_name}] Failed to mark as completed: \{e}\n",
+              )
+              continue
+            }
+          }
+        } else {
+          @stdio.stdout.write(
+            "info [\{repo_name}] PR #\{pr_num} is \{pr_state}, status unchanged\n",
+          )
+        }
       }
-      None => {
-        @stdio.stdout.write("[\{repo.url}] No PR number recorded\n")
-      }
+      None => () // Skip repositories without PR
     }
   }
   @stdio.stdout.write("\n")
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\n")
   @stdio.stdout.write("Sync complete!\n")
-  @stdio.stdout.write("  Total repositories checked: \{all_repos.length()}\n")
-  @stdio.stdout.write("  With PR numbers: \{synced}\n")
+  @stdio.stdout.write("  Total repositories checked: \{checked}\n")
+  @stdio.stdout.write("  Tasks reopened (OPEN PRs): \{reopened}\n")
+  @stdio.stdout.write(
+    "  Tasks still completed (MERGED/CLOSED): \{still_completed}\n",
+  )
 }
 
 ///|
@@ -486,7 +544,6 @@ async fn cmd_run(
         e,
       )
   }
-
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\nSTARTING PARALLEL REPOSITORY PROCESSING\n")
   @stdio.stdout.write("=".repeat(60))
@@ -519,7 +576,9 @@ async fn cmd_run(
     @stdio.stdout.write("\nNo incomplete repositories to process. All done!\n")
     return
   }
-  @stdio.stdout.write("\nProcessing \{incomplete_repos.length()} incomplete repositories...\n\n")
+  @stdio.stdout.write(
+    "\nProcessing \{incomplete_repos.length()} incomplete repositories...\n\n",
+  )
 
   // Process all repositories in parallel with bounded concurrency
   let mut processed = 0
