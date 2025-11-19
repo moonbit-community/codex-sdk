@@ -3,7 +3,7 @@
 
 ///|
 /// SQL schema for creating all tables
-pub let schema_sql : String =
+let schema_sql : String =
   #|CREATE TABLE IF NOT EXISTS repositories (
   #|    id INTEGER PRIMARY KEY AUTOINCREMENT,
   #|    url TEXT NOT NULL,
@@ -67,4 +67,3 @@ pub let schema_sql : String =
   #|CREATE INDEX IF NOT EXISTS idx_transitions_repo ON state_transitions(repo_id, timestamp);
   #|CREATE INDEX IF NOT EXISTS idx_log_repo ON work_log(repo_id, timestamp);
   #|
-

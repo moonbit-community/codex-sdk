@@ -3,7 +3,7 @@
 
 ///|
 /// Extract repository name from URL
-pub fn extract_repo_name(url : String) -> String {
+fn extract_repo_name(url : String) -> String {
   let without_git = if url.has_suffix(".git") {
     let chars = url.to_array()
     let len = chars.length()
@@ -20,13 +20,13 @@ pub fn extract_repo_name(url : String) -> String {
 
 ///|
 /// Get current timestamp as string for unique branch names
-pub fn get_timestamp() -> String {
+fn get_timestamp() -> String {
   @async.now().to_string()
 }
 
 ///|
 /// Get current timestamp in ISO 8601 format for database
-pub fn now() -> String {
+fn now() -> String {
   // Use Unix timestamp for now (simplified)
   // TODO: Use proper ISO 8601 formatting when datetime library is available
   @async.now().to_string()
@@ -34,11 +34,10 @@ pub fn now() -> String {
 
 ///|
 /// Expand home directory (~) in path
-pub async fn expand_home_dir(path : String) -> String {
+async fn expand_home_dir(path : String) -> String {
   if !path.has_prefix("~") {
     return path
   }
-  
   let (pipe, process_read) = @process.read_from_process()
   let _status = @process.run("sh", ["-c", "echo $HOME"], stdout=process_read) catch {
     _ => return path
@@ -50,21 +49,21 @@ pub async fn expand_home_dir(path : String) -> String {
 
 ///|
 /// Escape single quotes for SQL
-pub fn escape_sql(s : String) -> String {
+fn escape_sql(s : String) -> String {
   s.replace(old="'", new="''")
 }
 
 ///|
 /// Extract PR number from GitHub PR URL
 /// Example: https://github.com/owner/repo/pull/123 -> Some(123)
-pub fn extract_pr_number(pr_url : String) -> Int? {
+fn extract_pr_number(pr_url : String) -> Int? {
   @gh.extract_pr_number(pr_url)
 }
 
 ///|
 /// Check if GitHub CLI (gh) is available
 /// Returns true if gh is installed, false otherwise
-pub async fn ensure_gh_available() -> Unit {
+async fn ensure_gh_available() -> Unit {
   @gh.ensure_available() catch {
     e => @error.reraise(e)
   }
@@ -73,19 +72,14 @@ pub async fn ensure_gh_available() -> Unit {
 ///|
 /// Fetch PR state information from GitHub using gh CLI
 /// Returns None if gh is not available or PR doesn't exist
-pub async fn fetch_pr_state(
-  clone_path : String,
-  pr_number : Int,
-) -> PrStateInfo? {
+async fn fetch_pr_state(clone_path : String, pr_number : Int) -> PrStateInfo? {
   match @gh.get_pr_state(clone_path, pr_number) {
     Some(pr_info) =>
-      Some(
-        PrStateInfo::{
-          state: pr_info.state,
-          mergeable: pr_info.mergeable,
-          review_decision: pr_info.review_decision,
-        },
-      )
+      Some(PrStateInfo::{
+        state: pr_info.state,
+        mergeable: pr_info.mergeable,
+        review_decision: pr_info.review_decision,
+      })
     None => None
   }
 }
@@ -93,7 +87,7 @@ pub async fn fetch_pr_state(
 ///|
 /// Fetch PR review comments from GitHub using gh CLI
 /// Returns the comments as a formatted string, or None if unable to fetch
-pub async fn fetch_pr_comments(clone_path : String, pr_number : Int) -> String {
+async fn fetch_pr_comments(clone_path : String, pr_number : Int) -> String {
   @gh.get_pr_comments(clone_path, pr_number) catch {
     e => @error.reraise(e)
   }

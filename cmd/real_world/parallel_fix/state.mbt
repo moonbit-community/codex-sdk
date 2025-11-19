@@ -4,14 +4,14 @@
 
 ///|
 /// State manager for repository processing
-pub struct StateManager {
+priv struct StateManager {
   db : @sqlite.Database
   db_lock : @semaphore.Semaphore // Semaphore with value 1 acts as a mutex
 }
 
 ///|
 /// Create a new state manager
-pub fn StateManager::new(db_path : String) -> StateManager {
+fn StateManager::new(db_path : String) -> StateManager {
   StateManager::{
     db: @sqlite.Database::new(db_path),
     db_lock: @semaphore.Semaphore::new(1), // Only 1 concurrent DB operation
@@ -20,11 +20,11 @@ pub fn StateManager::new(db_path : String) -> StateManager {
 
 ///|
 /// Initialize the database with schema
-pub async fn StateManager::init(self : StateManager) -> Unit {
+async fn StateManager::init(self : StateManager) -> Unit {
   self.db.exec(schema_sql) catch {
     e => @error.fail_with("Failed to initialize database schema", e)
   }
-  
+
   // Run migration to handle deprecated states
   self.migrate_deprecated_states() catch {
     e => @error.fail_with("Failed to migrate deprecated states", e)
@@ -36,19 +36,18 @@ pub async fn StateManager::init(self : StateManager) -> Unit {
 /// This ensures backward compatibility with existing databases
 async fn StateManager::migrate_deprecated_states(self : StateManager) -> Unit {
   let now = now()
-  
+
   // Note: RETRY state is NOT migrated here
   // Worker code handles RETRY by inferring the actual state from set fields
   // This prevents losing progress (e.g., RETRY in BRANCHING shouldn't go back to PENDING)
-  
+
   // First, recover any corrupted states caused by previous bad migrations
   // Check all PENDING repos - if they have fields set, they should be in a more advanced state
   self.recover_corrupted_states() catch {
-    e => {
+    e =>
       @stdio.stderr.write("warning Failed to recover corrupted states: \{e}\n")
-    }
   }
-  
+
   // Migrate deprecated PR states to PR_OPEN
   let pr_states = deprecated_pr_states()
   let mut pr_idx = 0
@@ -58,17 +57,18 @@ async fn StateManager::migrate_deprecated_states(self : StateManager) -> Unit {
     self.db.exec(pr_sql) catch {
       e => @error.reraise(e)
     }
-    
     let pr_count_str = self.db.exec_string("SELECT changes();")
     let pr_count = @strconv.parse_int(pr_count_str.trim(chars=" \r\n\t")) catch {
       _ => 0
     }
     if pr_count > 0 {
-      @stdio.stdout.write("info Migrated \{pr_count} repositories from \{old_state} to PR_OPEN\n")
+      @stdio.stdout.write(
+        "info Migrated \{pr_count} repositories from \{old_state} to PR_OPEN\n",
+      )
     }
     pr_idx = pr_idx + 1
   }
-  
+
   // Migrate deprecated intermediate states to FIXING
   let intermediate_states = deprecated_intermediate_states()
   let mut int_idx = 0
@@ -78,13 +78,14 @@ async fn StateManager::migrate_deprecated_states(self : StateManager) -> Unit {
     self.db.exec(int_sql) catch {
       e => @error.reraise(e)
     }
-    
     let int_count_str = self.db.exec_string("SELECT changes();")
     let int_count = @strconv.parse_int(int_count_str.trim(chars=" \r\n\t")) catch {
       _ => 0
     }
     if int_count > 0 {
-      @stdio.stdout.write("info Migrated \{int_count} repositories from \{old_state} to FIXING\n")
+      @stdio.stdout.write(
+        "info Migrated \{int_count} repositories from \{old_state} to FIXING\n",
+      )
     }
     int_idx = int_idx + 1
   }
@@ -95,14 +96,12 @@ async fn StateManager::migrate_deprecated_states(self : StateManager) -> Unit {
 /// This checks if state matches the actual progress (based on set fields)
 async fn StateManager::recover_corrupted_states(self : StateManager) -> Unit {
   let now = now()
-  
+
   // Get all repos that might have corrupted states
   // A PENDING repo with fields set is likely corrupted
   let sql = "SELECT id, url, name, state, local_path, default_branch, current_branch, pr_url FROM repositories WHERE state IN ('PENDING', 'CLONING', 'BRANCHING');"
   let rows = self.db.query(sql)
-  
   let mut recovered = 0
-  
   for row in rows {
     match row {
       Object(
@@ -118,7 +117,7 @@ async fn StateManager::recover_corrupted_states(self : StateManager) -> Unit {
         }
       ) => {
         let repo_id = id.to_int()
-        
+
         // Infer what state this repo should be in based on fields
         let has_pr_url = match pr_url {
           Some(String(url)) => !url.is_empty()
@@ -136,63 +135,60 @@ async fn StateManager::recover_corrupted_states(self : StateManager) -> Unit {
           Some(String(lp)) => !lp.is_empty()
           _ => false
         }
-        
         let inferred_state_enum = infer_state_from_fields(
-          has_pr_url,
-          has_current_branch,
-          has_default_branch,
-          has_local_path,
+          has_pr_url, has_current_branch, has_default_branch, has_local_path,
         )
         let inferred_state = inferred_state_enum.to_string()
-        
+
         // Parse current state
         let current_state_enum = RepoState::from_str(current_state) catch {
           _ => Pending
         }
-        
+
         // Check if recovery is needed
         let needs_recovery = needs_state_recovery(
-          current_state_enum,
-          inferred_state_enum,
+          current_state_enum, inferred_state_enum,
         )
-        
         if needs_recovery {
           @stdio.stdout.write(
             "info Recovering corrupted state for [\{name}]: \{current_state} → \{inferred_state}\n",
           )
-          
+
           // Update to inferred state
           let update_sql = "UPDATE repositories SET state = '\{inferred_state}', updated_at = '\{now}' WHERE id = \{repo_id};"
           self.db.exec(update_sql) catch {
             e => {
-              @stdio.stderr.write("warning Failed to recover state for \{name}: \{e}\n")
+              @stdio.stderr.write(
+                "warning Failed to recover state for \{name}: \{e}\n",
+              )
               continue
             }
           }
-          
+
           // Log the recovery
           let log_sql = "INSERT INTO state_transitions (repo_id, from_state, to_state, timestamp, details) VALUES (\{repo_id}, '\{current_state}', '\{inferred_state}', '\{now}', 'Recovered from corrupted state');"
           self.db.exec(log_sql) catch {
-            e => {
-              @stdio.stderr.write("warning Failed to log recovery for \{name}: \{e}\n")
-            }
+            e =>
+              @stdio.stderr.write(
+                "warning Failed to log recovery for \{name}: \{e}\n",
+              )
           }
-          
           recovered = recovered + 1
         }
       }
       _ => continue
     }
   }
-  
   if recovered > 0 {
-    @stdio.stdout.write("info Recovered \{recovered} repositories from corrupted states\n")
+    @stdio.stdout.write(
+      "info Recovered \{recovered} repositories from corrupted states\n",
+    )
   }
 }
 
 ///|
 /// Add a new repository to the database
-pub async fn StateManager::add_repository(
+async fn StateManager::add_repository(
   self : StateManager,
   url : String,
   name : String,
@@ -225,7 +221,7 @@ pub async fn StateManager::add_repository(
 
 ///|
 /// Transition a repository to a new state
-pub async fn StateManager::transition(
+async fn StateManager::transition(
   self : StateManager,
   repo_id : Int,
   to_state : RepoState,
@@ -276,7 +272,7 @@ async fn StateManager::get_repo_state_unlocked(
 
 ///|
 /// Get the current state of a repository
-pub async fn StateManager::get_repo_state(
+async fn StateManager::get_repo_state(
   self : StateManager,
   repo_id : Int,
 ) -> RepoState {
@@ -289,7 +285,7 @@ pub async fn StateManager::get_repo_state(
 
 ///|
 /// Get repositories in a specific state
-pub async fn StateManager::get_repos_in_state(
+async fn StateManager::get_repos_in_state(
   self : StateManager,
   state : RepoState,
 ) -> Array[RepositoryRecord] {
@@ -310,8 +306,6 @@ pub async fn StateManager::get_repos_in_state(
           "pr_url"? : pr_url,
           "pr_state"? : pr_state,
           "attempt_count": Number(attempt_count, ..),
-          "created_at": String(created_at),
-          "updated_at": String(updated_at),
           ..
         }
       ) =>
@@ -342,12 +336,7 @@ pub async fn StateManager::get_repos_in_state(
             Some(String(s)) if !s.is_empty() => Some(s)
             _ => None
           },
-          thread_id: None,
           attempt_count: attempt_count.to_int(),
-          iteration: 1,
-          last_error: None,
-          created_at,
-          updated_at,
         })
       _ => continue
     }
@@ -357,7 +346,7 @@ pub async fn StateManager::get_repos_in_state(
 
 ///|
 /// Count repositories by state
-pub async fn StateManager::count_by_state(
+async fn StateManager::count_by_state(
   self : StateManager,
   state : RepoState,
 ) -> Int {
@@ -370,13 +359,13 @@ pub async fn StateManager::count_by_state(
 
 ///|
 /// Get total repository count
-pub async fn StateManager::total_count(self : StateManager) -> Int {
+async fn StateManager::total_count(self : StateManager) -> Int {
   self.db.count("repositories")
 }
 
 ///|
 /// Get all unique tasks
-pub async fn StateManager::get_all_tasks(self : StateManager) -> Array[String] {
+async fn StateManager::get_all_tasks(self : StateManager) -> Array[String] {
   let sql = "SELECT DISTINCT task_description FROM repositories ORDER BY task_description;"
   let rows = self.db.query(sql)
   let tasks = []
@@ -395,7 +384,7 @@ pub async fn StateManager::get_all_tasks(self : StateManager) -> Array[String] {
 
 ///|
 /// Count repositories by task and state
-pub async fn StateManager::count_by_task_and_state(
+async fn StateManager::count_by_task_and_state(
   self : StateManager,
   task : String,
   state : RepoState,
@@ -415,7 +404,7 @@ pub async fn StateManager::count_by_task_and_state(
 
 ///|
 /// Log a work message
-pub async fn StateManager::log(
+async fn StateManager::log(
   self : StateManager,
   repo_id : Int,
   level : String,
@@ -434,7 +423,7 @@ pub async fn StateManager::log(
 
 ///|
 /// Update repository field
-pub async fn StateManager::update_field(
+async fn StateManager::update_field(
   self : StateManager,
   repo_id : Int,
   field : String,
@@ -449,23 +438,8 @@ pub async fn StateManager::update_field(
 }
 
 ///|
-/// Increment attempt count
-pub async fn StateManager::increment_attempts(
-  self : StateManager,
-  repo_id : Int,
-) -> Unit {
-  self.db_lock.acquire()
-  defer self.db_lock.release()
-  let now = now()
-  let sql = "UPDATE repositories SET attempt_count = attempt_count + 1, updated_at = '\{now}' WHERE id = \{repo_id};"
-  self.db.exec(sql) catch {
-    e => @error.reraise(e)
-  }
-}
-
-///|
 /// Get full repository record by ID
-pub async fn StateManager::get_repository_full(
+async fn StateManager::get_repository_full(
   self : StateManager,
   repo_id : Int,
 ) -> RepositoryRecord? {
@@ -485,12 +459,7 @@ pub async fn StateManager::get_repository_full(
           "pr_number"? : pr_number,
           "pr_url"? : pr_url,
           "pr_state"? : pr_state,
-          "thread_id"? : thread_id,
           "attempt_count": Number(attempt_count, ..),
-          "last_error"? : last_error,
-          "iteration": Number(iteration, ..),
-          "created_at": String(created_at),
-          "updated_at": String(updated_at),
           ..
         }
       )
@@ -530,18 +499,7 @@ pub async fn StateManager::get_repository_full(
           Some(String(s)) if !s.is_empty() => Some(s)
           _ => None
         },
-        thread_id: match thread_id {
-          Some(String(s)) if !s.is_empty() => Some(s)
-          _ => None
-        },
         attempt_count: attempt_count.to_int(),
-        last_error: match last_error {
-          Some(String(s)) if !s.is_empty() => Some(s)
-          _ => None
-        },
-        iteration: iteration.to_int(),
-        created_at,
-        updated_at,
       })
     _ => None
   }
@@ -549,7 +507,7 @@ pub async fn StateManager::get_repository_full(
 
 ///|
 /// Get repository record by ID (alias for get_repository_full that raises error if not found)
-pub async fn StateManager::get_repository(
+async fn StateManager::get_repository(
   self : StateManager,
   repo_id : Int,
 ) -> RepositoryRecord {
@@ -561,7 +519,7 @@ pub async fn StateManager::get_repository(
 
 ///|
 /// Update multiple repository fields at once
-pub async fn StateManager::update_repository(
+async fn StateManager::update_repository(
   self : StateManager,
   repo_id : Int,
   updates : Array[(String, String)],
@@ -589,7 +547,7 @@ pub async fn StateManager::update_repository(
 
 ///|
 /// Get pending or retry repositories for processing
-pub async fn StateManager::get_processable_repos(
+async fn StateManager::get_processable_repos(
   self : StateManager,
   limit : Int,
 ) -> Array[RepositoryRecord] {
@@ -614,7 +572,6 @@ pub async fn StateManager::get_processable_repos(
           "pr_url"? : pr_url,
           "pr_state"? : pr_state,
           "attempt_count": Number(attempt_count, ..),
-          "iteration": Number(iteration, ..),
           ..
         }
       ) =>
@@ -653,12 +610,7 @@ pub async fn StateManager::get_processable_repos(
             Some(String(s)) if !s.is_empty() => Some(s)
             _ => None
           },
-          thread_id: None,
           attempt_count: attempt_count.to_int(),
-          last_error: None,
-          iteration: iteration.to_int(),
-          created_at: "",
-          updated_at: "",
         })
       _ => continue
     }

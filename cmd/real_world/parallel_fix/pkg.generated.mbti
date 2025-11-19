@@ -1,96 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "peter-jerry-ye/codex-example/real_world/parallel_fix"
 
-import(
-  "peter-jerry-ye/codex/x/args"
-  "peter-jerry-ye/codex/x/sqlite"
-)
-
 // Values
-async fn cmd_add(@args.Args) -> Unit
-
-async fn cmd_init(@args.Args) -> Unit
-
-async fn cmd_status(@args.Args) -> Unit
-
-fn now() -> String
-
-let schema_sql : String
-
-async fn show_subcommand_help() -> Unit
 
 // Errors
 
 // Types and methods
-type Arguments
-impl Default for Arguments
-
-type RepoInfo
-
-pub enum RepoState {
-  Pending
-  Cloning
-  Cloned
-  Branching
-  Branched
-  Fixing
-  Fixed
-  Committing
-  Committed
-  Pushing
-  Pushed
-  PrCreating
-  PrOpen
-  PrChangesRequested
-  PrApproved
-  PrConflicts
-  PrMerged
-  Complete
-  Failed
-  Retry
-}
-fn RepoState::from_string(String) -> Self?
-fn RepoState::to_string(Self) -> String
-impl Eq for RepoState
-impl Show for RepoState
-
-pub struct RepositoryRecord {
-  id : Int
-  url : String
-  name : String
-  state : RepoState
-  local_path : String?
-  default_branch : String?
-  current_branch : String?
-  task_description : String?
-  pr_number : Int?
-  pr_url : String?
-  pr_state : String?
-  thread_id : String?
-  attempt_count : Int
-  last_error : String?
-  iteration : Int
-  created_at : String
-  updated_at : String
-}
-
-pub struct StateManager {
-  db : @sqlite.Database
-}
-async fn StateManager::add_repository(Self, String, String, String) -> Int?
-async fn StateManager::count_by_state(Self, RepoState) -> Int
-async fn StateManager::get_repo_state(Self, Int) -> RepoState?
-async fn StateManager::get_repos_in_state(Self, RepoState) -> Array[RepositoryRecord]
-async fn StateManager::increment_attempts(Self, Int) -> Bool
-async fn StateManager::init(Self) -> Bool
-async fn StateManager::log(Self, Int, String, String) -> Bool
-fn StateManager::new(String) -> Self
-async fn StateManager::total_count(Self) -> Int
-async fn StateManager::transition(Self, Int, RepoState, String?) -> Bool
-async fn StateManager::update_field(Self, Int, String, String) -> Bool
-
-type TaskResult
-impl Show for TaskResult
 
 // Type aliases
 

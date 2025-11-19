@@ -4,7 +4,7 @@
 ///|
 /// Handle the 'init' subcommand
 /// Initializes the database and working directory
-pub async fn cmd_init(
+async fn cmd_init(
   args : ArrayView[String],
   work_dir : String,
   data_dir : String,
@@ -89,7 +89,7 @@ pub async fn cmd_init(
 ///|
 /// Handle the 'add' subcommand
 /// Adds repositories from a file to the database
-pub async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
+async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   let help_message =
     #|Usage: add <repos-file> [OPTIONS]
     #|
@@ -183,7 +183,7 @@ pub async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
 ///|
 /// Handle the 'status' subcommand
 /// Shows current state of all repositories
-pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
+async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   let help_message =
     #|Usage: status [OPTIONS]
     #|
@@ -223,12 +223,11 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   if !state_mgr.db.exists() {
     @error.fail("Database not found. Please run 'init' first.")
   }
-  
+
   // Migrate deprecated states from old databases (silent - no output unless something found)
   state_mgr.migrate_deprecated_states() catch {
-    e => {
+    e =>
       @stdio.stderr.write("warning Failed to migrate deprecated states: \{e}\n")
-    }
   }
 
   // Get total count
@@ -335,7 +334,7 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
 ///|
 /// Handle the 'sync-prs' subcommand
 /// Sync PR status from GitHub for repositories with PR URLs
-pub async fn cmd_sync_prs(
+async fn cmd_sync_prs(
   args : ArrayView[String],
   work_dir : String,
   data_dir : String,
@@ -374,12 +373,11 @@ pub async fn cmd_sync_prs(
   if !state_mgr.db.exists() {
     @error.fail("Database not found. Please run 'init' first.")
   }
-  
+
   // Migrate deprecated states from old databases
   state_mgr.migrate_deprecated_states() catch {
-    e => {
+    e =>
       @stdio.stderr.write("warning Failed to migrate deprecated states: \{e}\n")
-    }
   }
 
   // Check if gh is available
@@ -508,7 +506,7 @@ pub async fn cmd_sync_prs(
 ///|
 /// Handle the 'help' subcommand
 /// Shows help for subcommands
-pub async fn cmd_help(_args : ArrayView[String]) -> Unit {
+async fn cmd_help(_args : ArrayView[String]) -> Unit {
   let help_message =
     #|Usage: moon run real_world/parallel_fix -- [GLOBAL_OPTIONS] <subcommand> [OPTIONS]
     #|
@@ -552,7 +550,7 @@ pub async fn cmd_help(_args : ArrayView[String]) -> Unit {
 ///|
 /// Handle the 'run' subcommand
 /// Start/resume processing repositories from the database
-pub async fn cmd_run(
+async fn cmd_run(
   args : ArrayView[String],
   work_dir : String,
   data_dir : String,
@@ -607,13 +605,12 @@ pub async fn cmd_run(
       "Database not found. Please run 'init' first:\n  moon run real_world/parallel_fix -- init",
     )
   }
-  
+
   // Migrate deprecated states from old databases
   @stdio.stdout.write("Checking for deprecated states...\n")
   state_mgr.migrate_deprecated_states() catch {
     e => @error.fail_with("Failed to migrate deprecated states", e)
   }
-  
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\nSTARTING PARALLEL REPOSITORY PROCESSING\n")
   @stdio.stdout.write("=".repeat(60))

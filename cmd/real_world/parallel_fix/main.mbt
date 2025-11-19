@@ -38,7 +38,7 @@ async fn main {
 
 ///|
 /// Read repository URLs from file
-pub async fn read_repos_file(path : String) -> Array[String] {
+async fn read_repos_file(path : String) -> Array[String] {
   let content = @fs.read_file(path).text() catch { e => @error.reraise(e) }
   let repos = []
   for line in content.split("\n") {
@@ -53,7 +53,7 @@ pub async fn read_repos_file(path : String) -> Array[String] {
 
 ///|
 /// Ensure work directory exists
-pub async fn ensure_work_dir(path : String) -> Unit {
+async fn ensure_work_dir(path : String) -> Unit {
   if @fs.exists(path) {
     return
   }

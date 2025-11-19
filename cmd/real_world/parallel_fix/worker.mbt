@@ -5,7 +5,7 @@
 /// Process a repository based on its current state
 /// This is the main state-driven processing function
 /// Continues processing through states until reaches a terminal or async state
-pub async fn process_repository_stateful(
+async fn process_repository_stateful(
   config : WorkerConfig,
   repo : RepositoryRecord,
 ) -> Unit {
