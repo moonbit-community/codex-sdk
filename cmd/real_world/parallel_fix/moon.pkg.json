@@ -7,7 +7,6 @@
     "moonbitlang/async/semaphore",
     "moonbitlang/x/sys",
     "moonbitlang/async/process",
-    "moonbitlang/async/pipe",
     "moonbitlang/async/io",
     "moonbitlang/async/stdio",
     "peter-jerry-ye/codex/x/args",

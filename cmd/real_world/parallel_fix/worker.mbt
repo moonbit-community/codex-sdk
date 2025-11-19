@@ -20,12 +20,39 @@ async fn process_repository(
   // 1. Check if PR exists
   match repo.pr_number {
     Some(pr_num) => {
-      // PR exists, check its status and get comments
+      // PR exists, check its status
       @stdio.stdout.write(
         "info [\{repo_name}] PR #\{pr_num} exists, checking status...\n",
       )
 
-      // Get PR comments to pass to AI
+      // Get PR state from GitHub
+      let pr_state = get_pr_state(clone_path, pr_num) catch {
+        e => {
+          @stdio.stderr.write(
+            "warning [\{repo_name}] Failed to get PR state: \{e}\n",
+          )
+          "UNKNOWN"
+        }
+      }
+
+      // Check if PR is merged or closed
+      if pr_state == "MERGED" || pr_state == "CLOSED" {
+        @stdio.stdout.write(
+          "info [\{repo_name}] PR #\{pr_num} is \{pr_state}, marking as completed\n",
+        )
+        mark_completed(config.db, repo.id) catch {
+          e =>
+            @stdio.stderr.write(
+              "warning [\{repo_name}] Failed to mark as completed: \{e}\n",
+            )
+        }
+        return
+      }
+
+      // PR is still open, get comments and continue work
+      @stdio.stdout.write(
+        "info [\{repo_name}] PR #\{pr_num} is \{pr_state}, continuing work...\n",
+      )
       let comments = get_pr_comments(clone_path, pr_num)
 
       // Ask AI to work on the task considering PR feedback
@@ -140,6 +167,28 @@ async fn create_draft_pr(
     Some(num) => num
     None => @error.fail("Failed to extract PR number from URL: \{pr_url}")
   }
+}
+
+///|
+/// Get PR state from GitHub
+async fn get_pr_state(clone_path : String, pr_number : Int) -> String {
+  let (status, stdout, stderr) = @process.collect_output(
+    "gh",
+    ["pr", "view", pr_number.to_string(), "--json", "state", "--jq", ".state"],
+    cwd=clone_path,
+  ) catch {
+    e =>
+      @error.fail_with(
+        "Failed to get PR state for \{clone_path} #\{pr_number}",
+        e,
+      )
+  }
+  if status != 0 {
+    @error.fail(
+      "Failed to get PR state for \{clone_path} #\{pr_number}\n\{stderr.text()}",
+    )
+  }
+  stdout.text().trim(char_set=" \t\n\r").to_string()
 }
 
 ///|
