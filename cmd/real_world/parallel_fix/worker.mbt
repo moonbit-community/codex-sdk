@@ -157,7 +157,12 @@ async fn process_repository(
 
       // Now create PR
       @stdio.stdout.write("info [\{repo_name}] Changes made, creating PR...\n")
-      let pr_num = create_pr_from_branch(clone_path, repo, branch_name) catch {
+      let pr_num = create_pr_from_branch(
+        clone_path,
+        repo,
+        branch_name,
+        config.codex,
+      ) catch {
         e => {
           @stdio.stderr.write(
             "error [\{repo_name}] Failed to create PR: \{e}\n",
@@ -279,16 +284,14 @@ async fn check_branch_has_changes(
   ) catch {
     e => @error.fail_with("Failed to check branch commits", e)
   }
-  
   if status != 0 {
     return false
   }
-  
+
   // Parse commit count
   let commit_count = @strconv.parse_int(stdout.text().trim(char_set=" \t\n\r")) catch {
     _ => 0
   }
-  
   commit_count > 0
 }
 
@@ -298,7 +301,7 @@ async fn commit_changes(clone_path : String, repo : RepositoryRecord) -> Unit {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
   }
-  
+
   // Only commit if there are uncommitted changes
   if git_repo.has_changes() {
     let commit_msg = "AI work on: \{repo.task}"
@@ -306,7 +309,9 @@ async fn commit_changes(clone_path : String, repo : RepositoryRecord) -> Unit {
       @error.fail("Failed to commit changes")
     }
   } else {
-    @stdio.stdout.write("info No uncommitted changes, AI may have already committed\n")
+    @stdio.stdout.write(
+      "info No uncommitted changes, AI may have already committed\n",
+    )
   }
 }
 
@@ -322,11 +327,141 @@ async fn push_branch(clone_path : String, branch_name : String) -> Unit {
 }
 
 ///|
+/// Generate PR metadata (title and body) using AI
+async fn generate_pr_metadata(
+  codex : @codex.Codex,
+  clone_path : String,
+  repo : RepositoryRecord,
+  branch_name : String,
+  default_branch : String,
+) -> (String, String) {
+  // Get diff summary
+  let (status, stdout, stderr) = @process.collect_output(
+    "git",
+    ["diff", "--stat", "\{default_branch}..\{branch_name}"],
+    cwd=clone_path,
+  ) catch {
+    e => {
+      @stdio.stderr.write("warning Failed to get diff summary: \{e}\n")
+      return (
+        "Automated code improvements",
+        "This PR was automatically created.\n\nTask: \{repo.task}",
+      )
+    }
+  }
+  if status != 0 {
+    @stdio.stderr.write("warning git diff failed: \{stderr.text()}\n")
+    return (
+      "Automated code improvements",
+      "This PR was automatically created.\n\nTask: \{repo.task}",
+    )
+  }
+  let diff_summary = stdout.text()
+
+  // Create a simple thread for PR metadata generation
+  let thread = codex.start_thread(
+    options=@codex.ThreadOptions::new(
+      working_directory=clone_path,
+      skip_git_repo_check=true,
+      sandbox_mode=ReadOnly,
+      model?=@sys.get_env_vars().get("LOWCOST_MODEL"),
+    ),
+  )
+  let prompt =
+    #|Based on the following task and code changes, generate a professional pull request title and body.
+    $|
+    $|Task: \{repo.task}
+    $|
+    $|Changes summary:
+    $|\{diff_summary}
+    $|
+    $|Generate a JSON response with this structure:
+    $|{
+    $|  "title": "A concise PR title (max 72 characters)",
+    $|  "body": "A detailed PR description in markdown format"
+    $|}
+    $|
+    $|The title should be concise and descriptive.
+    $|The body should include:
+    $|   - Summary of what was changed
+    $|   - Why these changes were made (based on the task)
+    $|   - Any notable implementation details
+    $|
+    $|Keep the tone professional and technical.
+
+  // Define output schema for structured PR metadata
+  let schema_json =
+    #|{
+    $|  "type": "object",
+    $|  "properties": {
+    $|    "title": {
+    $|      "type": "string",
+    $|      "description": "A concise PR title, max 72 characters"
+    $|    },
+    $|    "body": {
+    $|      "type": "string",
+    $|      "description": "A detailed PR description in markdown format"
+    $|    }
+    $|  },
+    $|  "required": ["title", "body"],
+    $|  "additionalProperties": false
+    $|}
+  let schema = @json.parse(schema_json) catch {
+    e => {
+      @stdio.stderr.write("warning Failed to parse schema JSON: \{e}\n")
+      return (
+        "Automated code improvements",
+        "This PR was automatically created.\n\nTask: \{repo.task}",
+      )
+    }
+  }
+
+  // Run with output schema
+  let result = thread.run(
+    prompt,
+    turn_options=@codex.TurnOptions::new(output_schema=schema),
+  ) catch {
+    e => {
+      @stdio.stderr.write("warning Failed to generate PR metadata: \{e}\n")
+      return (
+        "Automated code improvements",
+        "This PR was automatically created.\n\nTask: \{repo.task}",
+      )
+    }
+  }
+
+  // Parse the structured response
+  let parsed = @json.parse(result.final_response) catch {
+    e => {
+      @stdio.stderr.write("warning Failed to parse PR metadata JSON: \{e}\n")
+      return (
+        "Automated code improvements",
+        "This PR was automatically created.\n\nTask: \{repo.task}",
+      )
+    }
+  }
+  match parsed {
+    Object({ "title": String(title), "body": String(body), .. }) =>
+      (title, body)
+    _ => {
+      @stdio.stderr.write(
+        "warning PR metadata response missing title/body fields\n",
+      )
+      (
+        "Automated code improvements",
+        "This PR was automatically created.\n\nTask: \{repo.task}",
+      )
+    }
+  }
+}
+
+///|
 /// Create a PR from an existing branch (already pushed)
 async fn create_pr_from_branch(
   clone_path : String,
   repo : RepositoryRecord,
   branch_name : String,
+  codex : @codex.Codex,
 ) -> Int {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
@@ -335,9 +470,14 @@ async fn create_pr_from_branch(
   // Get default branch
   let default_branch = git_repo.default_branch.unwrap_or("main")
 
+  // Generate PR metadata using AI
+  @stdio.stdout.write("info Generating PR title and description...\n")
+  let (pr_title, pr_body) = generate_pr_metadata(
+    codex, clone_path, repo, branch_name, default_branch,
+  )
+  @stdio.stdout.write("info PR title: \{pr_title}\n")
+
   // Create PR using gh CLI
-  let pr_title = "AI task: \{repo.task}"
-  let pr_body = "This PR was automatically created for:\n\n\{repo.task}"
   let (status, stdout, stderr) = @process.collect_output(
     "gh",
     [
