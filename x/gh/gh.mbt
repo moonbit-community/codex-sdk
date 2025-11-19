@@ -80,7 +80,7 @@ pub async fn create_pr(
 ///|
 /// Extract PR number from GitHub PR URL
 /// Example: https://github.com/owner/repo/pull/123 -> Some(123)
-pub fn extract_pr_number(pr_url : String) -> Int? {
+pub fn extract_pr_number(pr_url : StringView) -> Int? {
   let parts = pr_url.split("/").to_array()
   if parts.length() > 0 {
     let last = parts[parts.length() - 1].to_string().trim(char_set=" \t\n\r")

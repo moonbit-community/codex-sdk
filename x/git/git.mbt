@@ -221,13 +221,18 @@ pub async fn GitRepo::create_branch(
   self : GitRepo,
   branch_name : String,
   from_branch? : String,
-) -> Bool {
+) -> Unit {
   let args = if from_branch is Some(from) {
     ["checkout", "-b", branch_name, from]
   } else {
     ["checkout", "-b", branch_name]
   }
-  @process.run("git", args, cwd=self.path) == 0
+  let (status, _, stderr) = @process.collect_output("git", args, cwd=self.path) catch {
+    e => @error.reraise(e)
+  }
+  if status != 0 {
+    @error.fail("Failed to create branch \{branch_name}: \{stderr.text()}")
+  }
 }
 
 ///|
@@ -280,7 +285,7 @@ pub async fn GitRepo::push(
   remote? : String = "origin",
   branch? : String,
   set_upstream? : Bool = false,
-) -> Bool {
+) -> Unit {
   let args = ["push"]
   if set_upstream {
     args.push("-u")
@@ -289,7 +294,12 @@ pub async fn GitRepo::push(
   if branch is Some(b) {
     args.push(b)
   }
-  @process.run("git", args, cwd=self.path) == 0
+  let (status, _, stderr) = @process.collect_output("git", args, cwd=self.path) catch {
+    e => @error.fail_with("Failed to push to remote \{remote}", e)
+  }
+  if status != 0 {
+    @error.fail("Failed to push to remote \{remote}: \{stderr.text()}")
+  }
 }
 
 ///|

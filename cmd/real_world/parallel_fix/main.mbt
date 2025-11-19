@@ -27,7 +27,7 @@ async fn main {
     ["add", .. remaining] => cmd_add(remaining, data_dir)
     ["run", .. remaining] => cmd_run(remaining, work_dir, data_dir)
     ["status", .. remaining] => cmd_status(remaining, data_dir)
-    ["sync-prs", .. remaining] => cmd_sync_prs(remaining, work_dir, data_dir)
+    ["sync-prs", .. remaining] => cmd_sync_prs(remaining, data_dir)
     ["help", .. remaining] => cmd_help(remaining)
     _ =>
       @error.fail(
@@ -91,21 +91,11 @@ async fn cmd_init(
   }
 
   // Initialize database
-  let state_mgr = StateManager::new(db_path)
-  state_mgr.init() catch {
+  let db = @sqlite.Database::new(db_path)
+  db.exec(schema_sql) catch {
     e => @error.fail_with("Failed to initialize database", e)
   }
   @stdio.stdout.write("✓ Database initialized\n")
-  try {
-    state_mgr.db.exec(
-      "INSERT OR REPLACE INTO config (key, value, updated_at) VALUES ('work_dir', '\{work_dir}', '\{now()}');",
-    )
-    state_mgr.db.exec(
-      "INSERT OR REPLACE INTO config (key, value, updated_at) VALUES ('data_dir', '\{data_dir}', '\{now()}');",
-    )
-  } catch {
-    e => @error.fail_with("Failed to save configuration", e)
-  }
   @stdio.stdout.write(
     (
       #|✓ Workspace initialized successfully!
@@ -169,8 +159,8 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   }
 
   // Check if database exists
-  let state_mgr = StateManager::new(db_path)
-  state_mgr.db.ensure() catch {
+  let db = @sqlite.Database::new(db_path)
+  db.ensure() catch {
     e =>
       @error.fail_with(
         "Database not found. Please run 'init' first:\n  moon run real_world/parallel_fix -- init",
@@ -194,17 +184,15 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   let mut added = 0
   let mut skipped = 0
   for repo_url in repos {
-    let repo_name = extract_repo_name(repo_url)
-    if state_mgr.add_repository(repo_url, repo_name, task_description)
-      is Some(_) {
+    if add_repository(db, repo_url, task_description) is Some(_) {
       added = added + 1
       @stdio.stdout.write(
-        "  ✓ Added: \{repo_name} with task: \{task_description}\n",
+        "  ✓ Added: \{repo_url} with task: \{task_description}\n",
       )
     } else {
       skipped = skipped + 1
       @stdio.stdout.write(
-        "  - Skipped (this repo+task pair already exists): \{repo_name}\n",
+        "  - Skipped (this repo+task pair already exists): \{repo_url}\n",
       )
     }
   }
@@ -252,98 +240,76 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   let db_path = "\{data_dir}/parallel-fix.db"
   let verbose = parsed_args.flags.get("verbose") is Some(true)
   // Check if database exists
-  let state_mgr = StateManager::new(db_path)
-  state_mgr.db.ensure() catch {
+  let db = @sqlite.Database::new(db_path)
+  db.ensure() catch {
     e => @error.fail_with("Database not found. Please run 'init' first.", e)
   }
 
-  // Migrate deprecated states from old databases (silent - no output unless something found)
-  state_mgr.migrate_deprecated_states() catch {
-    e =>
-      @stdio.stderr.write("warning Failed to migrate deprecated states: \{e}\n")
-  }
-
-  // Get total count
-  let total = state_mgr.total_count()
+  // Get total count and completed count
+  let total = total_count(db)
   if total == 0 {
     @stdio.stdout.write(
       "No repositories found. Add some with: add <repos-file> --task \"description\"\n",
     )
     return
   }
+  
+  let completed_count = count_completed(db)
+  let incomplete_count = total - completed_count
 
-  // Get all unique tasks
-  let all_tasks = state_mgr.get_all_tasks()
-
-  // Count by state
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\nREPOSITORY STATUS\n")
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\n\n")
   @stdio.stdout.write("Total repository-task pairs: \{total}\n")
-  @stdio.stdout.write("Unique tasks: \{all_tasks.length()}\n\n")
-
-  // Show breakdown by task
-  @stdio.stdout.write("BREAKDOWN BY TASK:\n")
-  for task in all_tasks {
-    let task_total = state_mgr.count_by_task_and_state(task, Pending) +
-      state_mgr.count_by_task_and_state(task, Cloning) +
-      state_mgr.count_by_task_and_state(task, Branching) +
-      state_mgr.count_by_task_and_state(task, Fixing) +
-      state_mgr.count_by_task_and_state(task, PrOpen) +
-      state_mgr.count_by_task_and_state(task, Complete)
-    @stdio.stdout.write("  \"\{task}\" - \{task_total} repos\n")
-  }
-  @stdio.stdout.write("\n")
-
-  // Show counts for each important state (overall)
-  @stdio.stdout.write("OVERALL STATE COUNTS:\n")
-  let states_to_show = get_status_states()
-  for i in 0..<states_to_show.length() {
-    let (state, label) = states_to_show[i]
-    let count = state_mgr.count_by_state(state)
-    if count > 0 {
-      @stdio.stdout.write("  \{label}: \{count}\n")
-    }
-  }
+  @stdio.stdout.write("  Completed: \{completed_count}\n")
+  @stdio.stdout.write("  Incomplete: \{incomplete_count}\n\n")
 
   // Show detailed list if verbose
   if verbose {
+    let all_repos = get_all_repos(db)
+    
+    @stdio.stdout.write("DETAILED LIST:\n")
+    @stdio.stdout.write("-".repeat(60))
     @stdio.stdout.write("\n")
-    @stdio.stdout.write("=".repeat(60))
-    @stdio.stdout.write("\nDETAILED LIST (Grouped by Task)\n")
-    @stdio.stdout.write("=".repeat(60))
-    @stdio.stdout.write("\n\n")
-
-    // Group by task
-    for task in all_tasks {
-      @stdio.stdout.write("TASK: \"\{task}\"\n")
-      @stdio.stdout.write("-".repeat(60))
-      @stdio.stdout.write("\n")
-      for i in 0..<states_to_show.length() {
-        let (state, label) = states_to_show[i]
-        let repos = state_mgr.get_repos_in_state(state)
-        let task_repos = repos.filter(r => r.task_description is Some(t) &&
-          t == task)
-        if task_repos.length() > 0 {
-          @stdio.stdout.write("  [\{label}]\n")
-          for repo in task_repos {
-            @stdio.stdout.write("    - \{repo.name}\n")
-            @stdio.stdout.write("      URL: \{repo.url}\n")
-            if repo.pr_url is Some(pr_url) {
-              @stdio.stdout.write("      PR: \{pr_url}\n")
-              if repo.pr_state is Some(pr_state) {
-                @stdio.stdout.write("      PR State: \{pr_state}\n")
-              }
-            }
-          }
+    
+    // Group by completion status
+    @stdio.stdout.write("\n[Incomplete - \{incomplete_count}]\n")
+    let mut shown_incomplete = false
+    for repo in all_repos {
+      if not(repo.completed) {
+        shown_incomplete = true
+        @stdio.stdout.write("  - \{repo.url}\n")
+        @stdio.stdout.write("    Task: \{repo.task}\n")
+        match repo.pr_number {
+          Some(pr_num) => @stdio.stdout.write("    PR: #\{pr_num}\n")
+          None => @stdio.stdout.write("    PR: Not created yet\n")
         }
       }
-      @stdio.stdout.write("\n")
+    }
+    if not(shown_incomplete) {
+      @stdio.stdout.write("  (none)\n")
+    }
+    
+    @stdio.stdout.write("\n[Completed - \{completed_count}]\n")
+    let mut shown_completed = false
+    for repo in all_repos {
+      if repo.completed {
+        shown_completed = true
+        @stdio.stdout.write("  - \{repo.url}\n")
+        @stdio.stdout.write("    Task: \{repo.task}\n")
+        match repo.pr_number {
+          Some(pr_num) => @stdio.stdout.write("    PR: #\{pr_num}\n")
+          None => @stdio.stdout.write("    PR: N/A\n")
+        }
+      }
+    }
+    if not(shown_completed) {
+      @stdio.stdout.write("  (none)\n")
     }
   } else {
     @stdio.stdout.write(
-      "\nUse --verbose or -v for detailed repository list grouped by task\n",
+      "\nUse --verbose or -v for detailed repository list\n",
     )
   }
 }
@@ -353,7 +319,6 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
 /// Sync PR status from GitHub for repositories with PR URLs
 async fn cmd_sync_prs(
   args : ArrayView[String],
-  work_dir : String,
   data_dir : String,
 ) -> Unit {
   let help_message =
@@ -383,105 +348,37 @@ async fn cmd_sync_prs(
   let db_path = "\{data_dir}/parallel-fix.db"
 
   // Check if database exists
-  let state_mgr = StateManager::new(db_path)
-  state_mgr.db.ensure() catch {
+  let db = @sqlite.Database::new(db_path)
+  db.ensure() catch {
     e => @error.fail_with("Database not found. Please run 'init' first.", e)
-  }
-
-  // Migrate deprecated states from old databases
-  state_mgr.migrate_deprecated_states() catch {
-    e => @stdio.stderr.write("Failed to migrate deprecated states: \{e}\n")
   }
 
   // Check if gh is available
   @gh.ensure_available() catch {
     e => @error.reraise(e)
   }
-  @stdio.stdout.write("Syncing PR status from GitHub...\n\n")
+  @stdio.stdout.write("Syncing PR numbers from GitHub...\n\n")
 
-  // Get all repositories with PR URLs
-  let repos = state_mgr.get_repos_with_pr(100)
+  // Get all incomplete repositories that have a PR
+  let all_repos = get_all_repos(db)
   let mut synced = 0
-  let mut updated = 0
-  let mut failed = 0
-  for repo in repos {
-    synced = synced + 1
-    guard repo.pr_url is Some(pr_url) else { continue }
-    @stdio.stdout.write("info [\{repo.name}] Syncing PR: \{pr_url}\n")
-
-    // Extract PR number from URL if not in database
-    let pr_number_opt = match repo.pr_number {
-      Some(n) => Some(n)
-      _ => @gh.extract_pr_number(pr_url)
-    }
-    guard pr_number_opt is Some(pr_number) else {
-      @stdio.stdout.write("  Warning: Could not extract PR number from URL\n")
-      failed = failed + 1
-      continue
-    }
-
-    // Get local_path - if not set, try to infer from work_dir and name
-    let clone_path = match repo.local_path {
-      Some(p) if !p.is_empty() => p
-      _ => "\{work_dir}/\{repo.name}"
-    }
-    ensure_repository(clone_path, repo)
-
-    // Fetch PR state from GitHub
-    let pr_info = fetch_pr_state(clone_path, pr_number) catch {
-      e => @error.reraise(e)
-    }
-    @stdio.stdout.write(
-      "  PR #\{pr_number}: state=\{pr_info.state}, mergeable=\{pr_info.mergeable}, review=\{pr_info.review_decision}\n",
-    )
-
-    // Determine the correct state based on PR info
-    let new_state = match pr_info.state {
-      "MERGED" => Complete
-      "CLOSED" => Complete
-      "CHANGES_REQUESTED" => Fixing
-      "CONFLICTING" => Fixing
-      _ => PrOpen
-    }
-
-    // Update repository
-    let updates = [
-      ("pr_number", pr_number.to_string()),
-      ("pr_state", pr_info.state),
-    ]
-    state_mgr.update_repository(repo.id, updates) catch {
-      e => {
-        @stdio.stdout.write("  Error updating repository: \{e}\n")
-        failed = failed + 1
-        continue
+  for repo in all_repos {
+    match repo.pr_number {
+      Some(pr_num) => {
+        @stdio.stdout.write("[\{repo.url}] Already has PR #\{pr_num}\n")
+        synced = synced + 1
       }
-    }
-
-    // Get current state
-    let current_state = state_mgr.get_repo_state(repo.id) catch {
-      e => @error.reraise(e)
-    }
-    if current_state != new_state {
-      state_mgr.transition(repo.id, new_state, details="Synced from GitHub") catch {
-        e => {
-          @stdio.stdout.write("  Error transitioning state: \{e}\n")
-          failed = failed + 1
-          continue
-        }
+      None => {
+        @stdio.stdout.write("[\{repo.url}] No PR number recorded\n")
       }
-      @stdio.stdout.write("  Updated: \{current_state} -> \{new_state}\n")
-      updated = updated + 1
-    } else {
-      @stdio.stdout.write("  Already in correct state: \{new_state}\n")
     }
   }
   @stdio.stdout.write("\n")
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\n")
   @stdio.stdout.write("Sync complete!\n")
-  @stdio.stdout.write("  Total PRs checked: \{synced}\n")
-  @stdio.stdout.write("  States updated: \{updated}\n")
-  @stdio.stdout.write("  Failed: \{failed}\n")
+  @stdio.stdout.write("  Total repositories checked: \{all_repos.length()}\n")
+  @stdio.stdout.write("  With PR numbers: \{synced}\n")
 }
 
 ///|
@@ -581,8 +478,8 @@ async fn cmd_run(
   let db_path = "\{data_dir}/parallel-fix.db"
 
   // Check if database exists
-  let state_mgr = StateManager::new(db_path)
-  state_mgr.db.ensure() catch {
+  let db = @sqlite.Database::new(db_path)
+  db.ensure() catch {
     e =>
       @error.fail_with(
         "Database not found. Please run 'init' first:\n  moon run real_world/parallel_fix -- init",
@@ -590,11 +487,6 @@ async fn cmd_run(
       )
   }
 
-  // Migrate deprecated states from old databases
-  @stdio.stdout.write("Checking for deprecated states...\n")
-  state_mgr.migrate_deprecated_states() catch {
-    e => @error.fail_with("Failed to migrate deprecated states", e)
-  }
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\nSTARTING PARALLEL REPOSITORY PROCESSING\n")
   @stdio.stdout.write("=".repeat(60))
@@ -609,10 +501,10 @@ async fn cmd_run(
   let codex = @codex.Codex::new()
 
   // Create worker config
-  let config = WorkerConfig::{ work_dir, branch_prefix, codex, state_mgr }
+  let config = WorkerConfig::{ work_dir, branch_prefix, codex, db }
 
-  // Get total count and processable count
-  let total = state_mgr.total_count()
+  // Get total count and incomplete count
+  let total = total_count(db)
   if total == 0 {
     @stdio.stdout.write(
       "No repositories in database. Add some with:\n  moon run real_world/parallel_fix -- add <repos-file> --task \"description\"\n",
@@ -621,28 +513,28 @@ async fn cmd_run(
   }
   @stdio.stdout.write("Total repositories: \{total}\n")
 
-  // Get all processable repositories (including PR_OPEN for status check)
-  let all_repos = state_mgr.get_processable_repos(total)
-  if all_repos.is_empty() {
-    @stdio.stdout.write("\nNo repositories to process.\n")
+  // Get all incomplete repositories
+  let incomplete_repos = get_incomplete_repos(db)
+  if incomplete_repos.is_empty() {
+    @stdio.stdout.write("\nNo incomplete repositories to process. All done!\n")
     return
   }
-  @stdio.stdout.write("\nProcessing \{all_repos.length()} repositories...\n\n")
+  @stdio.stdout.write("\nProcessing \{incomplete_repos.length()} incomplete repositories...\n\n")
 
   // Process all repositories in parallel with bounded concurrency
   let mut processed = 0
   let mut successful = 0
   @async.with_task_group(fn(task_group) {
     let semaphore = @semaphore.Semaphore::new(parallelism)
-    for repo in all_repos {
+    for repo in incomplete_repos {
       task_group.spawn_bg(allow_failure=true, fn() {
         semaphore.acquire()
         defer semaphore.release()
         processed = processed + 1
-        process_repository_stateful(config, repo) catch {
+        process_repository(config, repo) catch {
           e =>
             @stdio.stderr.write(
-              "error [\{repo.name}] - Unexpected error: \{e}\n",
+              "error [\{repo.url}] - Unexpected error: \{e}\n",
             )
         }
         successful = successful + 1
