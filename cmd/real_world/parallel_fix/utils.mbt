@@ -1,4 +1,7 @@
 ///|
+/// Common utility functions for the parallel repository fixer
+
+///|
 /// Extract repository name from URL
 pub fn extract_repo_name(url : String) -> String {
   let without_git = if url.has_suffix(".git") {
@@ -22,41 +25,49 @@ pub fn get_timestamp() -> String {
 }
 
 ///|
-/// Check if GitHub CLI (gh) is available
-/// Returns true if gh is installed, false otherwise
-pub async fn ensure_gh_available() -> Unit {
-  let (status, output) = @process.collect_output_merged("which", ["gh"]) catch {
-    e => @error.reraise(e)
+/// Get current timestamp in ISO 8601 format for database
+pub fn now() -> String {
+  // Use Unix timestamp for now (simplified)
+  // TODO: Use proper ISO 8601 formatting when datetime library is available
+  @async.now().to_string()
+}
+
+///|
+/// Expand home directory (~) in path
+pub async fn expand_home_dir(path : String) -> String {
+  if !path.has_prefix("~") {
+    return path
   }
-  if status != 0 {
-    @error.fail("GitHub CLI (gh) is not available. \{output.text()}")
+  
+  let (pipe, process_read) = @process.read_from_process()
+  let _status = @process.run("sh", ["-c", "echo $HOME"], stdout=process_read) catch {
+    _ => return path
   }
+  let home = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
+  let home_final = if home.is_empty() { "/tmp" } else { home }
+  "\{home_final}\{path[1:].to_string()}"
+}
+
+///|
+/// Escape single quotes for SQL
+pub fn escape_sql(s : String) -> String {
+  s.replace(old="'", new="''")
 }
 
 ///|
 /// Extract PR number from GitHub PR URL
 /// Example: https://github.com/owner/repo/pull/123 -> Some(123)
 pub fn extract_pr_number(pr_url : String) -> Int? {
-  let parts = pr_url.split("/").to_array()
-  if parts.length() > 0 {
-    let last = parts[parts.length() - 1].to_string().trim(char_set=" \t\n\r")
-    let num = @strconv.parse_int(last) catch { _ => -1 }
-    if num > 0 {
-      Some(num)
-    } else {
-      None
-    }
-  } else {
-    None
-  }
+  @gh.extract_pr_number(pr_url)
 }
 
 ///|
-/// PR state information fetched from GitHub
-pub struct PrStateInfo {
-  state : String // OPEN, CLOSED, MERGED
-  mergeable : String // MERGEABLE, CONFLICTING, UNKNOWN
-  review_decision : String // APPROVED, CHANGES_REQUESTED, REVIEW_REQUIRED, or empty string
+/// Check if GitHub CLI (gh) is available
+/// Returns true if gh is installed, false otherwise
+pub async fn ensure_gh_available() -> Unit {
+  @gh.ensure_available() catch {
+    e => @error.reraise(e)
+  }
 }
 
 ///|
@@ -66,50 +77,16 @@ pub async fn fetch_pr_state(
   clone_path : String,
   pr_number : Int,
 ) -> PrStateInfo? {
-  // Check if gh is available
-  ensure_gh_available() catch {
-    e => @error.reraise(e)
-  }
-
-  // Fetch PR details using gh api
-  let (pipe, process_read) = @process.read_from_process()
-  let status = @process.run(
-    "gh",
-    [
-      "pr",
-      "view",
-      pr_number.to_string(),
-      "--json",
-      "state,mergeable,reviewDecision",
-    ],
-    stdout=process_read,
-    cwd=clone_path,
-  ) catch {
-    _ => return None
-  }
-  if status != 0 {
-    return None
-  }
-  let output = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-
-  // Parse JSON output
-  let json = @json.parse(output) catch { _ => return None }
-  match json {
-    Object(obj) => {
-      guard obj.get("state") is Some(String(state)) else { return None }
-      // Parse mergeable as string (MERGEABLE, CONFLICTING, UNKNOWN)
-      let mergeable = match obj.get("mergeable") {
-        Some(String(s)) => s
-        _ => "UNKNOWN"
-      }
-      // Parse review decision as string (may be empty)
-      let review_decision = match obj.get("reviewDecision") {
-        Some(String(s)) => s
-        _ => ""
-      }
-      Some(PrStateInfo::{ state, mergeable, review_decision })
-    }
-    _ => None
+  match @gh.get_pr_state(clone_path, pr_number) {
+    Some(pr_info) =>
+      Some(
+        PrStateInfo::{
+          state: pr_info.state,
+          mergeable: pr_info.mergeable,
+          review_decision: pr_info.review_decision,
+        },
+      )
+    None => None
   }
 }
 
@@ -117,20 +94,7 @@ pub async fn fetch_pr_state(
 /// Fetch PR review comments from GitHub using gh CLI
 /// Returns the comments as a formatted string, or None if unable to fetch
 pub async fn fetch_pr_comments(clone_path : String, pr_number : Int) -> String {
-  ensure_gh_available() catch {
+  @gh.get_pr_comments(clone_path, pr_number) catch {
     e => @error.reraise(e)
   }
-
-  // Fetch PR review comments
-  let (status, stdout, stderr) = @process.collect_output(
-    "gh",
-    ["pr", "view", pr_number.to_string(), "--comments"],
-    cwd=clone_path,
-  ) catch {
-    e => @error.fail_with("Failed to fetch PR comments", e)
-  }
-  if status != 0 {
-    @error.fail("Failed to fetch PR comments: \{stdout.text()}\{stderr.text()}")
-  }
-  stdout.text()
 }

@@ -2,15 +2,6 @@
 /// Worker for processing repositories with state management
 
 ///|
-/// Configuration for repository processing
-struct WorkerConfig {
-  work_dir : String
-  branch_prefix : String
-  codex : @codex.Codex
-  state_mgr : StateManager
-}
-
-///|
 /// Process a repository based on its current state
 /// This is the main state-driven processing function
 /// Continues processing through states until reaches a terminal or async state

@@ -68,10 +68,3 @@ pub let schema_sql : String =
   #|CREATE INDEX IF NOT EXISTS idx_log_repo ON work_log(repo_id, timestamp);
   #|
 
-///|
-/// Get current timestamp in ISO 8601 format
-pub fn now() -> String {
-  // Use Unix timestamp for now (simplified)
-  // TODO: Use proper ISO 8601 formatting when datetime library is available
-  @async.now().to_string()
-}

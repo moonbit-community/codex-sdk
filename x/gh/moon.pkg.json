@@ -1,0 +1,8 @@
+{
+  "is-main": false,
+  "import": [
+    "moonbitlang/async/io",
+    "moonbitlang/async/process",
+    "moonbitlang/async/pipe"
+  ]
+}

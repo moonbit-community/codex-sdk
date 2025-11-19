@@ -213,17 +213,7 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   }
 
   // Main logic - expand ~ in data_dir
-  let expanded_data_dir = if data_dir.has_prefix("~") {
-    let (pipe, process_read) = @process.read_from_process()
-    let _status = @process.run("sh", ["-c", "echo $HOME"], stdout=process_read) catch {
-      _ => 1
-    }
-    let home = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-    let home_final = if home.is_empty() { "/tmp" } else { home }
-    "\{home_final}\{data_dir[1:].to_string()}"
-  } else {
-    data_dir
-  }
+  let expanded_data_dir = expand_home_dir(data_dir)
   let db_path = "\{expanded_data_dir}/parallel-fix.db"
   let verbose = parsed_args.flags.get("verbose") is Some(true) ||
     parsed_args.flags.get("v") is Some(true)
@@ -276,14 +266,7 @@ pub async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
 
   // Show counts for each important state (overall)
   @stdio.stdout.write("OVERALL STATE COUNTS:\n")
-  let states_to_show = [
-    (Pending, "Pending"),
-    (Cloning, "Cloning"),
-    (Branching, "Branching"),
-    (Fixing, "Fixing"),
-    (PrOpen, "PR Open"),
-    (Complete, "Complete"),
-  ]
+  let states_to_show = get_status_states()
   let mut i = 0
   while i < states_to_show.length() {
     let (state, label) = states_to_show[i]
@@ -383,17 +366,7 @@ pub async fn cmd_sync_prs(
   }
 
   // Expand ~ in data_dir
-  let expanded_data_dir = if data_dir.has_prefix("~") {
-    let (pipe, process_read) = @process.read_from_process()
-    let _status = @process.run("sh", ["-c", "echo $HOME"], stdout=process_read) catch {
-      _ => 1
-    }
-    let home = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-    let home_final = if home.is_empty() { "/tmp" } else { home }
-    "\{home_final}\{data_dir[1:].to_string()}"
-  } else {
-    data_dir
-  }
+  let expanded_data_dir = expand_home_dir(data_dir)
   let db_path = "\{expanded_data_dir}/parallel-fix.db"
 
   // Check if database exists
@@ -617,17 +590,7 @@ pub async fn cmd_run(
   }
 
   // Main logic - expand ~ in data_dir
-  let expanded_data_dir = if data_dir.has_prefix("~") {
-    let (pipe, process_read) = @process.read_from_process()
-    let _status = @process.run("sh", ["-c", "echo $HOME"], stdout=process_read) catch {
-      _ => 1
-    }
-    let home = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-    let home_final = if home.is_empty() { "/tmp" } else { home }
-    "\{home_final}\{data_dir[1:].to_string()}"
-  } else {
-    data_dir
-  }
+  let expanded_data_dir = expand_home_dir(data_dir)
   let parallelism_str = parsed_args.options.get("parallelism").unwrap_or("4")
   let parallelism = @strconv.parse_int(parallelism_str) catch {
     e => @error.fail_with("Invalid parallelism value", e)

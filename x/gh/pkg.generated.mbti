@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex/x/gh"
+
+// Values
+async fn create_pr(String, String, String, String, String) -> String
+
+async fn ensure_available() -> Unit
+
+fn extract_pr_number(String) -> Int?
+
+async fn get_pr_comments(String, Int) -> String
+
+async fn get_pr_state(String, Int) -> PrInfo?
+
+async fn is_available() -> Bool
+
+async fn list_prs_for_branch(String, String) -> Array[PrInfo]
+
+// Errors
+
+// Types and methods
+pub struct PrInfo {
+  number : Int
+  url : String
+  state : String
+  mergeable : String
+  review_decision : String
+}
+
+// Type aliases
+
+// Traits
+

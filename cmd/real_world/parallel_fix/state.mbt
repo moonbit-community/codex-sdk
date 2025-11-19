@@ -1,91 +1,6 @@
 ///|
-/// Repository processing states
-/// Simplified: only track major business states in database
-/// Internal steps (commit, push, create PR) are not tracked as states
-pub enum RepoState {
-  Pending
-  Cloning
-  Branching
-  Fixing // Internal: commit → push → create PR → transition to PrOpen
-  PrOpen // AI continuously monitors and decides next action
-  Complete
-  Retry
-  // Deprecated states (auto-migrated on read)
-  Committing
-  Pushing
-  PrCreating
-  PrChangesRequested
-  PrApproved
-  PrConflicts
-  PrMerged
-} derive(Eq)
-
-///|
-/// Convert RepoState to string for database storage
-pub impl Show for RepoState with output(self : RepoState, logger) {
-  logger.write_string(
-    match self {
-      Pending => "PENDING"
-      Cloning => "CLONING"
-      Branching => "BRANCHING"
-      Fixing => "FIXING"
-      Committing => "COMMITTING"
-      Pushing => "PUSHING"
-      PrCreating => "PR_CREATING"
-      PrOpen => "PR_OPEN"
-      PrChangesRequested => "PR_CHANGES_REQUESTED"
-      PrApproved => "PR_APPROVED"
-      PrConflicts => "PR_CONFLICTS"
-      PrMerged => "PR_MERGED"
-      Complete => "COMPLETE"
-      Retry => "RETRY"
-    },
-  )
-}
-
-///|
-/// Parse RepoState from string
-pub impl @strconv.FromStr for RepoState with from_str(s) {
-  match s {
-    "PENDING" => Pending
-    "CLONING" => Cloning
-    "BRANCHING" => Branching
-    "FIXING" => Fixing
-    "COMMITTING" => Committing
-    "PUSHING" => Pushing
-    "PR_CREATING" => PrCreating
-    "PR_OPEN" => PrOpen
-    "PR_CHANGES_REQUESTED" => PrChangesRequested
-    "PR_APPROVED" => PrApproved
-    "PR_CONFLICTS" => PrConflicts
-    "PR_MERGED" => PrMerged
-    "COMPLETE" => Complete
-    "RETRY" => Retry
-    _ => raise @strconv.StrConvError("Unknown RepoState: \{s}")
-  }
-}
-
-///|
-/// Repository record from database
-pub struct RepositoryRecord {
-  id : Int
-  url : String
-  name : String
-  state : RepoState
-  local_path : String?
-  default_branch : String?
-  current_branch : String?
-  task_description : String?
-  pr_number : Int?
-  pr_url : String?
-  pr_state : String?
-  thread_id : String?
-  attempt_count : Int
-  last_error : String?
-  iteration : Int
-  created_at : String
-  updated_at : String
-}
+/// State manager for repository processing
+/// This module handles database operations and state management
 
 ///|
 /// State manager for repository processing
@@ -135,8 +50,10 @@ async fn StateManager::migrate_deprecated_states(self : StateManager) -> Unit {
   }
   
   // Migrate deprecated PR states to PR_OPEN
-  let pr_states = ["PR_CHANGES_REQUESTED", "PR_APPROVED", "PR_CONFLICTS", "PR_MERGED"]
-  for old_state in pr_states {
+  let pr_states = deprecated_pr_states()
+  let mut pr_idx = 0
+  while pr_idx < pr_states.length() {
+    let old_state = pr_states[pr_idx]
     let pr_sql = "UPDATE repositories SET state = 'PR_OPEN', updated_at = '\{now}' WHERE state = '\{old_state}';"
     self.db.exec(pr_sql) catch {
       e => @error.reraise(e)
@@ -149,11 +66,14 @@ async fn StateManager::migrate_deprecated_states(self : StateManager) -> Unit {
     if pr_count > 0 {
       @stdio.stdout.write("info Migrated \{pr_count} repositories from \{old_state} to PR_OPEN\n")
     }
+    pr_idx = pr_idx + 1
   }
   
   // Migrate deprecated intermediate states to FIXING
-  let intermediate_states = ["COMMITTING", "PUSHING", "PR_CREATING"]
-  for old_state in intermediate_states {
+  let intermediate_states = deprecated_intermediate_states()
+  let mut int_idx = 0
+  while int_idx < intermediate_states.length() {
+    let old_state = intermediate_states[int_idx]
     let int_sql = "UPDATE repositories SET state = 'FIXING', updated_at = '\{now}' WHERE state = '\{old_state}';"
     self.db.exec(int_sql) catch {
       e => @error.reraise(e)
@@ -166,6 +86,7 @@ async fn StateManager::migrate_deprecated_states(self : StateManager) -> Unit {
     if int_count > 0 {
       @stdio.stdout.write("info Migrated \{int_count} repositories from \{old_state} to FIXING\n")
     }
+    int_idx = int_idx + 1
   }
 }
 
@@ -199,25 +120,41 @@ async fn StateManager::recover_corrupted_states(self : StateManager) -> Unit {
         let repo_id = id.to_int()
         
         // Infer what state this repo should be in based on fields
-        let inferred_state = if pr_url is Some(String(url)) && !url.is_empty() {
-          "PR_OPEN"
-        } else if current_branch is Some(String(b)) && !b.is_empty() {
-          "FIXING"
-        } else if default_branch is Some(String(db)) && !db.is_empty() {
-          "BRANCHING"
-        } else if local_path is Some(String(lp)) && !lp.is_empty() {
-          "CLONING"
-        } else {
-          "PENDING"
-        }
-        
-        // If inferred state is more advanced than current state, recover it
-        let needs_recovery = match current_state {
-          "PENDING" => inferred_state != "PENDING"
-          "CLONING" => inferred_state != "PENDING" && inferred_state != "CLONING"
-          "BRANCHING" => inferred_state != "PENDING" && inferred_state != "CLONING" && inferred_state != "BRANCHING"
+        let has_pr_url = match pr_url {
+          Some(String(url)) => !url.is_empty()
           _ => false
         }
+        let has_current_branch = match current_branch {
+          Some(String(b)) => !b.is_empty()
+          _ => false
+        }
+        let has_default_branch = match default_branch {
+          Some(String(db)) => !db.is_empty()
+          _ => false
+        }
+        let has_local_path = match local_path {
+          Some(String(lp)) => !lp.is_empty()
+          _ => false
+        }
+        
+        let inferred_state_enum = infer_state_from_fields(
+          has_pr_url,
+          has_current_branch,
+          has_default_branch,
+          has_local_path,
+        )
+        let inferred_state = inferred_state_enum.to_string()
+        
+        // Parse current state
+        let current_state_enum = RepoState::from_str(current_state) catch {
+          _ => Pending
+        }
+        
+        // Check if recovery is needed
+        let needs_recovery = needs_state_recovery(
+          current_state_enum,
+          inferred_state_enum,
+        )
         
         if needs_recovery {
           @stdio.stdout.write(
@@ -263,9 +200,9 @@ pub async fn StateManager::add_repository(
 ) -> Int? {
   let now = now()
   // Escape single quotes in strings to prevent SQL injection
-  let escaped_url = url.replace(old="'", new="''")
-  let escaped_name = name.replace(old="'", new="''")
-  let escaped_task = task_description.replace(old="'", new="''")
+  let escaped_url = escape_sql(url)
+  let escaped_name = escape_sql(name)
+  let escaped_task = escape_sql(task_description)
 
   // Use INSERT OR IGNORE to handle duplicate (url, task_description) pairs
   let sql = "INSERT OR IGNORE INTO repositories (url, name, state, task_description, created_at, updated_at) VALUES ('\{escaped_url}', '\{escaped_name}', 'PENDING', '\{escaped_task}', '\{now}', '\{now}');"
@@ -314,7 +251,7 @@ pub async fn StateManager::transition(
   // Log transition
   let details_sql = match details {
     Some(d) => {
-      let escaped = d.replace(old="'", new="''")
+      let escaped = escape_sql(d)
       "'\{escaped}'"
     }
     None => "NULL"
@@ -464,7 +401,7 @@ pub async fn StateManager::count_by_task_and_state(
   state : RepoState,
 ) -> Int {
   let state_str = state.to_string()
-  let escaped_task = task.replace(old="'", new="''")
+  let escaped_task = escape_sql(task)
   let sql = "SELECT COUNT(*) FROM repositories WHERE task_description = '\{escaped_task}' AND state = '\{state_str}';"
   let result = self.db.exec_string(sql) catch { e => @error.reraise(e) }
   @strconv.from_str(result.trim(chars=" \t\r\n")) catch {
@@ -487,8 +424,8 @@ pub async fn StateManager::log(
   self.db_lock.acquire()
   defer self.db_lock.release()
   let now = now()
-  let escaped_level = level.replace(old="'", new="''")
-  let escaped_message = message.replace(old="'", new="''")
+  let escaped_level = escape_sql(level)
+  let escaped_message = escape_sql(message)
   let sql = "INSERT INTO work_log (repo_id, timestamp, level, message) VALUES (\{repo_id}, '\{now}', '\{escaped_level}', '\{escaped_message}');"
   self.db.exec(sql) catch {
     e => @error.reraise(e)
@@ -504,7 +441,7 @@ pub async fn StateManager::update_field(
   value : String,
 ) -> Unit {
   let now = now()
-  let escaped_value = value.replace(old="'", new="''")
+  let escaped_value = escape_sql(value)
   let sql = "UPDATE repositories SET \{field} = '\{escaped_value}', updated_at = '\{now}' WHERE id = \{repo_id};"
   self.db.exec(sql) catch {
     e => @error.reraise(e)
@@ -638,7 +575,7 @@ pub async fn StateManager::update_repository(
   let set_clauses = []
   for update in updates {
     let (field, value) = update
-    let escaped_value = value.replace(old="'", new="''")
+    let escaped_value = escape_sql(value)
     set_clauses.push("\{field} = '\{escaped_value}'")
   }
   set_clauses.push("updated_at = '\{now}'")
