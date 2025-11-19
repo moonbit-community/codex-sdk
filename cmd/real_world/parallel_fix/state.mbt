@@ -208,14 +208,16 @@ async fn StateManager::add_repository(
 
   // Get the last inserted row ID
   // If it was ignored (duplicate), last_insert_rowid() returns 0
-  let id_str = self.db.exec_string("SELECT last_insert_rowid();")
-  let id = @strconv.parse_int(id_str.trim(chars=" \r\n\t")) catch {
+  try {
+    let id_str = self.db.exec_string("SELECT last_insert_rowid();")
+    let id = @strconv.parse_int(id_str.trim(chars=" \r\n\t"))
+    if id == 0 {
+      None // Was a duplicate
+    } else {
+      Some(id) // New insertion
+    }
+  } catch {
     e => @error.reraise(e)
-  }
-  if id == 0 {
-    None // Was a duplicate
-  } else {
-    Some(id) // New insertion
   }
 }
 
@@ -225,7 +227,7 @@ async fn StateManager::transition(
   self : StateManager,
   repo_id : Int,
   to_state : RepoState,
-  details : String?,
+  details? : String,
 ) -> Unit {
   self.db_lock.acquire()
   defer self.db_lock.release()
@@ -234,7 +236,6 @@ async fn StateManager::transition(
 
   // Get current state for logging
   let from_state = self.get_repo_state_unlocked(repo_id).to_string() catch {
-      @strconv.StrConvError(_) => "NULL"
       e => @error.reraise(e)
     }
 
@@ -305,7 +306,6 @@ async fn StateManager::get_repos_in_state(
           "pr_number"? : pr_number,
           "pr_url"? : pr_url,
           "pr_state"? : pr_state,
-          "attempt_count": Number(attempt_count, ..),
           ..
         }
       ) =>
@@ -336,7 +336,6 @@ async fn StateManager::get_repos_in_state(
             Some(String(s)) if !s.is_empty() => Some(s)
             _ => None
           },
-          attempt_count: attempt_count.to_int(),
         })
       _ => continue
     }
@@ -371,11 +370,7 @@ async fn StateManager::get_all_tasks(self : StateManager) -> Array[String] {
   let tasks = []
   for row in rows {
     match row {
-      Object(obj) =>
-        match obj.get("task_description") {
-          Some(String(task)) => tasks.push(task)
-          _ => continue
-        }
+      Object({ "task_descriptin": String(task), .. }) => tasks.push(task)
       _ => continue
     }
   }
@@ -459,7 +454,6 @@ async fn StateManager::get_repository_full(
           "pr_number"? : pr_number,
           "pr_url"? : pr_url,
           "pr_state"? : pr_state,
-          "attempt_count": Number(attempt_count, ..),
           ..
         }
       )
@@ -499,7 +493,6 @@ async fn StateManager::get_repository_full(
           Some(String(s)) if !s.is_empty() => Some(s)
           _ => None
         },
-        attempt_count: attempt_count.to_int(),
       })
     _ => None
   }
@@ -571,7 +564,6 @@ async fn StateManager::get_processable_repos(
           "pr_number"? : pr_number,
           "pr_url"? : pr_url,
           "pr_state"? : pr_state,
-          "attempt_count": Number(attempt_count, ..),
           ..
         }
       ) =>
@@ -610,7 +602,6 @@ async fn StateManager::get_processable_repos(
             Some(String(s)) if !s.is_empty() => Some(s)
             _ => None
           },
-          attempt_count: attempt_count.to_int(),
         })
       _ => continue
     }

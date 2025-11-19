@@ -97,12 +97,8 @@ pub fn extract_pr_number(pr_url : String) -> Int? {
 
 ///|
 /// Get PR state information from GitHub
-pub async fn get_pr_state(repo_path : String, pr_number : Int) -> PrInfo? {
-  ensure_available() catch {
-    _ => return None
-  }
-  let (pipe, process_read) = @process.read_from_process()
-  let status = @process.run(
+pub async fn get_pr_state(repo_path : String, pr_number : Int) -> PrInfo {
+  let (status, stdout, stderr) = @process.collect_output(
     "gh",
     [
       "pr",
@@ -111,41 +107,42 @@ pub async fn get_pr_state(repo_path : String, pr_number : Int) -> PrInfo? {
       "--json",
       "number,url,state,mergeable,reviewDecision",
     ],
-    stdout=process_read,
     cwd=repo_path,
   ) catch {
-    _ => return None
+    e => @error.reraise(e)
   }
   if status != 0 {
-    return None
+    @error.fail(
+      (
+        $|Error: \{stdout.text()}\{stderr.text()}")
+        $|PR Number: \{pr_number}
+        $|
+      ),
+    )
   }
-  let output = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
-  let json = @json.parse(output) catch { _ => return None }
+  let output = stdout.text().trim(char_set=" \t\n\r").to_string()
+  let json = @json.parse(output) catch {
+    e => @error.fail_with("Failed to parse JSON", e)
+  }
   match json {
-    Object(obj) => {
-      let number = match obj.get("number") {
-        Some(Number(n, ..)) => n.to_int()
-        _ => pr_number
+    Object(
+      {
+        "number": Number(number, ..),
+        "url": String(url),
+        "state": String(state),
+        "mergeable": String(mergeable),
+        "reviewDecision": String(review_decision),
+        ..
       }
-      let url = match obj.get("url") {
-        Some(String(s)) => s
-        _ => ""
+    ) =>
+      PrInfo::{
+        number: number.to_int(),
+        url,
+        state,
+        mergeable,
+        review_decision,
       }
-      let state = match obj.get("state") {
-        Some(String(s)) => s
-        _ => "UNKNOWN"
-      }
-      let mergeable = match obj.get("mergeable") {
-        Some(String(s)) => s
-        _ => "UNKNOWN"
-      }
-      let review_decision = match obj.get("reviewDecision") {
-        Some(String(s)) => s
-        _ => ""
-      }
-      Some(PrInfo::{ number, url, state, mergeable, review_decision })
-    }
-    _ => None
+    _ => @error.fail("Unexpected JSON format: \{json.stringify()}")
   }
 }
 

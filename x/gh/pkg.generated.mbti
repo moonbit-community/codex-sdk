@@ -10,7 +10,7 @@ fn extract_pr_number(String) -> Int?
 
 async fn get_pr_comments(String, Int) -> String
 
-async fn get_pr_state(String, Int) -> PrInfo?
+async fn get_pr_state(String, Int) -> PrInfo
 
 async fn is_available() -> Bool
 

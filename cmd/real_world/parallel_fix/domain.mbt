@@ -83,7 +83,6 @@ priv struct RepositoryRecord {
   pr_number : Int?
   pr_url : String?
   pr_state : String?
-  attempt_count : Int
 }
 
 ///|

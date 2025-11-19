@@ -13,9 +13,19 @@ pub fn Database::new(path : String) -> Database {
 
 ///|
 /// Check if sqlite3 is available
-pub async fn check_sqlite3() -> Bool {
-  let status = @process.run("which", ["sqlite3"]) catch { _ => return false }
-  status == 0
+pub async fn ensure() -> Unit {
+  let (status, data) = @process.collect_output_merged("which", ["sqlite3"]) catch {
+    e => @error.reraise(e)
+  }
+  if status != 0 {
+    @error.fail(
+      (
+        #|Error: sqlite3 CLI not found. Please install SQLite to proceed.
+        $|\{data.text()}
+        #|
+      ),
+    )
+  }
 }
 
 ///|
@@ -122,9 +132,9 @@ pub async fn Database::exec_file(
 
 ///|
 /// Check if database file exists
-pub async fn Database::exists(self : Database) -> Bool {
-  @fs.exists(self.path) catch {
-    _ => false
+pub async fn Database::ensure(self : Database) -> Unit {
+  if !(@fs.exists(self.path) catch { e => @error.reraise(e) }) {
+    @error.fail("Database file not found at path: \{self.path}")
   }
 }
 

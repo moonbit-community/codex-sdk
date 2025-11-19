@@ -3,6 +3,7 @@
   "import": [
     "moonbitlang/async/io",
     "moonbitlang/async/process",
-    "moonbitlang/async/pipe"
+    "moonbitlang/async/pipe",
+    "peter-jerry-ye/codex/x/error"
   ]
 }

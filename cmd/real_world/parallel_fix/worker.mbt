@@ -45,7 +45,7 @@ async fn process_repository_stateful(
       config.state_mgr.transition(
         repo_id,
         actual_state,
-        Some("Migrated from RETRY to inferred state"),
+        details="Migrated from RETRY to inferred state",
       ) catch {
         e => @error.reraise(e)
       }
@@ -123,7 +123,7 @@ async fn process_repository_stateful(
       config.state_mgr.transition(
         repo_id,
         Fixing,
-        Some("Migrating from deprecated state"),
+        details="Migrating from deprecated state",
       ) catch {
         e => @error.reraise(e)
       }
@@ -135,7 +135,7 @@ async fn process_repository_stateful(
       config.state_mgr.transition(
         repo_id,
         PrOpen,
-        Some("Migrating from deprecated PR state"),
+        details="Migrating from deprecated PR state",
       ) catch {
         e => @error.reraise(e)
       }
@@ -262,7 +262,7 @@ async fn do_clone(
         config.state_mgr.transition(
           repo.id,
           Branching,
-          Some("Repository discovered"),
+          details="Repository discovered",
         ) catch {
           e => @error.reraise(e)
         }
@@ -290,7 +290,11 @@ async fn do_clone(
       config.state_mgr.update_repository(repo.id, updates) catch {
         e => @error.reraise(e)
       }
-      config.state_mgr.transition(repo.id, Branching, Some("Clone successful")) catch {
+      config.state_mgr.transition(
+        repo.id,
+        Branching,
+        details="Clone successful",
+      ) catch {
         e => @error.reraise(e)
       }
       @stdio.stdout.write("info [\{repo.name}] - Clone successful\n")
@@ -329,7 +333,7 @@ async fn do_branch(
         e => @error.reraise(e)
       }
       // Always advance to Fixing when branch is verified
-      config.state_mgr.transition(repo.id, Fixing, Some("Branch exists")) catch {
+      config.state_mgr.transition(repo.id, Fixing, details="Branch exists") catch {
         e => @error.reraise(e)
       }
       return
@@ -358,7 +362,7 @@ async fn do_branch(
   config.state_mgr.update_repository(repo.id, updates) catch {
     e => @error.reraise(e)
   }
-  config.state_mgr.transition(repo.id, Fixing, Some("Branch created")) catch {
+  config.state_mgr.transition(repo.id, Fixing, details="Branch created") catch {
     e => @error.reraise(e)
   }
   @stdio.stdout.write("info [\{repo.name}] - Branch created successfully\n")
@@ -422,7 +426,7 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
     config.state_mgr.transition(
       repo.id,
       Complete,
-      Some("AI determined no changes needed"),
+      details="AI determined no changes needed",
     ) catch {
       e => @error.reraise(e)
     }
@@ -444,7 +448,7 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
     @stdio.stdout.write(
       "warning [\{repo.name}] - No changes to commit after AI fix\n",
     )
-    config.state_mgr.transition(repo.id, Complete, Some("No changes")) catch {
+    config.state_mgr.transition(repo.id, Complete, details="No changes") catch {
       e => @error.reraise(e)
     }
     return
@@ -523,7 +527,7 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
             config.state_mgr.transition(
               repo.id,
               Complete,
-              Some("PR exists but could not fetch details"),
+              details="PR exists but could not fetch details",
             ) catch {
               e => @error.reraise(e)
             }
@@ -560,7 +564,7 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
                     config.state_mgr.transition(
                       repo.id,
                       PrOpen,
-                      Some("Using existing PR, AI will monitor"),
+                      details="Using existing PR, AI will monitor",
                     ) catch {
                       e => @error.reraise(e)
                     }
@@ -584,7 +588,11 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
       @stdio.stdout.write(
         "info [\{repo.name}] - No changes to create PR, task complete\n",
       )
-      config.state_mgr.transition(repo.id, Complete, Some("No changes for PR")) catch {
+      config.state_mgr.transition(
+        repo.id,
+        Complete,
+        details="No changes for PR",
+      ) catch {
         e => @error.reraise(e)
       }
       return
@@ -598,7 +606,7 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
   @stdio.stdout.write("info [\{repo.name}] - PR created: \{pr_url}\n")
 
   // Extract PR number from URL and save
-  let pr_number_opt = extract_pr_number(pr_url)
+  let pr_number_opt = @gh.extract_pr_number(pr_url)
   let updates = match pr_number_opt {
     Some(num) => {
       @stdio.stdout.write("info [\{repo.name}] - Extracted PR number: \{num}\n")
@@ -619,7 +627,7 @@ async fn do_fix(config : WorkerConfig, repo : RepositoryRecord) -> Unit {
   config.state_mgr.transition(
     repo.id,
     PrOpen,
-    Some("PR created, AI will monitor"),
+    details="PR created, AI will monitor",
   ) catch {
     e => @error.reraise(e)
   }
@@ -643,7 +651,7 @@ async fn do_handle_pr(
   }
 
   // Check if gh is available
-  ensure_gh_available() catch {
+  @gh.ensure_available() catch {
     e => @error.reraise(e)
   }
 
@@ -659,7 +667,7 @@ async fn do_handle_pr(
       // Try to extract from pr_url if available
       match repo.pr_url {
         Some(url) => {
-          let extracted = extract_pr_number(url)
+          let extracted = @gh.extract_pr_number(url)
           match extracted {
             Some(num) => {
               @stdio.stdout.write(
@@ -688,7 +696,7 @@ async fn do_handle_pr(
     config.state_mgr.transition(
       repo.id,
       Complete,
-      Some("No PR number available"),
+      details="No PR number available",
     ) catch {
       e => @error.reraise(e)
     }
@@ -696,10 +704,8 @@ async fn do_handle_pr(
   }
 
   // Fetch PR state from GitHub
-  guard fetch_pr_state(clone_path, pr_number) is Some(pr_info) else {
-    @stdio.stdout.write(
-      "warning [\{repo.name}] - Could not fetch PR state, will retry next run\n",
-    )
+  let pr_info = fetch_pr_state(clone_path, pr_number) catch {
+    e => @error.reraise(e)
   }
   let review_str = if pr_info.review_decision.is_empty() {
     "none"
@@ -774,11 +780,11 @@ async fn do_handle_pr(
       "info [\{repo.name}] - AI analysis: \{result.final_response}\n",
     )
     if pr_info.state == "MERGED" {
-      config.state_mgr.transition(repo.id, Complete, Some("PR merged")) catch {
+      config.state_mgr.transition(repo.id, Complete, details="PR merged") catch {
         e => @error.reraise(e)
       }
     } else if pr_info.state == "CLOSED" {
-      config.state_mgr.transition(repo.id, Complete, Some("PR closed")) catch {
+      config.state_mgr.transition(repo.id, Complete, details="PR closed") catch {
         e => @error.reraise(e)
       }
     } else {

@@ -2,7 +2,7 @@
 package "peter-jerry-ye/codex/x/sqlite"
 
 // Values
-async fn check_sqlite3() -> Bool
+async fn ensure() -> Unit
 
 // Errors
 
@@ -11,10 +11,10 @@ type Database
 async fn Database::begin_transaction(Self) -> Unit
 async fn Database::commit(Self) -> Unit
 async fn Database::count(Self, String) -> Int
+async fn Database::ensure(Self) -> Unit
 async fn Database::exec(Self, String) -> Unit
 async fn Database::exec_file(Self, String) -> Unit
 async fn Database::exec_string(Self, String) -> String
-async fn Database::exists(Self) -> Bool
 fn Database::new(String) -> Self
 async fn Database::query(Self, String) -> Array[Json]
 async fn Database::query_one(Self, String) -> Json?

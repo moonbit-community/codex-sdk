@@ -4,15 +4,9 @@
 ///|
 /// Extract repository name from URL
 fn extract_repo_name(url : String) -> String {
-  let without_git = if url.has_suffix(".git") {
-    let chars = url.to_array()
-    let len = chars.length()
-    String::from_array(chars[:len - 4])
-  } else {
-    url
-  }
+  let path = url.strip_suffix(".git").unwrap_or(url)
   // Split by '/' and take the last part
-  match without_git.split("/").to_array().last() {
+  match path.split("/").to_array().last() {
     Some(name) => name.to_string()
     None => url
   }
@@ -54,33 +48,16 @@ fn escape_sql(s : String) -> String {
 }
 
 ///|
-/// Extract PR number from GitHub PR URL
-/// Example: https://github.com/owner/repo/pull/123 -> Some(123)
-fn extract_pr_number(pr_url : String) -> Int? {
-  @gh.extract_pr_number(pr_url)
-}
-
-///|
-/// Check if GitHub CLI (gh) is available
-/// Returns true if gh is installed, false otherwise
-async fn ensure_gh_available() -> Unit {
-  @gh.ensure_available() catch {
-    e => @error.reraise(e)
-  }
-}
-
-///|
 /// Fetch PR state information from GitHub using gh CLI
 /// Returns None if gh is not available or PR doesn't exist
-async fn fetch_pr_state(clone_path : String, pr_number : Int) -> PrStateInfo? {
-  match @gh.get_pr_state(clone_path, pr_number) {
-    Some(pr_info) =>
-      Some(PrStateInfo::{
-        state: pr_info.state,
-        mergeable: pr_info.mergeable,
-        review_decision: pr_info.review_decision,
-      })
-    None => None
+async fn fetch_pr_state(clone_path : String, pr_number : Int) -> PrStateInfo {
+  let pr_info = @gh.get_pr_state(clone_path, pr_number) catch {
+    e => @error.reraise(e)
+  }
+  PrStateInfo::{
+    state: pr_info.state,
+    mergeable: pr_info.mergeable,
+    review_decision: pr_info.review_decision,
   }
 }
 
@@ -90,5 +67,46 @@ async fn fetch_pr_state(clone_path : String, pr_number : Int) -> PrStateInfo? {
 async fn fetch_pr_comments(clone_path : String, pr_number : Int) -> String {
   @gh.get_pr_comments(clone_path, pr_number) catch {
     e => @error.reraise(e)
+  }
+}
+
+///|
+/// Read repository URLs from file
+async fn read_repos_file(path : String) -> Array[String] {
+  let content = @fs.read_file(path).text() catch { e => @error.reraise(e) }
+  let repos = []
+  for line in content.split("\n") {
+    let trimmed = line.trim(char_set=" \t\n\r").to_string()
+    // Skip empty lines and comments
+    if !trimmed.is_empty() && !trimmed.has_prefix("#") {
+      repos.push(trimmed)
+    }
+  }
+  repos
+}
+
+///|
+/// Ensure work directory exists
+async fn ensure_work_dir(path : String) -> Unit {
+  if (@fs.exists(path) catch { e => @error.reraise(e) }) {
+    return
+  }
+  let parts = path.split("/").filter(fn(p) { !p.is_empty() }).collect()
+  let is_absolute = path.has_prefix("/")
+  let mut current = StringView::default()
+  for i in 0..<parts.length() {
+    let part = parts[i]
+    current = if i == 0 && is_absolute {
+      "/\{part}"
+    } else if current.is_empty() {
+      part
+    } else {
+      "\{current}/\{part}"
+    }
+    if !(@fs.exists(current) catch { e => @error.reraise(e) }) {
+      @fs.mkdir(current, permission=0o755) catch {
+        e => @error.fail_with("Failed to create directory \{current}", e)
+      }
+    }
   }
 }
