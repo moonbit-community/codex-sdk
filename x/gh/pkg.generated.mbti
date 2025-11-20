@@ -6,7 +6,7 @@ async fn create_pr(String, String, String, String, String) -> String
 
 async fn ensure_available() -> Unit
 
-fn extract_pr_number(String) -> Int?
+fn extract_pr_number(StringView) -> Int?
 
 async fn get_pr_comments(String, Int) -> String
 

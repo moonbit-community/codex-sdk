@@ -84,7 +84,7 @@ async fn process_repository(
       }
 
       // Sync changes if any
-      sync_changes(clone_path, repo) catch {
+      sync_changes(config, clone_path, repo) catch {
         e => @stdio.stderr.write("warning Failed to sync changes: \{e}\n")
       }
     }
@@ -136,7 +136,7 @@ async fn process_repository(
       }
 
       // Commit any remaining uncommitted changes (if AI made file changes but didn't commit)
-      commit_changes(clone_path, repo) catch {
+      commit_changes(config, clone_path, repo) catch {
         e => {
           @stdio.stderr.write(
             "error [\{repo_name}] Failed to commit changes: \{e}\n",
@@ -297,14 +297,20 @@ async fn check_branch_has_changes(
 
 ///|
 /// Commit all changes (if there are any uncommitted changes)
-async fn commit_changes(clone_path : String, repo : RepositoryRecord) -> Unit {
+async fn commit_changes(
+  config : WorkerConfig,
+  clone_path : String,
+  repo : RepositoryRecord,
+) -> Unit {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
   }
 
   // Only commit if there are uncommitted changes
   if git_repo.has_changes() {
-    let commit_msg = "AI work on: \{repo.task}"
+    // Generate commit message using AI
+    let commit_msg = generate_commit_message(config.codex, clone_path, repo)
+    @stdio.stdout.write("info Commit message: \{commit_msg}\n")
     if !git_repo.commit(commit_msg) {
       @error.fail("Failed to commit changes")
     }
@@ -426,7 +432,72 @@ async fn generate_pr_metadata(
 }
 
 ///|
-/// Create a PR from an existing branch (already pushed)
+/// Generate commit message using AI
+async fn generate_commit_message(
+  codex : @codex.Codex,
+  clone_path : String,
+  repo : RepositoryRecord,
+) -> String {
+  try {
+    // Get diff of uncommitted changes
+    let (status, output) = @process.collect_output_merged(
+      "git",
+      ["diff", "--no-color"],
+      cwd=clone_path,
+    )
+    if status != 0 {
+      @error.fail("git diff failed for commit message")
+    }
+    let diff = output.text()
+    if diff.is_empty() {
+      @error.fail("No changes to generate commit message for")
+    }
+
+    // Create a simple thread for commit message generation
+    let thread = codex.start_thread(
+      options=@codex.ThreadOptions::new(
+        working_directory=clone_path,
+        skip_git_repo_check=true,
+        sandbox_mode=ReadOnly,
+        model?=@sys.get_env_vars().get("LOWCOST_MODEL"),
+      ),
+    )
+    let prompt =
+      #|Based on the following task and code changes, generate a concise commit message.
+      $|
+      $|Task: \{repo.task}
+      $|
+      $|Changes:
+      $|\{diff}
+      $|
+      $|Generate a JSON response with this structure:
+      $|{
+      $|  "message": "A concise commit message (max 72 characters)"
+      $|}
+      $|
+      $|The message should follow conventional commit guidelines.
+      $|Keep it professional and technical.
+
+    // Run with output schema
+    let result = thread.run(prompt) catch { e => @error.reraise(e) }
+
+    // Parse the structured response
+    let parsed = @json.parse(result.final_response) catch {
+      e => @error.reraise(e)
+    }
+    match parsed {
+      Object({ "message": String(message), .. }) => message
+      _ => @error.fail("Commit message response missing message field")
+    }
+  } catch {
+    e => {
+      @stdio.stderr.write("warning Failed to generate commit message: \{e}\n")
+      "AI work on: \{repo.task}"
+    }
+  }
+}
+
+///|
 async fn create_pr_from_branch(
   clone_path : String,
   repo : RepositoryRecord,
@@ -550,6 +621,37 @@ async fn run_ai_task(
   pr_comments : String?,
 ) -> Unit {
   @stdio.stdout.write("info Running AI task: \{repo.task}\n")
+  let background =
+    #|## MoonBit Project Guidelines
+    #|
+    #|This is a MoonBit project. Follow these guidelines:
+    #|
+    #|### Project Structure
+    #|- Packages are organized per directory with moon.pkg.json files
+    #|- Test files end in _test.mbt (blackbox) or _wbtest.mbt (whitebox)
+    #|- Each package has a generated .mbti interface file
+    #|
+    #|### Coding Conventions
+    #|- Use block style separated by ///| (block order is irrelevant)
+    #|- Keep deprecated code in deprecated.mbt files
+    #|
+    #|### Tooling Requirements
+    #|- Use `moon fmt` to format code
+    #|- Use `moon info` to update .mbti interface files
+    #|- Use `moon test` to run tests (use `moon test --update` for snapshots)
+    #|- Use `moon check` for linting
+    #|- Use `inspect` in tests for snapshot testing, `assert_eq` only in loops
+    #|- Run `moon coverage analyze` to check test coverage
+    #|
+    #|### Important Rules
+    #|- Do NOT create backup files or any irrelevant files in the repository
+    #|- Ensure all changes pass `moon check` and `moon test`
+    #|- Make minimal, focused changes relevant only to the task
+    #|- Update snapshots with `moon test --update` if behavior changes
+    #|- Check .mbti diffs after `moon info` to verify interface changes
+    #|
+    #|After completing the task, run `moon info && moon fmt && moon check && moon test --update` and commit to finalize.
+    #|
 
   // Build task description for AI
   let task_description = match pr_comments {
@@ -562,6 +664,7 @@ async fn run_ai_task(
         $|
         $|Please address the task and any feedback from the PR comments.
         $|
+        $|\{background}
       )
     None =>
       (
@@ -569,6 +672,7 @@ async fn run_ai_task(
         $|
         $|This is a new PR. Please implement the task.
         $|
+        $|\{background}
       )
   }
 
@@ -589,7 +693,11 @@ async fn run_ai_task(
 
 ///|
 /// Sync changes to remote for existing PR (commit and push)
-async fn sync_changes(clone_path : String, repo : RepositoryRecord) -> Unit {
+async fn sync_changes(
+  config : WorkerConfig,
+  clone_path : String,
+  repo : RepositoryRecord,
+) -> Unit {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
   }
@@ -601,7 +709,8 @@ async fn sync_changes(clone_path : String, repo : RepositoryRecord) -> Unit {
   }
 
   // Commit changes
-  let commit_msg = "AI progress on: \{repo.task}"
+  let commit_msg = generate_commit_message(config.codex, clone_path, repo)
+  @stdio.stdout.write("info Commit message: \{commit_msg}\n")
   if !git_repo.commit(commit_msg) {
     @error.fail("Failed to commit changes")
   }
