@@ -430,12 +430,26 @@ pub async fn GitRepo::pull(
   self : GitRepo,
   remote? : String = "origin",
   branch? : String,
-) -> Bool {
+) -> Unit {
   let args = ["pull", remote]
   if branch is Some(b) {
     args.push(b)
   }
-  @process.run("git", args, cwd=self.path) == 0
+  let (status, output) = @process.collect_output_merged(
+    "git",
+    args,
+    cwd=self.path,
+  ) catch {
+    e => @error.reraise(e)
+  }
+  if status != 0 {
+    @error.fail(
+      (
+        $|Error: Failed to pull from \{remote} \{branch.unwrap_or("")}"),
+        $|Output: \{output.text()}
+      ),
+    )
+  }
 }
 
 ///|

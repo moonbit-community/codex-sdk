@@ -214,7 +214,48 @@ async fn get_pr_branch(clone_path : String, pr_number : Int) -> String {
 }
 
 ///|
-/// Checkout a branch
+/// Update a branch to match its remote tracking branch
+/// Uses git reset --hard to sync with remote, handling rebased/merged branches
+async fn update_branch_from_remote(
+  clone_path : String,
+  branch_name : String,
+) -> Unit {
+  let (status, stdout, _) = @process.collect_output(
+    "git",
+    ["rev-parse", "--abbrev-ref", "\{branch_name}@{u}"],
+    cwd=clone_path,
+  ) catch {
+    e => @error.fail_with("Failed to get remote tracking branch", e)
+  }
+  if status != 0 {
+    // No remote tracking branch, skip update
+    @stdio.stdout.write(
+      "info Branch \{branch_name} has no remote tracking branch\n",
+    )
+    return
+  }
+  let remote_branch = stdout.text().trim(char_set=" \t\n\r").to_string()
+  @stdio.stdout.write(
+    "info Updating \{branch_name} to match remote \{remote_branch}...\n",
+  )
+
+  // Reset to remote branch (handles rebased/merged branches)
+  let (status_reset, _, reset_err) = @process.collect_output(
+    "git",
+    ["reset", "--hard", remote_branch],
+    cwd=clone_path,
+  ) catch {
+    e => @error.fail_with("Failed to reset to remote branch", e)
+  }
+  if status_reset != 0 {
+    @error.fail("Failed to reset branch to remote: \{reset_err.text()}")
+  }
+  @stdio.stdout.write("info Successfully synced \{branch_name} with remote\n")
+}
+
+///|
+/// Checkout a branch and ensure it's updated from remote
+/// If the remote branch is newer (rebased or merged), automatically sync to it
 async fn checkout_branch(clone_path : String, branch_name : String) -> Unit {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
@@ -222,9 +263,21 @@ async fn checkout_branch(clone_path : String, branch_name : String) -> Unit {
   if !git_repo.checkout(branch_name) {
     @error.fail("Failed to checkout branch \{branch_name}")
   }
-  // Pull latest changes
-  if !git_repo.pull(branch=branch_name) {
-    @error.fail("Failed to pull branch \{branch_name}")
+  // Try to pull latest changes from remote
+  git_repo.pull(branch=branch_name) catch {
+    _ => {
+      // If pull fails, try explicit reset to remote
+      @stdio.stdout.write("info Syncing \{branch_name} with remote branch...\n")
+      let _ = update_branch_from_remote(clone_path, branch_name) catch {
+        e => {
+          @stdio.stderr.write(
+            "warning Failed to sync branch with remote: \{e}\n",
+          )
+          @error.reraise(e)
+        }
+      }
+
+    }
   }
 }
 
@@ -241,19 +294,32 @@ async fn setup_work_branch(
   // Get default branch
   let default_branch = git_repo.default_branch.unwrap_or("main")
 
-  // Checkout and pull default branch
+  // Checkout default branch
   if !git_repo.checkout(default_branch) {
     @error.fail("Failed to checkout default branch")
   }
-  if !git_repo.pull(branch=default_branch) {
-    @error.fail("Failed to pull default branch")
+
+  // Ensure we have latest from remote (pull or reset if rebase detected)
+  git_repo.pull(branch=default_branch) catch {
+    _ => {
+      @stdio.stdout.write("info Syncing default branch with remote...\n")
+      update_branch_from_remote(clone_path, default_branch) catch {
+        e =>
+          @stdio.stderr.write(
+            "warning Failed to sync default branch with remote: \{e}\n",
+          )
+      }
+    }
   }
 
-  // Create feature branch
+  // Create feature branch from the latest default branch
   let branch_name = "\{branch_prefix}-\{@async.now()}"
   git_repo.create_branch(branch_name, from_branch=default_branch) catch {
     e => @error.reraise(e)
   }
+  @stdio.stdout.write(
+    "info Created branch \{branch_name} from \{default_branch}\n",
+  )
   branch_name
 }
 
