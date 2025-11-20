@@ -389,38 +389,8 @@ async fn generate_pr_metadata(
     $|
     $|Keep the tone professional and technical.
 
-  // Define output schema for structured PR metadata
-  let schema_json =
-    #|{
-    $|  "type": "object",
-    $|  "properties": {
-    $|    "title": {
-    $|      "type": "string",
-    $|      "description": "A concise PR title, max 72 characters"
-    $|    },
-    $|    "body": {
-    $|      "type": "string",
-    $|      "description": "A detailed PR description in markdown format"
-    $|    }
-    $|  },
-    $|  "required": ["title", "body"],
-    $|  "additionalProperties": false
-    $|}
-  let schema = @json.parse(schema_json) catch {
-    e => {
-      @stdio.stderr.write("warning Failed to parse schema JSON: \{e}\n")
-      return (
-        "Automated code improvements",
-        "This PR was automatically created.\n\nTask: \{repo.task}",
-      )
-    }
-  }
-
   // Run with output schema
-  let result = thread.run(
-    prompt,
-    turn_options=@codex.TurnOptions::new(output_schema=schema),
-  ) catch {
+  let result = thread.run(prompt) catch {
     e => {
       @stdio.stderr.write("warning Failed to generate PR metadata: \{e}\n")
       return (
@@ -608,6 +578,7 @@ async fn run_ai_task(
       working_directory=clone_path,
       skip_git_repo_check=true,
       sandbox_mode=WorkspaceWrite,
+      model?=@sys.get_env_vars().get("MODEL"),
     ),
   )
 

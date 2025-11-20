@@ -13,14 +13,16 @@ async fn add_repository(
   let escaped_task = escape_sql(task)
 
   // Use INSERT OR IGNORE to handle duplicate (url, task) pairs
-  let sql = "INSERT OR IGNORE INTO repositories (url, task, completed, created_at, updated_at) VALUES ('\{escaped_url}', '\{escaped_task}', 0, '\{now}', '\{now}');"
-  db.exec(sql) catch {
+  let sql =
+    $|INSERT OR IGNORE INTO repositories (url, task, completed, created_at, updated_at) VALUES ('\{escaped_url}', '\{escaped_task}', 0, '\{now}', '\{now}');
+    $|SELECT last_insert_rowid();
+    $|
+  let id_str = db.exec_string(sql) catch {
     e => @error.fail_with("Failed to add repository \{url} to database", e)
   }
 
   // Get the last inserted row ID
   try {
-    let id_str = db.exec_string("SELECT last_insert_rowid();")
     let id = @strconv.parse_int(id_str.trim(chars=" \r\n\t"))
     if id == 0 {
       None // Was a duplicate
