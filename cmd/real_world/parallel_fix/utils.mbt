@@ -56,3 +56,31 @@ async fn ensure_work_dir(path : String) -> Unit {
     }
   }
 }
+
+///|
+async fn execute(
+  cmd : String,
+  args : Array[String],
+  extra_env? : Map[String, String],
+  inherit_env? : Bool,
+  stdin? : &@process.ProcessInput,
+  cwd? : String,
+) -> &@io.Data {
+  let (status, stdout, stderr) = @process.collect_output(
+    cmd,
+    args,
+    extra_env?,
+    inherit_env?,
+    stdin?,
+    cwd?,
+  ) catch {
+    e => @error.reraise(e)
+  }
+  let stderr = stderr.text() catch { e => @error.reraise(e) }
+  if status != 0 {
+    @error.fail(
+      "Command \{cmd} failed with exit code \{status}. Stderr: \{stderr}",
+    )
+  }
+  stdout
+}

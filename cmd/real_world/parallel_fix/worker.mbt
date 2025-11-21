@@ -11,10 +11,7 @@ async fn process_repository(
   @stdio.stdout.write("info [\{repo_name}] Processing...\n")
   let clone_path = "\{config.work_dir}/\{repo_name}"
   ensure_repo_cloned(clone_path, repo.url) catch {
-    e => {
-      @stdio.stderr.write("error [\{repo_name}] Failed to clone: \{e}\n")
-      return
-    }
+    e => @error.reraise(e)
   }
 
   // 1. Check if PR exists
@@ -41,10 +38,7 @@ async fn process_repository(
           "info [\{repo_name}] PR #\{pr_num} is \{pr_state}, marking as completed\n",
         )
         mark_completed(config.db, repo.id) catch {
-          e =>
-            @stdio.stderr.write(
-              "warning [\{repo_name}] Failed to mark as completed: \{e}\n",
-            )
+          e => @error.fail_with("Failed to mark repository as completed", e)
         }
         return
       }
@@ -56,36 +50,23 @@ async fn process_repository(
 
       // Get branch name from PR
       let branch_name = get_pr_branch(clone_path, pr_num) catch {
-        e => {
-          @stdio.stderr.write(
-            "error [\{repo_name}] Failed to get PR branch: \{e}\n",
-          )
-          return
-        }
+        e => @error.fail_with("Failed to get PR branch", e)
       }
 
       // Checkout the PR branch
       checkout_branch(clone_path, branch_name) catch {
-        e => {
-          @stdio.stderr.write(
-            "error [\{repo_name}] Failed to checkout branch: \{e}\n",
-          )
-          return
-        }
+        e => @error.fail_with("Failed to checkout PR branch", e)
       }
       let comments = get_pr_comments(clone_path, pr_num)
 
       // Ask AI to work on the task considering PR feedback
       run_ai_task(config, repo, clone_path, Some(comments)) catch {
-        e => {
-          @stdio.stderr.write("error [\{repo_name}] AI task failed: \{e}\n")
-          return
-        }
+        e => @error.fail_with("AI task failed", e)
       }
 
       // Sync changes if any
       sync_changes(config, clone_path, repo) catch {
-        e => @stdio.stderr.write("warning Failed to sync changes: \{e}\n")
+        e => @error.fail_with("Failed to sync changes", e)
       }
     }
     None => {
@@ -96,30 +77,17 @@ async fn process_repository(
 
       // Setup branch for AI to work on
       let branch_name = setup_work_branch(clone_path, config.branch_prefix) catch {
-        e => {
-          @stdio.stderr.write(
-            "error [\{repo_name}] Failed to setup work branch: \{e}\n",
-          )
-          return
-        }
+        e => @error.fail_with("Failed to setup work branch", e)
       }
 
       // Run AI task
       run_ai_task(config, repo, clone_path, None) catch {
-        e => {
-          @stdio.stderr.write("error [\{repo_name}] AI task failed: \{e}\n")
-          return
-        }
+        e => @error.fail_with("AI task failed", e)
       }
 
       // Check if AI made any changes (committed or uncommitted) on the feature branch
       let has_changes = check_branch_has_changes(clone_path, branch_name) catch {
-        e => {
-          @stdio.stderr.write(
-            "warning [\{repo_name}] Failed to check changes: \{e}\n",
-          )
-          false
-        }
+        e => @error.fail_with("Failed to check if branch has changes", e)
       }
       if not(has_changes) {
         // No changes needed, mark as completed
@@ -127,32 +95,19 @@ async fn process_repository(
           "info [\{repo_name}] No changes needed, marking as completed\n",
         )
         mark_completed(config.db, repo.id) catch {
-          e =>
-            @stdio.stderr.write(
-              "warning [\{repo_name}] Failed to mark as completed: \{e}\n",
-            )
+          e => @error.fail_with("Failed to mark repository as completed", e)
         }
         return
       }
 
       // Commit any remaining uncommitted changes (if AI made file changes but didn't commit)
       commit_changes(config, clone_path, repo) catch {
-        e => {
-          @stdio.stderr.write(
-            "error [\{repo_name}] Failed to commit changes: \{e}\n",
-          )
-          return
-        }
+        e => @error.fail_with("Failed to commit changes", e)
       }
 
       // Push changes
       push_branch(clone_path, branch_name) catch {
-        e => {
-          @stdio.stderr.write(
-            "error [\{repo_name}] Failed to push changes: \{e}\n",
-          )
-          return
-        }
+        e => @error.fail_with("Failed to push branch", e)
       }
 
       // Now create PR
@@ -163,20 +118,12 @@ async fn process_repository(
         branch_name,
         config.codex,
       ) catch {
-        e => {
-          @stdio.stderr.write(
-            "error [\{repo_name}] Failed to create PR: \{e}\n",
-          )
-          return
-        }
+        e => @error.fail_with("Failed to create PR", e)
       }
 
       // Save PR number
       update_pr_number(config.db, repo.id, pr_num) catch {
-        e =>
-          @stdio.stderr.write(
-            "warning [\{repo_name}] Failed to save PR number: \{e}\n",
-          )
+        e => @error.fail_with("Failed to save PR number", e)
       }
       @stdio.stdout.write("info [\{repo_name}] PR #\{pr_num} created\n")
     }
@@ -343,20 +290,17 @@ async fn check_branch_has_changes(
   }
 
   // Check if there are committed changes on the branch compared to default
-  let (status, stdout, _) = @process.collect_output(
+  let stdout = execute(
     "git",
     ["rev-list", "--count", "\{default_branch}..\{branch_name}"],
     cwd=clone_path,
   ) catch {
     e => @error.fail_with("Failed to check branch commits", e)
   }
-  if status != 0 {
-    return false
-  }
 
   // Parse commit count
   let commit_count = @strconv.parse_int(stdout.text().trim(char_set=" \t\n\r")) catch {
-    _ => 0
+    e => @error.fail_with("Failed to parse commit count", e)
   }
   commit_count > 0
 }
@@ -624,7 +568,7 @@ async fn ensure_repo_cloned(clone_path : String, url : String) -> Unit {
 ///|
 /// Get PR state from GitHub
 async fn get_pr_state(clone_path : String, pr_number : Int) -> String {
-  let (status, stdout, stderr) = @process.collect_output(
+  let stdout = execute(
     "gh",
     ["pr", "view", pr_number.to_string(), "--json", "state", "--jq", ".state"],
     cwd=clone_path,
@@ -635,18 +579,13 @@ async fn get_pr_state(clone_path : String, pr_number : Int) -> String {
         e,
       )
   }
-  if status != 0 {
-    @error.fail(
-      "Failed to get PR state for \{clone_path} #\{pr_number}\n\{stderr.text()}",
-    )
-  }
   stdout.text().trim(char_set=" \t\n\r").to_string()
 }
 
 ///|
 /// Get PR comments for AI context
 async fn get_pr_comments(clone_path : String, pr_number : Int) -> String {
-  let (status, stdout, stderr) = @process.collect_output(
+  let stdout = execute(
     "gh",
     [
       "pr",
@@ -665,13 +604,8 @@ async fn get_pr_comments(clone_path : String, pr_number : Int) -> String {
         e,
       )
   }
-  if status != 0 {
-    @error.fail(
-      "Failed to get PR comments for \{clone_path} #\{pr_number}\n\{stderr.text()}",
-    )
-  }
   let comments = stdout.text()
-  if comments.is_empty() {
+  if comments.is_blank() {
     "No comments yet"
   } else {
     comments

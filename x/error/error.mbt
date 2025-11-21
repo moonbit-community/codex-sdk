@@ -35,7 +35,7 @@ pub fn[A] reraise(e : Error, loc~ : SourceLoc) -> A raise {
           raise Reraise(
             (
               (
-                $|Failed\{rest}
+                $|FAILED: \{rest}
                 $|  at \{prefix}
                 $|  at \{loc}
               ),
@@ -85,6 +85,11 @@ impl Show for Reraise with output(error, logger) {
   guard error is Reraise((msg, cause))
   logger.write_string(msg + "\n")
   if cause is Some(error) {
-    logger.write_string("Caused by: \{error}\n")
+    let message = error.to_string()
+    if message.strip_prefix("FAILED: ") is Some(msg) {
+      logger.write_string("Caused by: \{msg}\n")
+    } else {
+      logger.write_string("Caused by: \{message}\n")
+    }
   }
 }
