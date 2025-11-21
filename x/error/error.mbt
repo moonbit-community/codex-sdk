@@ -44,7 +44,16 @@ pub fn[A] reraise(e : Error, loc~ : SourceLoc) -> A raise {
           )
         _ => panic()
       }
-    e => raise Reraise((e.to_string() + "\n  at \{loc}", None))
+    e =>
+      raise Reraise(
+        (
+          (
+            $|FAILED: \{e}
+            $|  at \{loc}
+          ),
+          None,
+        ),
+      )
   }
 }
 
