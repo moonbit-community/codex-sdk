@@ -140,66 +140,40 @@ fn CodexExec::run(
   if args.api_key is Some(api_key) {
     extra_env.set("CODEX_API_KEY", api_key)
   }
-  let stdin = @process.write_to_process()
-  let stdout = @process.read_from_process()
-  let stderr = @process.read_from_process()
-  let stderr_chunks = StringBuilder::new()
+  let stdin = @process.write_to_process() catch { e => raise @error.reraise(e) }
+  let stdout = @process.read_from_process() catch {
+    e => raise @error.reraise(e)
+  }
 
   // CodexExec
   @generator.AsyncGenerator::new(fn(yield_) {
     @async.with_task_group(taskgroup => {
       taskgroup.spawn_bg(() => {
-        let exit_code = @process.run(
+        let (exit_code, stderr) = @process.collect_stderr(
           self.executable_path,
           command_args,
           stdin=stdin.0,
           stdout=stdout.1,
-          stderr=stderr.1,
           extra_env~,
         )
         if exit_code != 0 {
-          fail("Codex CLI failed: \{stderr_chunks.to_string()}")
+          @error.fail("Codex CLI failed: \{stderr.text()}")
         }
       })
       taskgroup.spawn_bg(() => {
+        defer stdin.1.close()
         stdin.1.write(args.input)
-        stdin.1.close()
       })
       taskgroup.spawn_bg(() => {
-        let reader = @io.BufferedReader::new(stderr.0)
-        while (Some(reader.find(b"\n")) catch {
-                @io.ReaderClosed => None
-                e => raise e
-              })
-              is Some(length) {
-          let text = @encoding/utf8.decode(reader[:length])
-          stderr_chunks.write_string(text)
-          reader.drop(length + 1)
-        } else {
-          let text = reader.read_all().text()
-          stderr_chunks.write_string(text)
+        let reader = stdout.0
+        defer reader.close()
+        while reader.read_until("\n") is Some(text) {
+          yield_(text)
         }
       })
-      taskgroup.spawn_bg(() => {
-        let reader = @io.BufferedReader::new(stdout.0)
-        try {
-          while true {
-            let length = reader.find(b"\n")
-            let text = @encoding/utf8.decode(reader[:length])
-            yield_(text)
-            reader.drop(length + 1)
-          }
-        } catch {
-          @io.ReaderClosed => {
-            let text = reader.read_all().text()
-            if !text.is_empty() {
-              yield_(text)
-            }
-          }
-          e => raise e
-        }
-      })
-    })
+    }) catch {
+      e => if !(e is @generator.Return) { raise @error.reraise(e) }
+    }
   })
 }
 

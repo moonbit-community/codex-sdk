@@ -1,3 +1,10 @@
-https://github.com/moonbit-community/uv.mbt
-https://github.com/moonbit-community/version.mbt
-https://github.com/moonbit-community/vg
+https://github.com/moonbit-community/dotenv-mbt
+https://github.com/moonbit-community/elk
+https://github.com/moonbit-community/find-cluster-break
+https://github.com/moonbit-community/fmt
+https://github.com/moonbit-community/fuzzy_match
+https://github.com/moonbit-community/illu-fmt
+https://github.com/moonbit-community/illu-memory
+https://github.com/moonbit-community/immut_deque
+https://github.com/moonbit-community/jmop
+https://github.com/moonbit-community/linalg

@@ -15,7 +15,10 @@
 ///|
 async fn main {
   let codex = @codex.Codex::new(
-    options=@codex.CodexOptions::new(base_url="https://openrouter.ai/api/v1"),
+    options=@codex.CodexOptions::new(
+      base_url="https://openrouter.ai/api/v1",
+      codex_path_override="./alternative_codex.sh",
+    ),
   )
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(model="anthropic/claude-sonnet-4"),
