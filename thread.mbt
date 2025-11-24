@@ -25,7 +25,7 @@ pub struct Turn {
 
 ///|
 /// Alias for `Turn` to describe the result of `run()`.
-pub typealias Turn as RunResult
+pub type RunResult = Turn
 
 ///|
 /// The result of the `run_streamed` method.
@@ -36,11 +36,11 @@ pub struct StreamedTurn {
 
 ///|
 /// Alias for `StreamedTurn` to describe the result of `run_streamed()`.
-pub typealias StreamedTurn as RunStreamedResult
+pub type RunStreamedResult = StreamedTurn
 
 ///|
 /// An input to send to the agent.
-pub typealias String as Input
+pub type Input = String
 
 ///|
 /// Represent a thread of conversation with the agent. One thread can have multiple consecutive turns.
