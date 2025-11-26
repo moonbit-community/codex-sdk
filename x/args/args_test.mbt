@@ -82,3 +82,9 @@ test "demonstrate examples" {
   )
   inspect(result2.positional, content="[\"main.mbt\"]")
 }
+
+///|
+test "parse - and -1" {
+  let result = parse(["-", "-1", "file.txt"])
+  inspect(result.positional, content="[\"-\", \"-1\", \"file.txt\"]")
+}

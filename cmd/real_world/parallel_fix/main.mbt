@@ -9,7 +9,9 @@ async fn main {
     options=["work-dir", "data-dir"],
     aliases={ "h": "help" },
     stop_early=true,
-  )
+  ) catch {
+    e => @error.reraise(e)
+  }
 
   // Extract global options with defaults
   let work_dir = parsed.options.get("work-dir").unwrap_or("/tmp/parallel-fix")
@@ -60,7 +62,9 @@ async fn cmd_init(
   // Parse arguments
   let parsed_args = @args.parse(args, flags=["help"], options=[], aliases={
     "h": "help",
-  })
+  }) catch {
+    e => @error.reraise(e)
+  }
 
   // Handle help flag
   if parsed_args.flags.get("help") is Some(true) {
@@ -128,7 +132,9 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   // Parse arguments
   let parsed_args = @args.parse(args, flags=["help"], options=["task"], aliases={
     "h": "help",
-  })
+  }) catch {
+    e => @error.reraise(e)
+  }
 
   // Handle help flag
   if parsed_args.flags.get("help") is Some(true) {
@@ -229,7 +235,9 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   let parsed_args = @args.parse(args, flags=["help", "verbose"], aliases={
     "h": "help",
     "v": "verbose",
-  })
+  }) catch {
+    e => @error.reraise(e)
+  }
 
   // Handle help flag
   if parsed_args.flags.get("help") is Some(true) ||
@@ -333,7 +341,9 @@ async fn cmd_sync_prs(
   // Parse arguments
   let parsed_args = @args.parse(args, flags=["help"], options=[], aliases={
     "h": "help",
-  })
+  }) catch {
+    e => @error.reraise(e)
+  }
 
   // Handle help flag
   if parsed_args.flags.get("help") is Some(true) {
@@ -514,7 +524,9 @@ async fn cmd_run(
     flags=["help"],
     options=["parallelism", "branch-prefix"],
     aliases={ "h": "help" },
-  )
+  ) catch {
+    e => @error.reraise(e)
+  }
 
   // Handle help flag
   if parsed_args.flags.get("help") is Some(true) {

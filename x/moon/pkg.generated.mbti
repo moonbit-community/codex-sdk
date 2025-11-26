@@ -2,11 +2,11 @@
 package "peter-jerry-ye/codex/x/moon"
 
 // Values
-fn get_errors(Array[Diagnostic]) -> Array[Diagnostic]
+pub fn get_errors(Array[Diagnostic]) -> Array[Diagnostic]
 
-fn get_warnings(Array[Diagnostic]) -> Array[Diagnostic]
+pub fn get_warnings(Array[Diagnostic]) -> Array[Diagnostic]
 
-fn parse_diagnostics(String) -> Array[Diagnostic]
+pub fn parse_diagnostics(String) -> Array[Diagnostic]
 
 // Errors
 
@@ -23,12 +23,12 @@ pub struct MoonProject {
   root : String
   name : String
 }
-async fn MoonProject::check(Self) -> ValidationResult
-async fn MoonProject::discover(String) -> Self?
-async fn MoonProject::format(Self) -> ValidationResult
-async fn MoonProject::packages(Self) -> Array[Package]
-async fn MoonProject::test_(Self) -> ValidationResult
-async fn MoonProject::update_info(Self) -> ValidationResult
+async pub fn MoonProject::check(Self) -> ValidationResult
+async pub fn MoonProject::discover(String) -> Self?
+async pub fn MoonProject::format(Self) -> ValidationResult
+async pub fn MoonProject::packages(Self) -> Array[Package]
+async pub fn MoonProject::test_(Self) -> ValidationResult
+async pub fn MoonProject::update_info(Self) -> ValidationResult
 
 pub struct Package {
   project : MoonProject
