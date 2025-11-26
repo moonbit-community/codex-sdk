@@ -1,2 +1,2 @@
 #!/bin/bash
-uv run --directory ../openhand-codex/ main.py $*
+uv run --directory ./openhands-codex/ main.py $*
