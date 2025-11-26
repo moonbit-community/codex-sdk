@@ -50,10 +50,14 @@ def execute(message: str, id: uuid.UUID | None = None, workspace: Path | None = 
         ],
     )
     conversation = Conversation(
-        agent=agent, workspace=workspace or os.getcwd(),
+        agent=agent,
+        workspace=workspace or os.getcwd(),
+        persistence_dir=Path(workspace or os.getcwd()) / "conversations",
         visualizer=JsonVisualizer(),
         conversation_id=id,
     )
+    if id is None:
+        print(codex.ThreadStarted(thread_id=conversation.id).model_dump_json())
     try:
         conversation.send_message(message)
         conversation.run()
@@ -101,33 +105,21 @@ if __name__ == "__main__":
     exec_parser.add_argument(
         "--cd",
     )
-    exec_parser.add_argument(
-        "PROMPT", nargs="?", default="-", help="The prompt message to execute (use '-' to read from stdin)"
-    )
     exec_subparsers = exec_parser.add_subparsers(dest='subcommand')
     resume_parser = exec_subparsers.add_parser(
         "resume", help="Resume a session")
     resume_parser.add_argument("SESSION_ID", help="The session ID to resume")
-    resume_parser.add_argument("PROMPT", nargs="?", default="-", help="The prompt message to execute (use '-' to read from stdin)")
 
     args = parser.parse_args(sys.argv[1:])
     if args.command == 'exec':
         if args.subcommand == 'resume':
-            if args.PROMPT == "-" or args.PROMPT is None:
-                message = sys.stdin.read().strip()
-            else:
-                message = args.PROMPT
             id = uuid.UUID(args.SESSION_ID)
-            workspace = args.cd
-            model = args.model
         else:
-            if args.PROMPT == "-":
-                message = sys.stdin.read().strip()
-            else:
-                message = args.PROMPT
+            # No subcommand: always read from stdin
             id = None
-            workspace = args.cd
-            model = args.model
+        message = sys.stdin.read().strip()
+        workspace = args.cd
+        model = args.model
 
         assert message != "", "PROMPT cannot be empty"
         execute(message=message, id=id,
