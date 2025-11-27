@@ -51,12 +51,39 @@ Before using the task solver, ensure you have:
 # Solve a task from command line
 moon run cmd/task_solver -- "Create a tool that counts lines of code in a MoonBit project"
 
+# Interactive mode (multi-turn conversation)
+moon run cmd/task_solver
+
 # Solve a task from a file
 moon run cmd/task_solver -- my-task.txt
 
 # Read task from stdin
 echo "Fix all compiler warnings" | moon run cmd/task_solver -- --stdin
 ```
+
+### Interactive Mode
+
+The task solver now supports interactive mode for multi-turn conversations:
+
+```bash
+# Start interactive mode
+moon run cmd/task_solver
+
+# At the prompt, type your tasks:
+> Create a tool that lists all functions in a MoonBit project
+[AI responds with the solution]
+
+> Now add error handling to that tool
+[AI continues the conversation in the same thread]
+
+> Exit with Ctrl+D or Ctrl+C
+```
+
+Interactive mode maintains a persistent thread, allowing you to:
+- Have multi-turn conversations with the AI
+- Build on previous responses
+- Refine solutions iteratively
+- Keep context across multiple tasks
 
 ### Advanced Options
 
