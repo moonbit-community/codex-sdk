@@ -11,15 +11,11 @@ async fn process_repository(
   @stdio.stdout.write("info [\{repo_name}] Processing...\n")
   let clone_path = "\{config.work_dir}/\{repo_name}"
 
-  // Use target_url from database if already determined, otherwise determine it
-  let target_url = if repo.target_url != repo.url {
-    @stdio.stdout.write(
-      "info [\{repo_name}] Using previously determined target: \{repo.target_url}\n",
-    )
-    repo.target_url
-  } else {
-    // Determine target repository URL (fork if no write access)
-    get_target_repo_url(repo.url) catch {
+  // Determine target repository URL if not already set
+  let mut target_url = repo.target_url
+  if target_url == repo.url {
+    // First time processing, determine if we need a fork
+    target_url = get_target_repo_url(repo.url) catch {
       e => {
         @stdio.stderr.write(
           "error [\{repo_name}] Failed to determine target repository: \{e}\n",
@@ -27,19 +23,35 @@ async fn process_repository(
         @error.reraise(e)
       }
     }
+
+    // Update database with target URL if different from original
+    if target_url != repo.url {
+      update_target_url(config.db, repo.id, target_url) catch {
+        e =>
+          @stdio.stderr.write(
+            "warning [\{repo_name}] Failed to update target URL in database: \{e}\n",
+          )
+      }
+    }
+  } else {
+    @stdio.stdout.write(
+      "info [\{repo_name}] Using previously determined target: \{target_url}\n",
+    )
   }
 
-  // Update database with target URL if different from original
-  if target_url != repo.url {
-    update_target_url(config.db, repo.id, target_url) catch {
-      e =>
-        @stdio.stderr.write(
-          "warning [\{repo_name}] Failed to update target URL in database: \{e}\n",
-        )
-    }
-  }
+  // Clone from target repository
   ensure_repo_cloned(clone_path, target_url) catch {
     e => @error.reraise(e)
+  }
+
+  // If using a fork, sync its default branch with the original repo
+  if target_url != repo.url {
+    sync_fork_default_branch(clone_path, repo.url, target_url) catch {
+      e =>
+        @stdio.stderr.write(
+          "warning [\{repo_name}] Failed to sync fork default branch: \{e}\n",
+        )
+    }
   }
 
   // 1. Check if PR exists
@@ -145,7 +157,6 @@ async fn process_repository(
         repo,
         branch_name,
         config.codex,
-        target_url,
       ) catch {
         e => @error.fail_with("Failed to create PR", e)
       }
@@ -542,7 +553,6 @@ async fn create_pr_from_branch(
   repo : RepositoryRecord,
   branch_name : String,
   codex : @codex.Codex,
-  target_url : String,
 ) -> Int {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
@@ -559,9 +569,11 @@ async fn create_pr_from_branch(
   @stdio.stdout.write("info PR title: \{pr_title}\n")
 
   // Extract target repo owner/name for PR creation
-  let target_repo_path = target_url.strip_suffix(".git").unwrap_or(target_url)
+  let target_repo_path = repo.target_url
+    .strip_suffix(".git")
+    .unwrap_or(repo.target_url)
   guard target_repo_path.split("/").collect() is [.., target_owner, target_repo] else {
-    @error.fail("Invalid target repository URL: \{target_url}")
+    @error.fail("Invalid target repository URL: \{repo.target_url}")
   }
 
   // Create PR using gh CLI
@@ -597,6 +609,80 @@ async fn create_pr_from_branch(
     Some(num) => num
     None => @error.fail("Failed to extract PR number from URL: \{pr_url}")
   }
+}
+
+///|
+/// Sync fork's default branch with the original repository's default branch
+/// This keeps the fork up-to-date with the original repo
+async fn sync_fork_default_branch(
+  clone_path : String,
+  original_url : String,
+  _fork_url : String,
+) -> Unit {
+  let git_repo = @git.GitRepo::discover(clone_path) catch {
+    e => @error.fail_with("Failed to discover repository", e)
+  }
+  let default_branch = git_repo.default_branch.unwrap_or("main")
+  @stdio.stdout.write(
+    "info Syncing fork's \{default_branch} branch with original repo...\n",
+  )
+
+  // Add original repo as upstream if not already present
+  try {
+    let _ = @process.collect_output(
+      "git",
+      ["remote", "add", "upstream", original_url],
+      cwd=clone_path,
+    )
+
+  } catch {
+    _ => ()
+  }
+  // Ignore error if upstream already exists
+
+  // Fetch from upstream
+  let (fetch_status, _, fetch_err) = @process.collect_output(
+    "git",
+    ["fetch", "upstream", default_branch],
+    cwd=clone_path,
+  ) catch {
+    e => @error.fail_with("Failed to fetch from upstream", e)
+  }
+  if fetch_status != 0 {
+    @stdio.stdout.write(
+      "warning Failed to fetch from upstream: \{fetch_err.text()}\n",
+    )
+    return
+  }
+
+  // Checkout default branch
+  if !git_repo.checkout(default_branch) {
+    @stdio.stdout.write("warning Failed to checkout \{default_branch}\n")
+    return
+  }
+
+  // Reset to upstream's default branch
+  let (reset_status, _, reset_err) = @process.collect_output(
+    "git",
+    ["reset", "--hard", "upstream/\{default_branch}"],
+    cwd=clone_path,
+  ) catch {
+    e => @error.fail_with("Failed to reset to upstream", e)
+  }
+  if reset_status != 0 {
+    @stdio.stdout.write(
+      "warning Failed to reset to upstream: \{reset_err.text()}\n",
+    )
+    return
+  }
+
+  // Push to fork
+  git_repo.push() catch {
+    e => @stdio.stdout.write("warning Failed to push to fork: \{e}\n")
+  }
+  @stdio.stdout.write(
+    "info Fork's \{default_branch} branch synced with original repo\n",
+  )
 }
 
 ///|
