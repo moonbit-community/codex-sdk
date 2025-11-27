@@ -197,7 +197,7 @@ async fn get_pr_branch(clone_path : String, pr_number : Int) -> String {
       "Failed to get PR branch for \{clone_path} #\{pr_number}\n\{stderr.text()}",
     )
   }
-  stdout.text().trim(char_set=" \t\n\r").to_string()
+  stdout.trim_output()
 }
 
 ///|
@@ -221,7 +221,7 @@ async fn update_branch_from_remote(
     )
     return
   }
-  let remote_branch = stdout.text().trim(char_set=" \t\n\r").to_string()
+  let remote_branch = stdout.trim_output()
   @stdio.stdout.write(
     "info Updating \{branch_name} to match remote \{remote_branch}...\n",
   )
@@ -339,7 +339,7 @@ async fn check_branch_has_changes(
   }
 
   // Parse commit count
-  let commit_count = @strconv.parse_int(stdout.text().trim(char_set=" \t\n\r")) catch {
+  let commit_count = @strconv.parse_int(stdout.trim_output()) catch {
     e => @error.fail_with("Failed to parse commit count", e)
   }
   commit_count > 0
@@ -602,7 +602,7 @@ async fn create_pr_from_branch(
     let error_output = stderr.text()
     @error.fail("gh pr create failed: \{error_output}")
   }
-  let pr_url = stdout.text().trim(char_set=" \t\n\r")
+  let pr_url = stdout.trim_output()
 
   // Extract PR number from URL
   match @gh.extract_pr_number(pr_url) {
@@ -712,7 +712,7 @@ async fn get_pr_state(clone_path : String, pr_number : Int) -> String {
         e,
       )
   }
-  stdout.text().trim(char_set=" \t\n\r").to_string()
+  stdout.trim_output()
 }
 
 ///|

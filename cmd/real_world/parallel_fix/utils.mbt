@@ -20,6 +20,12 @@ fn extract_owner_repo(url : String) -> (String, String)? {
 }
 
 ///|
+/// Trim whitespace from output data
+fn &@io.Data::trim_output(data : Self) -> String raise {
+  data.text().trim(char_set=" \t\n\r").to_string()
+}
+
+///|
 /// Escape single quotes for SQL
 fn escape_sql(s : String) -> String {
   s.replace(old="'", new="''")
@@ -110,37 +116,35 @@ async fn check_write_access(repo_url : String) -> Bool {
     Some(pair) => pair
     None => return false
   }
-  
-  let (status, stdout, _) = @process.collect_output(
-    "gh",
-    ["repo", "view", "\{owner}/\{repo}", "--json", "viewerPermission", "--jq", ".viewerPermission"],
-  ) catch {
+  let (status, stdout, _) = @process.collect_output("gh", [
+    "repo",
+    "view",
+    "\{owner}/\{repo}",
+    "--json",
+    "viewerPermission",
+    "--jq",
+    ".viewerPermission",
+  ]) catch {
     _ => return false
   }
-  
   if status != 0 {
     return false
   }
-  
-  let permission = stdout.text().trim(char_set=" \t\n\r").to_string()
-  has_write_permission(permission)
+  has_write_permission(stdout.trim_output())
 }
 
 ///|
 /// Get current GitHub user login
 async fn get_current_user() -> String? {
-  let (status, stdout, _) = @process.collect_output(
-    "gh",
-    ["api", "user", "--jq", ".login"],
-  ) catch {
+  let (status, stdout, _) = @process.collect_output("gh", [
+    "api", "user", "--jq", ".login",
+  ]) catch {
     _ => return None
   }
-  
   if status != 0 {
     return None
   }
-  
-  Some(stdout.text().trim(char_set=" \t\n\r").to_string())
+  Some(stdout.trim_output())
 }
 
 ///|
@@ -150,29 +154,30 @@ async fn get_fork_url(original_url : String) -> String? {
     Some(pair) => pair
     None => return None
   }
-  
   let current_user_opt = get_current_user() catch { _ => None }
   let current_user = match current_user_opt {
     Some(u) => u
     None => return None
   }
-  
-  let (fork_status, fork_stdout, _) = @process.collect_output(
-    "gh",
-    ["repo", "list", current_user, "--fork", "--json", "nameWithOwner", "--jq", ".[] | select(.nameWithOwner | contains(\"\{repo}\")) | .nameWithOwner"],
-  ) catch {
+  let (fork_status, fork_stdout, _) = @process.collect_output("gh", [
+    "repo",
+    "list",
+    current_user,
+    "--fork",
+    "--json",
+    "nameWithOwner",
+    "--jq",
+    ".[] | select(.nameWithOwner | contains(\"\{repo}\")) | .nameWithOwner",
+  ]) catch {
     _ => return None
   }
-  
   if fork_status != 0 {
     return None
   }
-  
-  let fork_name = fork_stdout.text().trim(char_set=" \t\n\r").to_string()
+  let fork_name = fork_stdout.trim_output()
   if fork_name.is_empty() {
     return None
   }
-  
   Some("https://github.com/\{fork_name}.git")
 }
 
@@ -183,22 +188,19 @@ async fn create_fork(original_url : String) -> String {
     Some((o, r)) => (o, r)
     None => @error.fail("Invalid repository URL: \{original_url}")
   }
-  
   @stdio.stdout.write("info Creating fork of \{owner}/\{repo}...\n")
-  
-  let (status, _stdout, stderr) = @process.collect_output(
-    "gh",
-    ["repo", "fork", "\{owner}/\{repo}", "--clone=false"],
-  ) catch {
+  let (status, _stdout, stderr) = @process.collect_output("gh", [
+    "repo",
+    "fork",
+    "\{owner}/\{repo}",
+    "--clone=false",
+  ]) catch {
     e => @error.fail_with("Failed to create fork", e)
   }
-  
   if status != 0 {
     @error.fail("Failed to create fork: \{stderr.text()}")
   }
-  
   @stdio.stdout.write("info Fork created successfully\n")
-  
   match get_fork_url(original_url) {
     Some(fork_url) => {
       @stdio.stdout.write("info Fork URL: \{fork_url}\n")
@@ -216,18 +218,18 @@ async fn get_target_repo_url(original_url : String) -> String {
     @stdio.stdout.write("info Write access confirmed for \{original_url}\n")
     return original_url
   }
-  
-  @stdio.stdout.write("info No write access to \{original_url}, checking for fork...\n")
-  
+  @stdio.stdout.write(
+    "info No write access to \{original_url}, checking for fork...\n",
+  )
+
   // Check if fork exists
   match get_fork_url(original_url) {
     Some(fork_url) => {
       @stdio.stdout.write("info Using existing fork: \{fork_url}\n")
       fork_url
     }
-    None => {
+    None =>
       // Fork doesn't exist, create one
       create_fork(original_url)
-    }
   }
 }
