@@ -20,13 +20,11 @@ async fn main {
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(model="anthropic/claude-sonnet-4"),
   )
-  let reader = @io.BufferedReader::new(@stdio.stdin)
+  let reader = @stdio.stdin
   while true {
     @stdio.stdout.write(b"> ")
     try {
-      let length = reader.find(b"\n")
-      let line = @encoding/utf8.decode(reader[:length])
-      reader.drop(length + 1)
+      guard reader.read_until("\n") is Some(line) else { break }
       if line.trim_space().is_empty() {
         continue
       }
