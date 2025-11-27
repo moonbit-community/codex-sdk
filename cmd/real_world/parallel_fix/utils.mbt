@@ -84,3 +84,127 @@ async fn execute(
   }
   stdout
 }
+
+///|
+/// Check if we have write access to a repository
+async fn check_write_access(repo_url : String) -> Bool {
+  // Extract owner/repo from URL
+  let repo_path = repo_url.strip_suffix(".git").unwrap_or(repo_url)
+  guard repo_path.split("/").collect() is [.., owner, repo] else {
+    return false
+  }
+  
+  // Use gh to check if we can push to this repo
+  let (status, _, _) = @process.collect_output(
+    "gh",
+    ["repo", "view", "\{owner}/\{repo}", "--json", "viewerPermission", "--jq", ".viewerPermission"],
+  ) catch {
+    _ => return false
+  }
+  
+  // If command succeeds, we have at least read access
+  status == 0
+}
+
+///|
+/// Get the fork URL for the current user
+async fn get_fork_url(original_url : String) -> String? {
+  // Extract owner/repo from original URL
+  let repo_path = original_url.strip_suffix(".git").unwrap_or(original_url)
+  guard repo_path.split("/").collect() is [.., _owner, repo] else {
+    return None
+  }
+  
+  // Get current user
+  let (status, stdout, _) = @process.collect_output(
+    "gh",
+    ["api", "user", "--jq", ".login"],
+  ) catch {
+    _ => return None
+  }
+  
+  if status != 0 {
+    return None
+  }
+  
+  let current_user = stdout.text().trim(char_set=" \t\n\r").to_string()
+  
+  // Check if fork exists
+  let (fork_status, fork_stdout, _) = @process.collect_output(
+    "gh",
+    ["repo", "list", current_user, "--fork", "--json", "nameWithOwner", "--jq", ".[] | select(.nameWithOwner | contains(\"\{repo}\")) | .nameWithOwner"],
+  ) catch {
+    _ => return None
+  }
+  
+  if fork_status != 0 {
+    return None
+  }
+  
+  let fork_name = fork_stdout.text().trim(char_set=" \t\n\r").to_string()
+  if fork_name.is_empty() {
+    return None
+  }
+  
+  // Return fork URL in HTTPS format
+  Some("https://github.com/\{fork_name}.git")
+}
+
+///|
+/// Create a fork of the repository
+async fn create_fork(original_url : String) -> String {
+  // Extract owner/repo from original URL
+  let repo_path = original_url.strip_suffix(".git").unwrap_or(original_url)
+  guard repo_path.split("/").collect() is [.., owner, repo] else {
+    @error.fail("Invalid repository URL: \{original_url}")
+  }
+  
+  @stdio.stdout.write("info Creating fork of \{owner}/\{repo}...\n")
+  
+  // Create fork using gh
+  let (status, _stdout, stderr) = @process.collect_output(
+    "gh",
+    ["repo", "fork", "\{owner}/\{repo}", "--clone=false"],
+  ) catch {
+    e => @error.fail_with("Failed to create fork", e)
+  }
+  
+  if status != 0 {
+    @error.fail("Failed to create fork: \{stderr.text()}")
+  }
+  
+  @stdio.stdout.write("info Fork created successfully\n")
+  
+  // Get the fork URL
+  match get_fork_url(original_url) {
+    Some(fork_url) => {
+      @stdio.stdout.write("info Fork URL: \{fork_url}\n")
+      fork_url
+    }
+    None => @error.fail("Failed to get fork URL after creation")
+  }
+}
+
+///|
+/// Get the target repository URL (fork if no write access, original otherwise)
+async fn get_target_repo_url(original_url : String) -> String {
+  // First check if we have write access to the original repo
+  if check_write_access(original_url) {
+    @stdio.stdout.write("info Write access confirmed for \{original_url}\n")
+    return original_url
+  }
+  
+  @stdio.stdout.write("info No write access to \{original_url}, checking for fork...\n")
+  
+  // Check if fork exists
+  match get_fork_url(original_url) {
+    Some(fork_url) => {
+      @stdio.stdout.write("info Using existing fork: \{fork_url}\n")
+      fork_url
+    }
+    None => {
+      // Fork doesn't exist, create one
+      create_fork(original_url)
+    }
+  }
+}

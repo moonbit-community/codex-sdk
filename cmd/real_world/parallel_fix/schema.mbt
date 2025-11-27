@@ -9,6 +9,7 @@ let schema_sql : String =
   #|    id INTEGER PRIMARY KEY AUTOINCREMENT,
   #|    url TEXT NOT NULL,
   #|    task TEXT NOT NULL,
+  #|    target_url TEXT NOT NULL,
   #|    pr_number INTEGER,
   #|    completed INTEGER NOT NULL DEFAULT 0,
   #|    created_at TEXT NOT NULL,

@@ -10,7 +10,35 @@ async fn process_repository(
   let repo_name = extract_repo_name(repo.url)
   @stdio.stdout.write("info [\{repo_name}] Processing...\n")
   let clone_path = "\{config.work_dir}/\{repo_name}"
-  ensure_repo_cloned(clone_path, repo.url) catch {
+
+  // Use target_url from database if already determined, otherwise determine it
+  let target_url = if repo.target_url != repo.url {
+    @stdio.stdout.write(
+      "info [\{repo_name}] Using previously determined target: \{repo.target_url}\n",
+    )
+    repo.target_url
+  } else {
+    // Determine target repository URL (fork if no write access)
+    get_target_repo_url(repo.url) catch {
+      e => {
+        @stdio.stderr.write(
+          "error [\{repo_name}] Failed to determine target repository: \{e}\n",
+        )
+        @error.reraise(e)
+      }
+    }
+  }
+
+  // Update database with target URL if different from original
+  if target_url != repo.url {
+    update_target_url(config.db, repo.id, target_url) catch {
+      e =>
+        @stdio.stderr.write(
+          "warning [\{repo_name}] Failed to update target URL in database: \{e}\n",
+        )
+    }
+  }
+  ensure_repo_cloned(clone_path, target_url) catch {
     e => @error.reraise(e)
   }
 

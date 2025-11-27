@@ -8,6 +8,7 @@ priv struct RepositoryRecord {
   id : Int
   url : String
   task : String
+  target_url : String
   pr_number : Int?
   completed : Bool
 }
