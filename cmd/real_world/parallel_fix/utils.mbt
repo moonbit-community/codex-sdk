@@ -2,12 +2,21 @@
 /// Common utility functions for the parallel repository fixer
 
 ///|
-/// Extract repository name from URL
+/// Extract repository name from URL (owner/repo format)
 fn extract_repo_name(url : String) -> String {
   let path = url.strip_suffix(".git").unwrap_or(url)
-  // Split by '/' and take the last part
   guard path.split("/").collect() is [.., org, name] else { return url }
   "\{org}/\{name}"
+}
+
+///|
+/// Extract owner and repo name from URL
+fn extract_owner_repo(url : String) -> (String, String)? {
+  let path = url.strip_suffix(".git").unwrap_or(url)
+  match path.split("/").collect() {
+    [.., owner, repo] => Some((owner.to_string(), repo.to_string()))
+    _ => None
+  }
 }
 
 ///|
@@ -86,15 +95,22 @@ async fn execute(
 }
 
 ///|
+/// Check if permission level allows write access
+fn has_write_permission(permission : String) -> Bool {
+  match permission {
+    "ADMIN" | "MAINTAIN" | "WRITE" => true
+    _ => false
+  }
+}
+
+///|
 /// Check if we have write access to a repository
 async fn check_write_access(repo_url : String) -> Bool {
-  // Extract owner/repo from URL
-  let repo_path = repo_url.strip_suffix(".git").unwrap_or(repo_url)
-  guard repo_path.split("/").collect() is [.., owner, repo] else {
-    return false
+  let (owner, repo) = match extract_owner_repo(repo_url) {
+    Some(pair) => pair
+    None => return false
   }
   
-  // Use gh to check if we can push to this repo
   let (status, stdout, _) = @process.collect_output(
     "gh",
     ["repo", "view", "\{owner}/\{repo}", "--json", "viewerPermission", "--jq", ".viewerPermission"],
@@ -106,24 +122,13 @@ async fn check_write_access(repo_url : String) -> Bool {
     return false
   }
   
-  // Check the actual permission level
   let permission = stdout.text().trim(char_set=" \t\n\r").to_string()
-  
-  // We need at least WRITE permission to push
-  // Valid write permissions: ADMIN, MAINTAIN, WRITE
-  permission == "ADMIN" || permission == "MAINTAIN" || permission == "WRITE"
+  has_write_permission(permission)
 }
 
 ///|
-/// Get the fork URL for the current user
-async fn get_fork_url(original_url : String) -> String? {
-  // Extract owner/repo from original URL
-  let repo_path = original_url.strip_suffix(".git").unwrap_or(original_url)
-  guard repo_path.split("/").collect() is [.., _owner, repo] else {
-    return None
-  }
-  
-  // Get current user
+/// Get current GitHub user login
+async fn get_current_user() -> String? {
   let (status, stdout, _) = @process.collect_output(
     "gh",
     ["api", "user", "--jq", ".login"],
@@ -135,9 +140,23 @@ async fn get_fork_url(original_url : String) -> String? {
     return None
   }
   
-  let current_user = stdout.text().trim(char_set=" \t\n\r").to_string()
+  Some(stdout.text().trim(char_set=" \t\n\r").to_string())
+}
+
+///|
+/// Get the fork URL for the current user
+async fn get_fork_url(original_url : String) -> String? {
+  let (_owner, repo) = match extract_owner_repo(original_url) {
+    Some(pair) => pair
+    None => return None
+  }
   
-  // Check if fork exists
+  let current_user_opt = get_current_user() catch { _ => None }
+  let current_user = match current_user_opt {
+    Some(u) => u
+    None => return None
+  }
+  
   let (fork_status, fork_stdout, _) = @process.collect_output(
     "gh",
     ["repo", "list", current_user, "--fork", "--json", "nameWithOwner", "--jq", ".[] | select(.nameWithOwner | contains(\"\{repo}\")) | .nameWithOwner"],
@@ -154,22 +173,19 @@ async fn get_fork_url(original_url : String) -> String? {
     return None
   }
   
-  // Return fork URL in HTTPS format
   Some("https://github.com/\{fork_name}.git")
 }
 
 ///|
 /// Create a fork of the repository
 async fn create_fork(original_url : String) -> String {
-  // Extract owner/repo from original URL
-  let repo_path = original_url.strip_suffix(".git").unwrap_or(original_url)
-  guard repo_path.split("/").collect() is [.., owner, repo] else {
-    @error.fail("Invalid repository URL: \{original_url}")
+  let (owner, repo) = match extract_owner_repo(original_url) {
+    Some((o, r)) => (o, r)
+    None => @error.fail("Invalid repository URL: \{original_url}")
   }
   
   @stdio.stdout.write("info Creating fork of \{owner}/\{repo}...\n")
   
-  // Create fork using gh
   let (status, _stdout, stderr) = @process.collect_output(
     "gh",
     ["repo", "fork", "\{owner}/\{repo}", "--clone=false"],
@@ -183,7 +199,6 @@ async fn create_fork(original_url : String) -> String {
   
   @stdio.stdout.write("info Fork created successfully\n")
   
-  // Get the fork URL
   match get_fork_url(original_url) {
     Some(fork_url) => {
       @stdio.stdout.write("info Fork URL: \{fork_url}\n")
