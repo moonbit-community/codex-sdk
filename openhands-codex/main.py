@@ -52,7 +52,7 @@ def execute(message: str, id: uuid.UUID | None = None, workspace: Path | None = 
     conversation = Conversation(
         agent=agent,
         workspace=workspace or os.getcwd(),
-        persistence_dir=Path(workspace or os.getcwd()) / "conversations",
+        persistence_dir=Path.home() / ".openhands" / "conversations",
         visualizer=JsonVisualizer(),
         conversation_id=id,
     )
