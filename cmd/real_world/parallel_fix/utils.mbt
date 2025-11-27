@@ -95,15 +95,23 @@ async fn check_write_access(repo_url : String) -> Bool {
   }
   
   // Use gh to check if we can push to this repo
-  let (status, _, _) = @process.collect_output(
+  let (status, stdout, _) = @process.collect_output(
     "gh",
     ["repo", "view", "\{owner}/\{repo}", "--json", "viewerPermission", "--jq", ".viewerPermission"],
   ) catch {
     _ => return false
   }
   
-  // If command succeeds, we have at least read access
-  status == 0
+  if status != 0 {
+    return false
+  }
+  
+  // Check the actual permission level
+  let permission = stdout.text().trim(char_set=" \t\n\r").to_string()
+  
+  // We need at least WRITE permission to push
+  // Valid write permissions: ADMIN, MAINTAIN, WRITE
+  permission == "ADMIN" || permission == "MAINTAIN" || permission == "WRITE"
 }
 
 ///|

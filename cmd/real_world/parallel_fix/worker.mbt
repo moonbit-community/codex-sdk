@@ -145,6 +145,7 @@ async fn process_repository(
         repo,
         branch_name,
         config.codex,
+        target_url,
       ) catch {
         e => @error.fail_with("Failed to create PR", e)
       }
@@ -541,6 +542,7 @@ async fn create_pr_from_branch(
   repo : RepositoryRecord,
   branch_name : String,
   codex : @codex.Codex,
+  target_url : String,
 ) -> Int {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
@@ -556,12 +558,29 @@ async fn create_pr_from_branch(
   )
   @stdio.stdout.write("info PR title: \{pr_title}\n")
 
+  // Extract target repo owner/name for PR creation
+  let target_repo_path = target_url.strip_suffix(".git").unwrap_or(target_url)
+  guard target_repo_path.split("/").collect() is [.., target_owner, target_repo] else {
+    @error.fail("Invalid target repository URL: \{target_url}")
+  }
+
   // Create PR using gh CLI
+  // When creating a PR on a fork, we need to specify the target repo explicitly
   let (status, stdout, stderr) = @process.collect_output(
     "gh",
     [
-      "pr", "create", "--title", pr_title, "--body", pr_body, "--base", default_branch,
-      "--head", branch_name,
+      "pr",
+      "create",
+      "--title",
+      pr_title,
+      "--body",
+      pr_body,
+      "--base",
+      default_branch,
+      "--head",
+      branch_name,
+      "--repo",
+      "\{target_owner}/\{target_repo}",
     ],
     cwd=clone_path,
   ) catch {
