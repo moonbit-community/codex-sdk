@@ -614,6 +614,7 @@ async fn create_pr_from_branch(
 ///|
 /// Sync fork's default branch with the original repository's default branch
 /// This keeps the fork up-to-date with the original repo
+/// Uses distinguished remote names to avoid conflicts when processing multiple repos
 async fn sync_fork_default_branch(
   clone_path : String,
   original_url : String,
@@ -623,34 +624,37 @@ async fn sync_fork_default_branch(
     e => @error.fail_with("Failed to discover repository", e)
   }
   let default_branch = git_repo.default_branch.unwrap_or("main")
+
+  // Generate distinguished remote name based on original repo owner
+  let upstream_remote = generate_remote_name(original_url, "upstream")
   @stdio.stdout.write(
-    "info Syncing fork's \{default_branch} branch with original repo...\n",
+    "info Syncing fork's \{default_branch} branch with original repo (remote: \{upstream_remote})...\n",
   )
 
-  // Add original repo as upstream if not already present
+  // Add original repo with distinguished remote name if not already present
   try {
     let _ = @process.collect_output(
       "git",
-      ["remote", "add", "upstream", original_url],
+      ["remote", "add", upstream_remote, original_url],
       cwd=clone_path,
     )
 
   } catch {
     _ => ()
   }
-  // Ignore error if upstream already exists
+  // Ignore error if remote already exists
 
-  // Fetch from upstream
+  // Fetch from upstream remote
   let (fetch_status, _, fetch_err) = @process.collect_output(
     "git",
-    ["fetch", "upstream", default_branch],
+    ["fetch", upstream_remote, default_branch],
     cwd=clone_path,
   ) catch {
-    e => @error.fail_with("Failed to fetch from upstream", e)
+    e => @error.fail_with("Failed to fetch from \{upstream_remote}", e)
   }
   if fetch_status != 0 {
     @stdio.stdout.write(
-      "warning Failed to fetch from upstream: \{fetch_err.text()}\n",
+      "warning Failed to fetch from \{upstream_remote}: \{fetch_err.text()}\n",
     )
     return
   }
@@ -661,22 +665,22 @@ async fn sync_fork_default_branch(
     return
   }
 
-  // Reset to upstream's default branch
+  // Reset to upstream remote's default branch
   let (reset_status, _, reset_err) = @process.collect_output(
     "git",
-    ["reset", "--hard", "upstream/\{default_branch}"],
+    ["reset", "--hard", "\{upstream_remote}/\{default_branch}"],
     cwd=clone_path,
   ) catch {
-    e => @error.fail_with("Failed to reset to upstream", e)
+    e => @error.fail_with("Failed to reset to \{upstream_remote}", e)
   }
   if reset_status != 0 {
     @stdio.stdout.write(
-      "warning Failed to reset to upstream: \{reset_err.text()}\n",
+      "warning Failed to reset to \{upstream_remote}: \{reset_err.text()}\n",
     )
     return
   }
 
-  // Push to fork
+  // Push to fork (origin)
   git_repo.push() catch {
     e => @stdio.stdout.write("warning Failed to push to fork: \{e}\n")
   }

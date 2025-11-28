@@ -233,3 +233,13 @@ async fn get_target_repo_url(original_url : String) -> String {
       create_fork(original_url)
   }
 }
+
+///|
+/// Generate a distinguished remote name based on repository owner
+/// This ensures multiple repositories don't have conflicting remote names
+fn generate_remote_name(url : String, remote_type : String) -> String {
+  match extract_owner_repo(url) {
+    Some((owner, _repo)) => "\{remote_type}-\{owner}"
+    None => remote_type
+  }
+}
