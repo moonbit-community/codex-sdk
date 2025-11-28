@@ -170,6 +170,45 @@ parallel_fix --data-dir ~/my-fixes status --verbose # Detailed
 
 This avoids data duplication and ensures consistency with GitHub.
 
+## Fork Handling and Distinguished Remote Names
+
+**Automatic Fork Detection and Creation:**
+
+When a repository is fixed and the user doesn't have write access:
+
+1. The tool automatically detects if a fork exists for the current user
+2. If no fork exists, it creates one using `gh repo fork`
+3. The fork URL is stored in the database as `target_url`
+4. All subsequent operations use the fork as the target
+
+**Distinguished Remote Names:**
+
+To support processing multiple repositories without remote name conflicts:
+
+- Each repository gets a unique remote name based on its owner
+- Format: `<remote_type>-<owner>` (e.g., `upstream-moonbit-community`)
+- Original repo: `upstream-<owner>`
+- Fork: `origin` (default clone remote)
+
+**Example:**
+
+```
+Repository: https://github.com/moonbit-community/codex-sdk.git
+├── origin (fork URL)
+└── upstream-moonbit-community (original repo)
+
+Repository: https://github.com/user/repo.git
+├── origin (fork URL)
+└── upstream-user (original repo)
+```
+
+**Benefits:**
+
+- Multiple repositories can be processed in parallel without conflicts
+- Each PR can independently rebase/merge with its remote/default branch
+- Cleaner git remote management when handling multiple repos
+- Enables proper synchronization of fork's default branch with original
+
 ## Key Features
 
 ### 1. Full Reentrancy
@@ -276,13 +315,16 @@ moon run real_world/parallel_fix -- \
 
 ### ✅ Complete
 
-- ✅ SQLite single-table schema
+- ✅ SQLite single-table schema with target_url field
 - ✅ CLI commands: init, add, run, status
 - ✅ Simple worker loop
 - ✅ GitHub integration (gh CLI)
 - ✅ Parallel processing with semaphore
 - ✅ Reentrant design
 - ✅ Separate work-dir and data-dir
+- ✅ Automatic fork detection and creation
+- ✅ Distinguished remote names for parallel processing
+- ✅ Fork synchronization with original repository
 
 ### 🎯 Future Enhancements (Optional)
 
@@ -290,3 +332,4 @@ moon run real_world/parallel_fix -- \
 - [ ] `clean --completed` to remove finished repos
 - [ ] Web dashboard for monitoring
 - [ ] Webhook support for PR updates
+- [ ] Support for SSH-based repository URLs
