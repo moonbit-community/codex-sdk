@@ -385,8 +385,19 @@ async fn run_interactive_mode(arguments : Arguments) -> Unit {
           )
           thread.run(full_prompt)
         })
-        @stdio.stdout.write(turn.final_response)
-        @stdio.stdout.write("\n")
+        @stdio.stdout.write("\r\{turn.final_response}\n")
+        if turn.usage is Some(u) {
+          @stdio.stdout.write(
+            (
+              $|=== Usage Stats (\{thread.id().unwrap_or("Unknown")}) ===
+              $|Input tokens: \{u.input_tokens}
+              $|Cached tokens: \{u.cached_input_tokens}
+              $|Output tokens: \{u.output_tokens}
+              $|===
+              $|
+            ),
+          )
+        }
       } catch {
         e => raise e
       }
