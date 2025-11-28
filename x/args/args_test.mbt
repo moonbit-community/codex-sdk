@@ -88,3 +88,14 @@ test "parse - and -1" {
   let result = parse(["-", "-1", "file.txt"])
   inspect(result.positional, content="[\"-\", \"-1\", \"file.txt\"]")
 }
+
+///|
+test "parse subcommands" {
+  let result = parse(["--help", "hello"], stop_early=true, flags=["help"])
+  inspect(
+    result.positional,
+    content=(
+      #|["hello"]
+    ),
+  )
+}
