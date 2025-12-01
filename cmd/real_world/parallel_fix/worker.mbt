@@ -44,16 +44,6 @@ async fn process_repository(
     e => @error.reraise(e)
   }
 
-  // If using a fork, sync its default branch with the original repo
-  if target_url != repo.url {
-    sync_fork_default_branch(clone_path, repo.url, target_url) catch {
-      e =>
-        @stdio.stderr.write(
-          "warning [\{repo_name}] Failed to sync fork default branch: \{e}\n",
-        )
-    }
-  }
-
   // 1. Check if PR exists
   match repo.pr_number {
     Some(pr_num) => {
@@ -243,14 +233,39 @@ async fn update_branch_from_remote(
 ///|
 /// Checkout a branch and ensure it's updated from remote
 /// If the remote branch is newer (rebased or merged), automatically sync to it
+/// Also attempts to update the branch with the latest changes from the default branch
 async fn checkout_branch(clone_path : String, branch_name : String) -> Unit {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
   }
+
+  // First, ensure default branch is up to date
+  let default_branch = git_repo.default_branch.unwrap_or("main")
+  if !git_repo.checkout(default_branch) {
+    @stdio.stdout.write(
+      "warning Failed to checkout default branch \{default_branch}\n",
+    )
+  } else {
+    // Update default branch from remote
+    git_repo.pull(branch=default_branch) catch {
+      _ => {
+        @stdio.stdout.write("info Syncing default branch with remote...\n")
+        update_branch_from_remote(clone_path, default_branch) catch {
+          e =>
+            @stdio.stderr.write(
+              "warning Failed to sync default branch with remote: \{e}\n",
+            )
+        }
+      }
+    }
+  }
+
+  // Now checkout the PR branch
   if !git_repo.checkout(branch_name) {
     @error.fail("Failed to checkout branch \{branch_name}")
   }
-  // Try to pull latest changes from remote
+
+  // Try to pull latest changes from remote for the PR branch
   git_repo.pull(branch=branch_name) catch {
     _ => {
       // If pull fails, try explicit reset to remote
@@ -265,6 +280,36 @@ async fn checkout_branch(clone_path : String, branch_name : String) -> Unit {
       }
 
     }
+  }
+
+  // Try to update the PR branch with the latest changes from default branch
+  // This helps keep the PR branch up to date with the base branch
+  @stdio.stdout.write(
+    "info Attempting to merge latest \{default_branch} into \{branch_name}...\n",
+  )
+  let (merge_status, _, merge_err) = @process.collect_output(
+    "git",
+    ["merge", "--no-edit", default_branch],
+    cwd=clone_path,
+  ) catch {
+    e => {
+      @stdio.stderr.write("warning Failed to merge \{default_branch}: \{e}\n")
+      return
+    }
+  }
+  if merge_status != 0 {
+    @stdio.stdout.write(
+      "warning Could not merge \{default_branch} into \{branch_name}: \{merge_err.text()}\n",
+    )
+    @stdio.stdout.write("info Aborting merge...\n")
+    // Abort the merge to leave the branch in a clean state
+    ignore(@process.run("git", ["merge", "--abort"], cwd=clone_path)) catch {
+      _ => ()
+    }
+  } else {
+    @stdio.stdout.write(
+      "info Successfully merged \{default_branch} into \{branch_name}\n",
+    )
   }
 }
 
@@ -605,83 +650,6 @@ async fn create_pr_from_branch(
     Some(num) => num
     None => @error.fail("Failed to extract PR number from URL: \{pr_url}")
   }
-}
-
-///|
-/// Sync fork's default branch with the original repository's default branch
-/// This keeps the fork up-to-date with the original repo
-/// Uses distinguished remote names to avoid conflicts when processing multiple repos
-async fn sync_fork_default_branch(
-  clone_path : String,
-  original_url : String,
-  _fork_url : String,
-) -> Unit {
-  let git_repo = @git.GitRepo::discover(clone_path) catch {
-    e => @error.fail_with("Failed to discover repository", e)
-  }
-  let default_branch = git_repo.default_branch.unwrap_or("main")
-
-  // Generate distinguished remote name based on original repo owner
-  let upstream_remote = generate_remote_name(original_url, "upstream")
-  @stdio.stdout.write(
-    "info Syncing fork's \{default_branch} branch with original repo (remote: \{upstream_remote})...\n",
-  )
-
-  // Add original repo with distinguished remote name if not already present
-  ignore(
-    @process.run(
-      "git",
-      ["remote", "add", upstream_remote, original_url],
-      cwd=clone_path,
-    ),
-  ) catch {
-    _ => ()
-  }
-  // Ignore error if remote already exists
-
-  // Fetch from upstream remote
-  let (fetch_status, _, fetch_err) = @process.collect_output(
-    "git",
-    ["fetch", upstream_remote, default_branch],
-    cwd=clone_path,
-  ) catch {
-    e => @error.fail_with("Failed to fetch from \{upstream_remote}", e)
-  }
-  if fetch_status != 0 {
-    @stdio.stdout.write(
-      "warning Failed to fetch from \{upstream_remote}: \{fetch_err.text()}\n",
-    )
-    return
-  }
-
-  // Checkout default branch
-  if !git_repo.checkout(default_branch) {
-    @stdio.stdout.write("warning Failed to checkout \{default_branch}\n")
-    return
-  }
-
-  // Reset to upstream remote's default branch
-  let (reset_status, _, reset_err) = @process.collect_output(
-    "git",
-    ["reset", "--hard", "\{upstream_remote}/\{default_branch}"],
-    cwd=clone_path,
-  ) catch {
-    e => @error.fail_with("Failed to reset to \{upstream_remote}", e)
-  }
-  if reset_status != 0 {
-    @stdio.stdout.write(
-      "warning Failed to reset to \{upstream_remote}: \{reset_err.text()}\n",
-    )
-    return
-  }
-
-  // Push to fork (origin)
-  git_repo.push() catch {
-    e => @stdio.stdout.write("warning Failed to push to fork: \{e}\n")
-  }
-  @stdio.stdout.write(
-    "info Fork's \{default_branch} branch synced with original repo\n",
-  )
 }
 
 ///|
