@@ -44,7 +44,7 @@ async fn process_repository(
     e => @error.reraise(e)
   }
 
-  // 1. Check if PR exists
+  // Check if PR exists and handle accordingly
   match repo.pr_number {
     Some(pr_num) => {
       // PR exists, check its status
@@ -78,54 +78,58 @@ async fn process_repository(
         "info [\{repo_name}] PR #\{pr_num} is \{pr_state}, continuing work...\n",
       )
 
-      // Get branch name from PR
+      // Get branch name from PR and checkout
       let branch_name = get_pr_branch(clone_path, pr_num) catch {
         e => @error.fail_with("Failed to get PR branch", e)
       }
-
-      // Checkout the PR branch
       checkout_branch(clone_path, branch_name) catch {
         e => @error.fail_with("Failed to checkout PR branch", e)
       }
-      let comments = get_pr_comments(clone_path, pr_num)
 
-      // Ask AI to work on the task considering PR feedback
+      // Get PR comments and run AI task
+      let comments = get_pr_comments(clone_path, pr_num)
       run_ai_task(config, repo, clone_path, Some(comments)) catch {
         e => @error.fail_with("AI task failed", e)
       }
 
-      // Sync changes if any
-      sync_changes(config, clone_path, repo) catch {
-        e => @error.fail_with("Failed to sync changes", e)
+      // Commit AI changes, run moon tools, and push
+      commit_changes(config, clone_path, repo) catch {
+        e => @error.fail_with("Failed to commit changes", e)
+      }
+      run_moon_tools_and_commit(clone_path) catch {
+        e => @error.fail_with("Failed to run moon tools", e)
+      }
+      push_branch(clone_path, branch_name) catch {
+        e => @error.fail_with("Failed to push changes", e)
       }
     }
     None => {
-      // No PR yet, run AI first to see if there's work to do
+      // No PR yet, create one if AI makes changes
       @stdio.stdout.write(
         "info [\{repo_name}] No PR exists, running AI to check if work is needed...\n",
       )
 
-      // Setup branch for AI to work on
+      // Setup branch and run AI task
       let branch_name = setup_work_branch(clone_path, config.branch_prefix) catch {
         e => @error.fail_with("Failed to setup work branch", e)
       }
-
-      // Run AI task
       run_ai_task(config, repo, clone_path, None) catch {
         e => @error.fail_with("AI task failed", e)
       }
 
-      // Commit any remaining uncommitted changes (if AI made file changes but didn't commit)
+      // Commit AI changes and run moon tools
       commit_changes(config, clone_path, repo) catch {
         e => @error.fail_with("Failed to commit changes", e)
       }
+      run_moon_tools_and_commit(clone_path) catch {
+        e => @error.fail_with("Failed to run moon tools", e)
+      }
 
-      // Check if AI made any changes (committed or uncommitted) on the feature branch
+      // Check if there are any changes on the branch
       let has_changes = check_branch_has_changes(clone_path, branch_name) catch {
         e => @error.fail_with("Failed to check if branch has changes", e)
       }
       if not(has_changes) {
-        // No changes needed, mark as completed
         @stdio.stdout.write(
           "info [\{repo_name}] No changes needed, marking as completed\n",
         )
@@ -135,12 +139,10 @@ async fn process_repository(
         return
       }
 
-      // Push changes
+      // Push changes and create PR
       push_branch(clone_path, branch_name) catch {
         e => @error.fail_with("Failed to push branch", e)
       }
-
-      // Now create PR
       @stdio.stdout.write("info [\{repo_name}] Changes made, creating PR...\n")
       let pr_num = create_pr_from_branch(
         clone_path,
@@ -413,6 +415,46 @@ async fn commit_changes(
     @stdio.stdout.write(
       "info No uncommitted changes, AI may have already committed\n",
     )
+  }
+}
+
+///|
+/// Run moon fmt and moon info, then commit any changes they make
+async fn run_moon_tools_and_commit(clone_path : String) -> Unit {
+  @stdio.stdout.write("info Running moon fmt and moon info...\n")
+  
+  // Run moon fmt (allow failure)
+  ignore(
+    @process.run("moon", ["fmt"], cwd=clone_path) catch {
+      e => {
+        @stdio.stderr.write("warning moon fmt failed: \{e}\n")
+        -1 // Return error code but continue
+      }
+    },
+  )
+  
+  // Run moon info (allow failure)
+  ignore(
+    @process.run("moon", ["info"], cwd=clone_path) catch {
+      e => {
+        @stdio.stderr.write("warning moon info failed: \{e}\n")
+        -1 // Return error code but continue
+      }
+    },
+  )
+  
+  // Commit any changes from formatting and info updates
+  let git_repo = @git.GitRepo::discover(clone_path) catch {
+    e => @error.fail_with("Failed to discover repository", e)
+  }
+  
+  if git_repo.has_changes() {
+    @stdio.stdout.write("info Committing formatting and interface changes...\n")
+    if !git_repo.commit("chore: run moon fmt and moon info") {
+      @stdio.stderr.write("warning Failed to commit moon tool changes\n")
+    }
+  } else {
+    @stdio.stdout.write("info No changes from moon tools\n")
   }
 }
 
@@ -787,33 +829,4 @@ async fn run_ai_task(
   // Run AI
   let _result = thread.run(task_description) catch { e => @error.reraise(e) }
   @stdio.stdout.write("info AI task completed\n")
-}
-
-///|
-/// Sync changes to remote for existing PR (commit and push)
-async fn sync_changes(
-  config : WorkerConfig,
-  clone_path : String,
-  repo : RepositoryRecord,
-) -> Unit {
-  let git_repo = @git.GitRepo::discover(clone_path) catch {
-    e => @error.fail_with("Failed to discover repository", e)
-  }
-
-  // Commit changes if there are any uncommitted changes
-  if git_repo.has_changes() {
-    let commit_msg = generate_commit_message(config.codex, clone_path, repo)
-    @stdio.stdout.write("info Commit message: \{commit_msg}\n")
-    if !git_repo.commit(commit_msg) {
-      @error.fail("Failed to commit changes")
-    }
-  } else {
-    @stdio.stdout.write("info No uncommitted changes to commit\n")
-  }
-
-  // Always push - the branch might have commits that need to be pushed
-  git_repo.push() catch {
-    e => @error.reraise(e)
-  }
-  @stdio.stdout.write("info Changes synced to remote\n")
 }

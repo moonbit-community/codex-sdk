@@ -468,14 +468,23 @@ pub async fn GitRepo::has_staged_changes(self : GitRepo) -> Bool {
 }
 
 ///|
-/// Check if there are any uncommitted changes (staged or unstaged)
+/// Check if there are any uncommitted changes (staged, unstaged, or untracked)
 ///
 /// # Returns
 /// True if there are uncommitted changes, false otherwise
 pub async fn GitRepo::has_changes(self : GitRepo) -> Bool {
-  let status = @process.run("git", ["diff", "--quiet"], cwd=self.path)
-  // git diff --quiet returns 0 if no changes, 1 if changes exist
-  status != 0
+  let (status, output) = @process.collect_output_merged(
+    "git",
+    ["status", "--porcelain"],
+    cwd=self.path,
+  ) catch {
+    e => @error.reraise(e)
+  }
+  if status != 0 {
+    @error.fail("Failed to check git status: \{output.text()}")
+  }
+  // If output is not empty, there are changes (tracked or untracked)
+  !output.text().trim_space().is_empty()
 }
 
 ///|
