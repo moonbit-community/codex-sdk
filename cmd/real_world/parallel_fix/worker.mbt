@@ -800,20 +800,18 @@ async fn sync_changes(
     e => @error.fail_with("Failed to discover repository", e)
   }
 
-  // Check if there are changes
-  if !git_repo.has_changes() {
-    @stdio.stdout.write("info No new changes to sync\n")
-    return
+  // Commit changes if there are any uncommitted changes
+  if git_repo.has_changes() {
+    let commit_msg = generate_commit_message(config.codex, clone_path, repo)
+    @stdio.stdout.write("info Commit message: \{commit_msg}\n")
+    if !git_repo.commit(commit_msg) {
+      @error.fail("Failed to commit changes")
+    }
+  } else {
+    @stdio.stdout.write("info No uncommitted changes to commit\n")
   }
 
-  // Commit changes
-  let commit_msg = generate_commit_message(config.codex, clone_path, repo)
-  @stdio.stdout.write("info Commit message: \{commit_msg}\n")
-  if !git_repo.commit(commit_msg) {
-    @error.fail("Failed to commit changes")
-  }
-
-  // Push changes
+  // Always push - the branch might have commits that need to be pushed
   git_repo.push() catch {
     e => @error.reraise(e)
   }
