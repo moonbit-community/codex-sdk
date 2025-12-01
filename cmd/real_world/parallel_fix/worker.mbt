@@ -115,6 +115,11 @@ async fn process_repository(
         e => @error.fail_with("AI task failed", e)
       }
 
+      // Commit any remaining uncommitted changes (if AI made file changes but didn't commit)
+      commit_changes(config, clone_path, repo) catch {
+        e => @error.fail_with("Failed to commit changes", e)
+      }
+
       // Check if AI made any changes (committed or uncommitted) on the feature branch
       let has_changes = check_branch_has_changes(clone_path, branch_name) catch {
         e => @error.fail_with("Failed to check if branch has changes", e)
@@ -128,11 +133,6 @@ async fn process_repository(
           e => @error.fail_with("Failed to mark repository as completed", e)
         }
         return
-      }
-
-      // Commit any remaining uncommitted changes (if AI made file changes but didn't commit)
-      commit_changes(config, clone_path, repo) catch {
-        e => @error.fail_with("Failed to commit changes", e)
       }
 
       // Push changes
