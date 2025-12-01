@@ -105,6 +105,10 @@ if __name__ == "__main__":
     exec_parser.add_argument(
         "--cd",
     )
+    exec_parser.add_argument(
+        "--skip-git-repo-check",
+        action="store_true",
+    )
     exec_subparsers = exec_parser.add_subparsers(dest='subcommand')
     resume_parser = exec_subparsers.add_parser(
         "resume", help="Resume a session")

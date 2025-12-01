@@ -418,8 +418,6 @@ async fn generate_pr_metadata(
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(
       working_directory=clone_path,
-      skip_git_repo_check=true,
-      sandbox_mode=ReadOnly,
       model?=@sys.get_env_vars().get("LOWCOST_MODEL"),
     ),
   )
@@ -507,8 +505,6 @@ async fn generate_commit_message(
     let thread = codex.start_thread(
       options=@codex.ThreadOptions::new(
         working_directory=clone_path,
-        skip_git_repo_check=true,
-        sandbox_mode=ReadOnly,
         model?=@sys.get_env_vars().get("LOWCOST_MODEL"),
       ),
     )
@@ -632,14 +628,13 @@ async fn sync_fork_default_branch(
   )
 
   // Add original repo with distinguished remote name if not already present
-  try {
-    let _ = @process.collect_output(
+  ignore(
+    @process.run(
       "git",
       ["remote", "add", upstream_remote, original_url],
       cwd=clone_path,
-    )
-
-  } catch {
+    ),
+  ) catch {
     _ => ()
   }
   // Ignore error if remote already exists
@@ -817,8 +812,6 @@ async fn run_ai_task(
   let thread = config.codex.start_thread(
     options=@codex.ThreadOptions::new(
       working_directory=clone_path,
-      skip_git_repo_check=true,
-      sandbox_mode=WorkspaceWrite,
       model?=@sys.get_env_vars().get("MODEL"),
     ),
   )

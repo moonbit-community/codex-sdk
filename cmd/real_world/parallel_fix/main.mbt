@@ -31,9 +31,19 @@ async fn main {
     ["status", .. remaining] => cmd_status(remaining, data_dir)
     ["sync-prs", .. remaining] => cmd_sync_prs(remaining, work_dir, data_dir)
     ["help", .. remaining] => cmd_help(remaining)
-    _ =>
+    [] =>
       @error.fail(
-        "Unknown subcommand or missing subcommand.\n\nUse --help to see available subcommands.",
+        (
+          #|No subcommand provided.
+          #|Use --help to see available subcommands.",
+        ),
+      )
+    [subcommand, ..] =>
+      @error.fail(
+        (
+          $|Unknown subcommand \{subcommand}.
+          #|Use --help to see available subcommands.",
+        ),
       )
   }
 }
@@ -567,7 +577,11 @@ async fn cmd_run(
   @stdio.stdout.write("\n")
 
   // Create codex instance
-  let codex = @codex.Codex::new()
+  let codex = @codex.Codex::new(
+    options=@codex.CodexOptions::new(
+      codex_path_override="./alternative_codex.sh",
+    ),
+  )
 
   // Create worker config
   let config = WorkerConfig::{ work_dir, branch_prefix, codex, db }
