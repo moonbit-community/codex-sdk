@@ -3,13 +3,13 @@ package "peter-jerry-ye/codex/x/error"
 
 // Values
 #callsite(autofill(loc))
-fn[A] fail(String, loc~ : SourceLoc) -> A raise
+pub fn[A] fail(String, loc~ : SourceLoc) -> A raise
 
 #callsite(autofill(loc))
-fn[A] fail_with(String, Error, loc~ : SourceLoc) -> A raise
+pub fn[A] fail_with(String, Error, loc~ : SourceLoc) -> A raise
 
 #callsite(autofill(loc))
-fn[A] reraise(Error, loc~ : SourceLoc) -> A raise
+pub fn[A] reraise(Error, loc~ : SourceLoc) -> A raise
 
 // Errors
 

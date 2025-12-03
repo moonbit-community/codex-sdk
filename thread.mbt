@@ -14,6 +14,7 @@
 
 ///|
 /// Completed turn.
+#alias(RunResult)
 pub struct Turn {
   /// All items produced during the turn
   items : Array[ThreadItem]
@@ -24,23 +25,16 @@ pub struct Turn {
 }
 
 ///|
-/// Alias for `Turn` to describe the result of `run()`.
-pub typealias Turn as RunResult
-
-///|
 /// The result of the `run_streamed` method.
+#alias(RunStreamedResult)
 pub struct StreamedTurn {
   /// An async iterator of events produced during the turn
   events : @generator.AsyncGenerator[Event]
 }
 
 ///|
-/// Alias for `StreamedTurn` to describe the result of `run_streamed()`.
-pub typealias StreamedTurn as RunStreamedResult
-
-///|
 /// An input to send to the agent.
-pub typealias String as Input
+pub type Input = String
 
 ///|
 /// Represent a thread of conversation with the agent. One thread can have multiple consecutive turns.

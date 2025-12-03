@@ -90,11 +90,11 @@ pub fn parse(
       // Extract name and value
       let mut found_eq = false
       for j = 2; j < arg.length(); j = j + 1 {
-        if arg[j] == '=' && not(found_eq) {
+        if arg.code_unit_at(j).to_int() == '='.to_int() && not(found_eq) {
           found_eq = true
           let mut val = ""
           for k = j + 1; k < arg.length(); k = k + 1 {
-            match arg[k].to_char() {
+            match arg.code_unit_at(k).to_int().to_char() {
               Some(c) => val = val + "\{c}"
               None => ()
             }
@@ -102,7 +102,7 @@ pub fn parse(
           value_opt = Some(val)
           break
         } else if not(found_eq) {
-          match arg[j].to_char() {
+          match arg.code_unit_at(j).to_int().to_char() {
             Some(c) => name = name + "\{c}"
             None => ()
           }
@@ -113,7 +113,7 @@ pub fn parse(
       if name.has_prefix("no-") && name.length() > 3 {
         let mut base_name = ""
         for j = 3; j < name.length(); j = j + 1 {
-          match name[j].to_char() {
+          match name.code_unit_at(j).to_int().to_char() {
             Some(c) => base_name = base_name + "\{c}"
             None => ()
           }
@@ -181,7 +181,7 @@ pub fn parse(
     if arg.has_prefix("-") && arg.length() > 1 && arg != "--" {
       let mut j = 1
       while j < arg.length() {
-        let name = match arg[j].to_char() {
+        let name = match arg.code_unit_at(j).to_int().to_char() {
           Some(c) => "\{c}"
           None => ""
         }
