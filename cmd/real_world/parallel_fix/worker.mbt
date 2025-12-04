@@ -422,32 +422,21 @@ async fn commit_changes(
 /// Run moon fmt and moon info, then commit any changes they make
 async fn run_moon_tools_and_commit(clone_path : String) -> Unit {
   @stdio.stdout.write("info Running moon fmt and moon info...\n")
-  
+
   // Run moon fmt (allow failure)
-  ignore(
-    @process.run("moon", ["fmt"], cwd=clone_path) catch {
-      e => {
-        @stdio.stderr.write("warning moon fmt failed: \{e}\n")
-        -1 // Return error code but continue
-      }
-    },
-  )
-  
+  ignore(@process.collect_output("moon", ["fmt"], cwd=clone_path)) catch {
+    e => @stdio.stderr.write("warning moon fmt failed: \{e}\n")
+  }
+
   // Run moon info (allow failure)
-  ignore(
-    @process.run("moon", ["info"], cwd=clone_path) catch {
-      e => {
-        @stdio.stderr.write("warning moon info failed: \{e}\n")
-        -1 // Return error code but continue
-      }
-    },
-  )
-  
+  ignore(@process.collect_output("moon", ["info"], cwd=clone_path)) catch {
+    e => @stdio.stderr.write("warning moon info failed: \{e}\n")
+  }
+
   // Commit any changes from formatting and info updates
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
   }
-  
   if git_repo.has_changes() {
     @stdio.stdout.write("info Committing formatting and interface changes...\n")
     if !git_repo.commit("chore: run moon fmt and moon info") {
