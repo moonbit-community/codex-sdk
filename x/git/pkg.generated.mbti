@@ -4,7 +4,7 @@ package "peter-jerry-ye/codex/x/git"
 // Values
 pub fn extract_repo_name(String) -> String
 
-async pub fn[T] with_workspace(GitRepo, String, String, create_branch? : Bool, async (IsolatedWorkspace) -> T) -> T
+pub async fn[T] with_workspace(GitRepo, String, String, create_branch? : Bool, async (IsolatedWorkspace) -> T) -> T
 
 // Errors
 
@@ -15,30 +15,30 @@ pub struct GitRepo {
   name : String?
   default_branch : String?
 }
-async pub fn GitRepo::checkout(Self, String) -> Bool
-async pub fn GitRepo::clone(String, String) -> Self
-async pub fn GitRepo::commit(Self, String, add_all? : Bool) -> Bool
-async pub fn GitRepo::create_branch(Self, String, from_branch? : String) -> Unit
-async pub fn GitRepo::create_workspace(Self, String, String, create_branch? : Bool) -> IsolatedWorkspace?
-async pub fn GitRepo::current_branch(Self) -> String?
-async pub fn GitRepo::diff(Self) -> String
-async pub fn GitRepo::diff_staged(Self) -> String
-async pub fn GitRepo::discover(String) -> Self
-async pub fn GitRepo::existing_branches(Self) -> Array[String]
-async pub fn GitRepo::fetch(Self, remote? : String, branch? : String) -> Bool
-async pub fn GitRepo::get_default_branch(Self, remote? : String) -> String?
-async pub fn GitRepo::has_changes(Self) -> Bool
-async pub fn GitRepo::has_staged_changes(Self) -> Bool
-async pub fn GitRepo::is_clean(Self) -> Bool
-async pub fn GitRepo::pull(Self, remote? : String, branch? : String) -> Unit
-async pub fn GitRepo::push(Self, remote? : String, branch? : String, set_upstream? : Bool) -> Unit
+pub async fn GitRepo::checkout(Self, String) -> Bool
+pub async fn GitRepo::clone(String, String) -> Self
+pub async fn GitRepo::commit(Self, String, add_all? : Bool) -> Bool
+pub async fn GitRepo::create_branch(Self, String, from_branch? : String) -> Unit
+pub async fn GitRepo::create_workspace(Self, String, String, create_branch? : Bool) -> IsolatedWorkspace?
+pub async fn GitRepo::current_branch(Self) -> String?
+pub async fn GitRepo::diff(Self) -> String
+pub async fn GitRepo::diff_staged(Self) -> String
+pub async fn GitRepo::discover(String) -> Self
+pub async fn GitRepo::existing_branches(Self) -> Array[String]
+pub async fn GitRepo::fetch(Self, remote? : String, branch? : String) -> Bool
+pub async fn GitRepo::get_default_branch(Self, remote? : String) -> String?
+pub async fn GitRepo::has_changes(Self) -> Bool
+pub async fn GitRepo::has_staged_changes(Self) -> Bool
+pub async fn GitRepo::is_clean(Self) -> Bool
+pub async fn GitRepo::pull(Self, remote? : String, branch? : String) -> Unit
+pub async fn GitRepo::push(Self, remote? : String, branch? : String, set_upstream? : Bool) -> Unit
 
 pub struct IsolatedWorkspace {
   path : String
   branch : String
   repo : GitRepo
 }
-async pub fn IsolatedWorkspace::cleanup(Self) -> Unit
+pub async fn IsolatedWorkspace::cleanup(Self) -> Unit
 
 // Type aliases
 

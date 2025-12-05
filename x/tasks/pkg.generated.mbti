@@ -7,9 +7,9 @@ import(
 )
 
 // Values
-async pub fn for_each_package(String, async (@moon.Package) -> Unit) -> Unit
+pub async fn for_each_package(String, async (@moon.Package) -> Unit) -> Unit
 
-async pub fn run_simple_task(String, String, model? : String) -> @codex.Turn
+pub async fn run_simple_task(String, String, model? : String) -> @codex.Turn
 
 // Errors
 

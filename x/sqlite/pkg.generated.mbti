@@ -2,24 +2,24 @@
 package "peter-jerry-ye/codex/x/sqlite"
 
 // Values
-async pub fn ensure() -> Unit
+pub async fn ensure() -> Unit
 
 // Errors
 
 // Types and methods
 type Database
-async pub fn Database::begin_transaction(Self) -> Unit
-async pub fn Database::commit(Self) -> Unit
-async pub fn Database::count(Self, String) -> Int
-async pub fn Database::ensure(Self) -> Unit
-async pub fn Database::exec(Self, String) -> Unit
-async pub fn Database::exec_file(Self, String) -> Unit
-async pub fn Database::exec_string(Self, String) -> String
+pub async fn Database::begin_transaction(Self) -> Unit
+pub async fn Database::commit(Self) -> Unit
+pub async fn Database::count(Self, String) -> Int
+pub async fn Database::ensure(Self) -> Unit
+pub async fn Database::exec(Self, String) -> Unit
+pub async fn Database::exec_file(Self, String) -> Unit
+pub async fn Database::exec_string(Self, String) -> String
 pub fn Database::new(String) -> Self
-async pub fn Database::query(Self, String) -> Array[Json]
-async pub fn Database::query_one(Self, String) -> Json?
-async pub fn Database::rollback(Self) -> Unit
-async pub fn Database::transaction(Self, Array[String]) -> Unit
+pub async fn Database::query(Self, String) -> Array[Json]
+pub async fn Database::query_one(Self, String) -> Json?
+pub async fn Database::rollback(Self) -> Unit
+pub async fn Database::transaction(Self, Array[String]) -> Unit
 
 // Type aliases
 

@@ -104,8 +104,8 @@ pub struct StreamedTurn {
 
 type Thread
 pub fn Thread::id(Self) -> String?
-async pub fn Thread::run(Self, String, turn_options? : TurnOptions) -> Turn
-async pub fn Thread::run_streamed(Self, String, turn_options? : TurnOptions) -> StreamedTurn
+pub async fn Thread::run(Self, String, turn_options? : TurnOptions) -> Turn
+pub async fn Thread::run_streamed(Self, String, turn_options? : TurnOptions) -> StreamedTurn
 
 pub struct ThreadError {
   message : String
