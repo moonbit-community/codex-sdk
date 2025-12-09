@@ -184,6 +184,11 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
       )
   }
 
+  // Ensure schema is initialized
+  ensure_db_schema(db) catch {
+    e => @error.fail_with("Failed to ensure database schema", e)
+  }
+
   // Read repositories
   @stdio.stdout.write("Reading repositories from \{repos_file}...\n")
   let repos = read_repos_file(repos_file) catch {
@@ -261,6 +266,11 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   let db = @sqlite.Database::new(db_path)
   db.ensure() catch {
     e => @error.fail_with("Database not found. Please run 'init' first.", e)
+  }
+
+  // Ensure schema is initialized
+  ensure_db_schema(db) catch {
+    e => @error.fail_with("Failed to ensure database schema", e)
   }
 
   // Get total count and completed count
@@ -366,6 +376,11 @@ async fn cmd_sync_prs(
   let db = @sqlite.Database::new(db_path)
   db.ensure() catch {
     e => @error.fail_with("Database not found. Please run 'init' first.", e)
+  }
+
+  // Ensure schema is initialized
+  ensure_db_schema(db) catch {
+    e => @error.fail_with("Failed to ensure database schema", e)
   }
 
   // Check if gh is available
@@ -566,6 +581,12 @@ async fn cmd_run(
         e,
       )
   }
+
+  // Ensure schema is initialized
+  ensure_db_schema(db) catch {
+    e => @error.fail_with("Failed to ensure database schema", e)
+  }
+
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\nSTARTING PARALLEL REPOSITORY PROCESSING\n")
   @stdio.stdout.write("=".repeat(60))

@@ -781,7 +781,8 @@ async fn run_ai_task(
     #|- Update snapshots with `moon test --update` if behavior changes
     #|- Check .mbti diffs after `moon info` to verify interface changes
     #|
-    #|After completing the task, run `moon info && moon fmt && moon check && moon test --update` and commit to finalize.
+    #|After completing the task, commit them. 
+    #|Then run `moon info && moon fmt && moon check && moon test --update` and commit automatic changes to finalize.
     #|
 
   // Build task description for AI
@@ -794,6 +795,7 @@ async fn run_ai_task(
         $|\{comments}
         $|
         $|Please address the task and any feedback from the PR comments.
+        $|If there's nothing new, do nothing.
         $|
         $|\{background}
       )

@@ -73,6 +73,14 @@ async fn ensure_work_dir(path : String) -> Unit {
 }
 
 ///|
+/// Ensure database schema is initialized
+async fn ensure_db_schema(db : @sqlite.Database) -> Unit {
+  db.exec(schema_sql) catch {
+    e => @error.fail_with("Failed to ensure database schema", e)
+  }
+}
+
+///|
 async fn execute(
   cmd : String,
   args : Array[String],
