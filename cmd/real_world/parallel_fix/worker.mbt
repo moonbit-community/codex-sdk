@@ -816,6 +816,34 @@ async fn run_ai_task(
   )
 
   // Run AI
-  let _result = thread.run(task_description) catch { e => @error.reraise(e) }
+  let _result = thread.run(task_description) catch {
+    e => {
+      if thread.id() is Some(session_id) {
+        @stdio.stderr.write(
+          "error AI task failed (session ID: \{session_id}): \{e}\n",
+        )
+        save_codex_session(config.db, repo.id, session_id) catch {
+          e =>
+            @stdio.stderr.write(
+              "warning Failed to save codex session ID after error: \{e}\n",
+            )
+        }
+      } else {
+        @stdio.stderr.write("error AI task failed: \{e}\n")
+      }
+      @error.reraise(e)
+    }
+  }
+
+  // Save the thread/session ID to the database
+  if thread.id() is Some(session_id) {
+    @stdio.stdout.write("info Saving codex session ID: \{session_id}\n")
+    save_codex_session(config.db, repo.id, session_id) catch {
+      e =>
+        @stdio.stderr.write("warning Failed to save codex session ID: \{e}\n")
+    }
+  } else {
+    @stdio.stderr.write("warning No thread ID available from codex session\n")
+  }
   @stdio.stdout.write("info AI task completed\n")
 }

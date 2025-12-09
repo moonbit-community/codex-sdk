@@ -18,4 +18,13 @@ let schema_sql : String =
   #|);
   #|CREATE INDEX IF NOT EXISTS idx_repos_completed ON repositories(completed);
   #|CREATE INDEX IF NOT EXISTS idx_repos_url ON repositories(url);
+  #|CREATE TABLE IF NOT EXISTS codex_sessions (
+  #|    id INTEGER PRIMARY KEY AUTOINCREMENT,
+  #|    repository_id INTEGER NOT NULL,
+  #|    session_id TEXT NOT NULL,
+  #|    created_at TEXT NOT NULL,
+  #|    FOREIGN KEY (repository_id) REFERENCES repositories(id) ON DELETE CASCADE
+  #|);
+  #|CREATE INDEX IF NOT EXISTS idx_sessions_repo ON codex_sessions(repository_id);
+  #|CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON codex_sessions(session_id);
   #|

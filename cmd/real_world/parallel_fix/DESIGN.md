@@ -73,12 +73,25 @@ CREATE TABLE repositories (
 );
 ```
 
+**codex_sessions** - Track Codex session IDs for each repository task run
+
+```sql
+CREATE TABLE codex_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    repository_id INTEGER NOT NULL,
+    session_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (repository_id) REFERENCES repositories(id) ON DELETE CASCADE
+);
+```
+
 **Key Design**: The primary unit is a **(repository, task) pair**, not just a
 repository. This allows:
 
 - Same repository with different tasks (e.g., "Fix linting" vs "Update deps")
 - Each pair has independent tracking
 - Multiple PRs from the same repo for different purposes
+- Track all Codex session IDs for debugging and audit purposes
 
 **No state machine, no audit logs, no queue** - Just the essentials!
 
@@ -321,6 +334,22 @@ moon run real_world/parallel_fix -- \
 - ✅ GitHub integration (gh CLI)
 - ✅ Parallel processing with semaphore
 - ✅ Reentrant design
+- ✅ Codex session ID tracking for audit and debugging
+
+### Features
+
+#### Session ID Tracking
+
+The tool now records every Codex session ID (thread ID) for each repository task run:
+
+- **Database Table**: `codex_sessions` table stores session IDs linked to repository tasks
+- **Automatic Recording**: Session IDs are saved after each AI task execution
+- **Multiple Sessions**: Supports tracking multiple sessions per repository (e.g., initial run + subsequent iterations based on PR feedback)
+- **Status Display**: Use `status --verbose` to view all session IDs for each repository
+- **Use Cases**:
+  - Debug AI behavior for specific repositories
+  - Audit trail of all AI interactions
+  - Resume or analyze previous sessions
 - ✅ Separate work-dir and data-dir
 - ✅ Automatic fork detection and creation
 - ✅ Distinguished remote names for parallel processing

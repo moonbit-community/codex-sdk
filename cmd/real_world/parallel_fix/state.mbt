@@ -170,3 +170,18 @@ async fn get_all_repos(db : @sqlite.Database) -> Array[RepositoryRecord] {
   }
   repos
 }
+
+///|
+/// Save a codex session ID for a repository task
+async fn save_codex_session(
+  db : @sqlite.Database,
+  repo_id : Int,
+  session_id : String,
+) -> Unit {
+  let now = @async.now()
+  let escaped_session_id = escape_sql(session_id)
+  let sql = "INSERT INTO codex_sessions (repository_id, session_id, created_at) VALUES (\{repo_id}, '\{escaped_session_id}', '\{now}');"
+  db.exec(sql) catch {
+    e => @error.reraise(e)
+  }
+}
