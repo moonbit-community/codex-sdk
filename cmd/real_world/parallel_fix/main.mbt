@@ -15,7 +15,10 @@ async fn main {
 
   // Extract global options with defaults
   let work_dir = parsed.options.get("work-dir").unwrap_or("/tmp/parallel-fix")
-  let data_dir = parsed.options.get("data-dir").unwrap_or("~/.parallel-fix")
+  let home = @sys.get_env_vars().get("HOME").unwrap_or("")
+  let data_dir = parsed.options
+    .get("data-dir")
+    .unwrap_or("\{home}/.parallel-fix")
 
   // Show help if requested
   if parsed.flags.get("help") is Some(true) {
@@ -586,7 +589,6 @@ async fn cmd_run(
   ensure_db_schema(db) catch {
     e => @error.fail_with("Failed to ensure database schema", e)
   }
-
   @stdio.stdout.write("=".repeat(60))
   @stdio.stdout.write("\nSTARTING PARALLEL REPOSITORY PROCESSING\n")
   @stdio.stdout.write("=".repeat(60))
