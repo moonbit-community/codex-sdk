@@ -362,3 +362,8 @@ The tool now records every Codex session ID (thread ID) for each repository task
 - [ ] Web dashboard for monitoring
 - [ ] Webhook support for PR updates
 - [ ] Support for SSH-based repository URLs
+
+### TODO
+
+- [ ] The repository may have name collision
+- [ ] The same branch may be contributed to multiple repositories, and the prompt should be updated accordingly
