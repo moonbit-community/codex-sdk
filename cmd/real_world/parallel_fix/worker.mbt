@@ -767,6 +767,7 @@ async fn run_ai_task(
     #|- Keep deprecated code in deprecated.mbt files
     #|
     #|### Tooling Requirements
+    #|- Use `moon doc` to query interfaces
     #|- Use `moon fmt` to format code
     #|- Use `moon info` to update .mbti interface files
     #|- Use `moon test` to run tests (use `moon test --update` for snapshots)
@@ -795,7 +796,7 @@ async fn run_ai_task(
         $|\{comments}
         $|
         $|Please address the task and any feedback from the PR comments.
-        $|If there's nothing new, do nothing.
+        $|If there's nothing new since the last commit and no CI has failed, do nothing.
         $|
         $|\{background}
       )

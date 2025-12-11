@@ -167,15 +167,19 @@ async fn get_fork_url(original_url : String) -> String? {
     Some(u) => u
     None => return None
   }
+  // Use exact match instead of contains to avoid false positives
+  // Set limit to 1000 to avoid pagination issues with users who have many forks
   let (fork_status, fork_stdout, _) = @process.collect_output("gh", [
     "repo",
     "list",
     current_user,
     "--fork",
+    "--limit",
+    "1000",
     "--json",
     "nameWithOwner",
     "--jq",
-    ".[] | select(.nameWithOwner | contains(\"\{repo}\")) | .nameWithOwner",
+    ".[] | select(.nameWithOwner == \"\{current_user}/\{repo}\") | .nameWithOwner",
   ]) catch {
     _ => return None
   }
@@ -209,13 +213,22 @@ async fn create_fork(original_url : String) -> String {
     @error.fail("Failed to create fork: \{stderr.text()}")
   }
   @stdio.stdout.write("info Fork created successfully\n")
-  match get_fork_url(original_url) {
-    Some(fork_url) => {
-      @stdio.stdout.write("info Fork URL: \{fork_url}\n")
-      fork_url
-    }
-    None => @error.fail("Failed to get fork URL after creation")
+
+  // Wait for fork to be available in API with retry logic
+  let fork_url = @async.retry(
+    @async.RetryMethod::FixedDelay(2000),
+    max_retry=10,
+    async fn() {
+      match get_fork_url(original_url) {
+        Some(url) => url
+        None => @error.fail("Fork not yet available in API")
+      }
+    },
+  ) catch {
+    e => @error.fail_with("Failed to get fork URL after creation", e)
   }
+  @stdio.stdout.write("info Fork URL: \{fork_url}\n")
+  fork_url
 }
 
 ///|
