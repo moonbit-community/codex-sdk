@@ -10,10 +10,10 @@ pub suberror Running
 
 // Types and methods
 type AsyncGenerator[T]
-fn[T] AsyncGenerator::new(async (async (T) -> Unit) -> Unit) -> Self[T]
-async fn[T] AsyncGenerator::next(Self[T]) -> T?
-async fn[T] AsyncGenerator::returns(Self[T]) -> T?
-async fn[T] AsyncGenerator::throws(Self[T], Error) -> T?
+pub fn[T] AsyncGenerator::new(async (async (T) -> Unit) -> Unit) -> Self[T]
+pub async fn[T] AsyncGenerator::next(Self[T]) -> T?
+pub async fn[T] AsyncGenerator::returns(Self[T]) -> T?
+pub async fn[T] AsyncGenerator::throws(Self[T], Error) -> T?
 
 // Type aliases
 

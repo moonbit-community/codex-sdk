@@ -14,7 +14,7 @@ The simplest way to use Codex is to create a `@codex.Codex` and start a
 `@codex.Thread::run`. By default, the `OPENAI_API_KEY` environment variable is
 read.
 
-```moonbit
+```mbt check
 ///|
 async test {
   let codex = @codex.Codex::new(
@@ -33,7 +33,7 @@ async test {
 For incremental usage, import the `@generator` package and use
 `@codex.Thread::run_streamed`.
 
-```moonbit
+```mbt check
 ///|
 async test {
   let codex = @codex.Codex::new(
