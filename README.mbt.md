@@ -5,7 +5,7 @@ This is the Codex SDK for MoonBit, ported from the TypeScript SDK.
 The SDK communicates with Codex by spawning it in non-interactive mode using
 `codex exec`. The target Codex version is 0.46.0.
 
-Codex must be installed. If not, install with:
+Codex must be installed and available on your PATH. If not, install with:
 
 ```bash
 pnpm install -g @openai/codex@0.46.0
