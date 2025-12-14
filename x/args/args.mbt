@@ -90,22 +90,18 @@ pub fn parse(
       // Extract name and value
       let mut found_eq = false
       for j = 2; j < arg.length(); j = j + 1 {
-        if arg[j] == '=' && not(found_eq) {
+        if arg.code_unit_at(j).to_int() == '='.to_int() && not(found_eq) {
           found_eq = true
           let mut val = ""
           for k = j + 1; k < arg.length(); k = k + 1 {
-            match arg[k].to_char() {
-              Some(c) => val = val + "\{c}"
-              None => ()
-            }
+            let c = arg.code_unit_at(k).to_int().unsafe_to_char()
+            val = val + "\{c}"
           }
           value_opt = Some(val)
           break
         } else if not(found_eq) {
-          match arg[j].to_char() {
-            Some(c) => name = name + "\{c}"
-            None => ()
-          }
+          let c = arg.code_unit_at(j).to_int().unsafe_to_char()
+          name = name + "\{c}"
         }
       }
 
@@ -113,10 +109,8 @@ pub fn parse(
       if name.has_prefix("no-") && name.length() > 3 {
         let mut base_name = ""
         for j = 3; j < name.length(); j = j + 1 {
-          match name[j].to_char() {
-            Some(c) => base_name = base_name + "\{c}"
-            None => ()
-          }
+          let c = name.code_unit_at(j).to_int().unsafe_to_char()
+          base_name = base_name + "\{c}"
         }
         let base_resolved = resolve_alias(base_name)
         if negatable_set.contains(base_resolved) {
@@ -181,10 +175,8 @@ pub fn parse(
     if arg.has_prefix("-") && arg.length() > 1 && arg != "--" {
       let mut j = 1
       while j < arg.length() {
-        let name = match arg[j].to_char() {
-          Some(c) => "\{c}"
-          None => ""
-        }
+        let c = arg.code_unit_at(j).to_int().unsafe_to_char()
+        let name = "\{c}"
         let resolved = resolve_alias(name)
         if flag_set.contains(resolved) {
           flags_map[resolved] = true
