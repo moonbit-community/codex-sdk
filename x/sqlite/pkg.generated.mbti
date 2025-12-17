@@ -1,0 +1,27 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex/x/sqlite"
+
+// Values
+pub async fn ensure() -> Unit
+
+// Errors
+
+// Types and methods
+type Database
+pub async fn Database::begin_transaction(Self) -> Unit
+pub async fn Database::commit(Self) -> Unit
+pub async fn Database::count(Self, String) -> Int
+pub async fn Database::ensure(Self) -> Unit
+pub async fn Database::exec(Self, String) -> Unit
+pub async fn Database::exec_file(Self, String) -> Unit
+pub async fn Database::exec_string(Self, String) -> String
+pub fn Database::new(String) -> Self
+pub async fn Database::query(Self, String) -> Array[Json]
+pub async fn Database::query_one(Self, String) -> Json?
+pub async fn Database::rollback(Self) -> Unit
+pub async fn Database::transaction(Self, Array[String]) -> Unit
+
+// Type aliases
+
+// Traits
+

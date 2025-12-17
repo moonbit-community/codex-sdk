@@ -7,8 +7,6 @@
     "moonbitlang/async",
     "moonbitlang/async/stdio",
     "moonbitlang/async/io",
-    "moonbitlang/async/fs",
-    "moonbitlang/x/sys",
-    "peter-jerry-ye/codex/generator"
+    "moonbitlang/x/sys"
   ]
 }

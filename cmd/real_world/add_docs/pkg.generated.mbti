@@ -8,7 +8,7 @@ type Reraise
 
 // Types and methods
 type Arguments
-impl Default for Arguments
+pub impl Default for Arguments
 
 type ExecResult
 

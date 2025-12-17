@@ -22,207 +22,144 @@ pub fn parse(
   negatable? : ArrayView[String] = [],
   double_dash? : Bool = true,
   stop_early? : Bool = false,
-) -> Args {
-  let positional = []
-  let flags_map = {}
-  let options_map = {}
+) -> Args raise {
+  let positional : Array[String] = []
+  let flags_map : Map[String, Bool] = {}
+  let options_map : Map[String, String] = {}
   let collections_map : Map[String, Array[String]] = {}
 
   // Create sets for O(1) lookup
-  let flag_set = {}
-  for flag in flags {
-    flag_set[flag] = true
-  }
-  let option_set = {}
-  for option in options {
-    option_set[option] = true
-  }
-  let collection_set = {}
-  for collection in collections {
-    collection_set[collection] = true
-  }
-  let negatable_set = {}
-  for neg in negatable {
-    negatable_set[neg] = true
-  }
+  let flag_set = Set::from_array(flags.map(s => s[:]))
+  let option_set = Set::from_array(options.map(s => s[:]))
+  let collection_set = Set::from_array(collections.map(s => s[:]))
+  let negatable_set = Set::from_array(negatable.map(s => s[:]))
 
   // Helper to resolve aliases
-  fn resolve_alias(name : String) -> String {
-    match aliases.get(name) {
-      Some(target) => target
-      None => name
-    }
+  fn resolve_alias(name : StringView) -> String {
+    aliases.get_from_string(name).unwrap_or(name.to_string())
   }
 
-  let mut i = 0
-  let mut after_double_dash = false
-  while i < args.length() {
-    let arg = args[i]
-
+  let mut args = args[:]
+  while args is [arg, .. rest] {
+    args = rest
     // Handle double dash
-    if arg == "--" && double_dash {
-      after_double_dash = true
-      i = i + 1
-      continue
-    }
-
-    // After --, everything is positional
-    if after_double_dash {
-      positional.push(arg)
-      i = i + 1
-      continue
+    if arg is "--" && double_dash {
+      // After --, everything is positional
+      positional.push_iter(args.iter())
+      break
     }
 
     // Stop early if requested and we hit a non-option
     if stop_early && not(arg.has_prefix("-")) {
-      while i < args.length() {
-        positional.push(args[i])
-        i = i + 1
-      }
+      positional.push(arg)
+      positional.push_iter(args.iter())
       break
     }
-
-    // Handle long options (--name or --name=value)
-    if arg.has_prefix("--") && arg.length() > 2 {
-      let mut name = ""
-      let mut value_opt : String? = None
-
+    if arg is [.. "--", .. rest] && rest.length() > 0 {
+      // Handle long options (--name or --name=value)
       // Extract name and value
-      let mut found_eq = false
-      for j = 2; j < arg.length(); j = j + 1 {
-        if arg.code_unit_at(j).to_int() == '='.to_int() && not(found_eq) {
-          found_eq = true
-          let mut val = ""
-          for k = j + 1; k < arg.length(); k = k + 1 {
-            let c = arg.code_unit_at(k).to_int().unsafe_to_char()
-            val = val + "\{c}"
-          }
-          value_opt = Some(val)
-          break
-        } else if not(found_eq) {
-          let c = arg.code_unit_at(j).to_int().unsafe_to_char()
-          name = name + "\{c}"
-        }
-      }
+      let eq = rest.find("=")
+      let name = if eq is Some(pos) { try! rest[:pos] } else { rest }
+      let value = if eq is Some(pos) { Some(try! rest[pos + 1:]) } else { None }
 
       // Handle --no- prefix for negatable flags
-      if name.has_prefix("no-") && name.length() > 3 {
-        let mut base_name = ""
-        for j = 3; j < name.length(); j = j + 1 {
-          let c = name.code_unit_at(j).to_int().unsafe_to_char()
-          base_name = base_name + "\{c}"
-        }
+      if name is [.. "no-", .. base_name] {
         let base_resolved = resolve_alias(base_name)
         if negatable_set.contains(base_resolved) {
           flags_map[base_resolved] = false
-          i = i + 1
           continue
         }
       }
       let resolved = resolve_alias(name)
-
-      // Check if it's a flag
       if flag_set.contains(resolved) {
+        // if it's a flag
         flags_map[resolved] = true
-        i = i + 1
-        continue
-      }
-
-      // Check if it's an option
-      if option_set.contains(resolved) {
-        let value = match value_opt {
+      } else if option_set.contains(resolved) {
+        // if it's an option
+        let value = match value {
           Some(v) => v
           None => {
-            i = i + 1
-            if i >= args.length() {
-              abort("Option --\{name} requires a value")
+            guard args is [next_arg, .. rest_args] else {
+              fail("Option --\{name} requires a value")
             }
-            args[i]
+            args = rest_args
+            next_arg
           }
         }
-        options_map[resolved] = value
-        i = i + 1
-        continue
-      }
-
-      // Check if it's a collection
-      if collection_set.contains(resolved) {
-        let value = match value_opt {
+        options_map[resolved] = value.to_string()
+      } else if collection_set.contains(resolved) {
+        // if it's a collection
+        let value = match value {
           Some(v) => v
           None => {
-            i = i + 1
-            if i >= args.length() {
-              abort("Collection --\{name} requires a value")
+            guard args is [next_arg, .. rest_args] else {
+              fail("Collection --\{name} requires a value")
             }
-            args[i]
+            args = rest_args
+            next_arg
           }
         }
-        match collections_map.get(resolved) {
-          Some(arr) => arr.push(value)
-          None => collections_map[resolved] = [value]
+        match collections_map.get_from_string(resolved) {
+          Some(arr) => arr.push(value.to_string())
+          None => collections_map[resolved] = [value.to_string()]
         }
-        i = i + 1
-        continue
+      } else {
+        // Unknown option - treat as positional
+        positional.push(arg)
       }
-
-      // Unknown option - treat as positional
-      positional.push(arg)
-      i = i + 1
-      continue
-    }
-
-    // Handle short options
-    if arg.has_prefix("-") && arg.length() > 1 && arg != "--" {
-      let mut j = 1
-      while j < arg.length() {
-        let c = arg.code_unit_at(j).to_int().unsafe_to_char()
-        let name = "\{c}"
-        let resolved = resolve_alias(name)
-        if flag_set.contains(resolved) {
-          flags_map[resolved] = true
-          j = j + 1
-        } else if option_set.contains(resolved) {
-          if j == arg.length() - 1 {
-            // Last character, look for next argument
-            i = i + 1
-            if i >= args.length() {
-              abort("Option -\{name} requires a value")
+    } else if arg is [.. "-", .. rest] && rest.length() > 0 {
+      // Handle short options
+      loop rest {
+        [] => ()
+        [ch] => {
+          let resolved = resolve_alias(ch.to_string())
+          if flag_set.contains(resolved) {
+            flags_map[resolved] = true
+          } else if option_set.contains(resolved) {
+            // Option requires a value
+            guard args is [next_arg, .. rest_args] else {
+              fail("Option -\{ch} requires a value")
             }
-            options_map[resolved] = args[i]
-            break
-          } else {
-            abort("Option -\{name} in combined short flags requires a value")
-          }
-        } else if collection_set.contains(resolved) {
-          if j == arg.length() - 1 {
-            i = i + 1
-            if i >= args.length() {
-              abort("Collection -\{name} requires a value")
+            options_map[resolved] = next_arg
+            args = rest_args
+          } else if collection_set.contains(resolved) {
+            // Collection requires a value
+            guard args is [next_arg, .. rest_args] else {
+              fail("Collection -\{ch} requires a value")
             }
-            let value = args[i]
-            match collections_map.get(resolved) {
+            let value = next_arg
+            match collections_map.get_from_string(resolved) {
               Some(arr) => arr.push(value)
               None => collections_map[resolved] = [value]
             }
-            break
+            args = rest_args
           } else {
-            abort(
-              "Collection -\{name} in combined short flags requires a value",
-            )
+            // Unknown flag - treat as positional
+            positional.push(arg)
           }
-        } else {
-          // Unknown flag - treat as positional
-          positional.push(arg)
-          break
+        }
+        [ch, .. rest] => {
+          let resolved = resolve_alias(ch.to_string())
+          if flag_set.contains(resolved) {
+            flags_map[resolved] = true
+            continue rest
+          } else if option_set.contains(resolved) {
+            // Option requires a value
+            fail("Option -\{ch} in combined short flags requires a value")
+          } else if collection_set.contains(resolved) {
+            // Collection requires a value
+            fail("Collection -\{ch} in combined short flags requires a value")
+          } else {
+            // Unknown flag - treat as positional
+            positional.push(arg)
+            break
+          }
         }
       }
-      i = i + 1
-      continue
+    } else {
+      // Everything else is positional
+      positional.push(arg)
     }
-
-    // Everything else is positional
-    positional.push(arg)
-    i = i + 1
   }
   {
     positional,

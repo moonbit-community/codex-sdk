@@ -17,12 +17,8 @@
 struct Arguments {
   /// Task description or path to file containing task
   mut task : String
-  /// Read task from stdin instead of file or argument
-  mut use_stdin : Bool
-  /// Read task from a file (explicit file path)
-  mut file : String
   /// Working directory for task execution
-  mut working_dir : String
+  mut working_dir : String?
   /// Show help message
   mut help : Bool
   /// Model to use for task solving
@@ -30,9 +26,9 @@ struct Arguments {
   /// Verbose output mode
   mut verbose : Bool
   /// Skip git checks
-  mut skip_git_check : Bool
+  mut skip_git_repo_check : Bool?
   /// Sandbox mode (WorkspaceWrite or DangerousFullAccess)
-  mut sandbox_mode : @codex.SandboxMode
+  mut sandbox_mode : @codex.SandboxMode?
   /// Resume an existing thread by ID
   mut resume_thread_id : String?
 }
@@ -41,51 +37,36 @@ struct Arguments {
 fn parse_args(args : @args.Args) -> Arguments {
   let arguments = {
     task: "",
-    use_stdin: false,
-    file: "",
-    working_dir: ".",
+    working_dir: None,
     help: false,
     model: None,
     verbose: false,
-    skip_git_check: false,
-    sandbox_mode: WorkspaceWrite,
+    skip_git_repo_check: None,
+    sandbox_mode: None,
     resume_thread_id: None,
   }
 
   // Parse flags
-  if args.flags.get("stdin") is Some(true) {
-    arguments.use_stdin = true
-  }
   if args.flags.get("help") is Some(true) {
     arguments.help = true
   }
-  if args.flags.get("verbose") is Some(true) ||
-    args.flags.get("v") is Some(true) {
+  if args.flags.get("verbose") is Some(true) {
     arguments.verbose = true
   }
-  if args.flags.get("skip-git-check") is Some(true) {
-    arguments.skip_git_check = true
-  }
+  arguments.skip_git_repo_check = args.flags.get("skip-git-check")
 
   // Parse options
-  if args.options.get("working-dir") is Some(value) {
-    arguments.working_dir = value
-  }
-  if args.options.get("model") is Some(value) {
-    arguments.model = Some(value)
-  }
-  if args.options.get("file") is Some(value) {
-    arguments.file = value
-  }
+  arguments.working_dir = args.options.get("working-dir")
+  arguments.model = args.options.get("model")
   if args.options.get("sandbox-mode") is Some(mode) &&
     mode is ("DangerousFullAccess" | "WorkspaceWrite" | "ReadOnly") {
     match mode {
       "DangerousFullAccess" =>
-        arguments.sandbox_mode = @codex.SandboxMode::DangerFullAccess
+        arguments.sandbox_mode = Some(@codex.SandboxMode::DangerFullAccess)
       "WorkspaceWrite" =>
-        arguments.sandbox_mode = @codex.SandboxMode::WorkspaceWrite
-      "ReadOnly" => arguments.sandbox_mode = @codex.SandboxMode::ReadOnly
-      _ => panic()
+        arguments.sandbox_mode = Some(@codex.SandboxMode::WorkspaceWrite)
+      "ReadOnly" => arguments.sandbox_mode = Some(@codex.SandboxMode::ReadOnly)
+      _ => ()
     }
   }
   if args.options.get("resume") is Some(value) {
@@ -102,19 +83,8 @@ fn parse_args(args : @args.Args) -> Arguments {
 ///|
 /// Read task description from various sources
 async fn read_task(arguments : Arguments) -> String {
-  if arguments.use_stdin {
-    // Read from stdin - for now, just return empty since async stdin reading is complex
-    @stdio.stdout.write("Note: stdin reading not yet implemented\n")
-    ""
-  } else if !arguments.file.is_empty() {
-    // Read from file
-    if @fs.exists(arguments.file) {
-      @fs.read_file(arguments.file).text() catch {
-        e => @error.fail_with("Failed to read file '\{arguments.file}'", e)
-      }
-    } else {
-      @error.fail("File not found: \{arguments.file}")
-    }
+  if arguments.task == "-" {
+    @stdio.stdin.read_all().text()
   } else {
     // Return the task as-is (direct task description)
     arguments.task
@@ -161,26 +131,24 @@ fn build_system_context() -> String {
 /// Main task solver workflow
 async fn solve_task(
   task : String,
-  working_dir : String,
-  model : String?,
+  model? : String,
   verbose : Bool,
-  skip_git_check : Bool,
-  sandbox_mode : @codex.SandboxMode,
-  resume_thread_id : String?,
+  working_directory? : String,
+  sandbox_mode? : @codex.SandboxMode,
+  skip_git_repo_check? : Bool,
+  resume_thread_id? : String,
 ) -> Unit {
   try {
     if task.is_empty() {
       @error.fail("No task provided")
     }
-    let git_check_status = if skip_git_check { "SKIPPED" } else { "enabled" }
     @stdio.stdout.write(
       (
         #|=== MoonBit Task Solver ===
         #|
-        $|Working directory: \{working_dir}
-        $|Model: \{model}
-        $|Sandbox mode: \{sandbox_mode.to_json().as_string().unwrap()}
-        $|Git check: \{git_check_status}
+        $|Working directory: \{working_directory.unwrap_or(@env.current_dir().unwrap_or("Unknown"))}
+        $|Model: \{model.unwrap_or("Unknown")}
+        $|Sandbox mode: \{sandbox_mode.to_json().as_string().unwrap_or("Unknown")}
         $|Task:
         $|\{task}
         $|
@@ -202,12 +170,16 @@ async fn solve_task(
     }
 
     // Initialize Codex with appropriate sandbox mode
-    let codex = @codex.Codex::new()
+    let codex = @codex.Codex::new(
+      options=@codex.CodexOptions::new(
+        codex_path_override="./alternative_codex.sh",
+      ),
+    )
     let options = @codex.ThreadOptions::new(
       model?,
-      sandbox_mode~,
-      working_directory=working_dir,
-      skip_git_repo_check=skip_git_check,
+      sandbox_mode?,
+      working_directory?,
+      skip_git_repo_check?,
     )
     let thread = if resume_thread_id is Some(thread_id) {
       @stdio.stdout.write("Resuming thread: \{thread_id}\n")
@@ -216,136 +188,11 @@ async fn solve_task(
       codex.start_thread(options~)
     }
     @stdio.stdout.write("Starting AI agent...\n\n")
-    let mut thread_id = thread.id()
-    let events = thread.run_streamed(full_prompt) catch {
+    let events = thread.run(full_prompt) catch {
       e => @error.fail_with("Failed to send user message", e)
     }
-    let mut final_response = ""
-    let mut usage : @codex.Usage? = None
-    try {
-      while events.events.next() is Some(event) {
-        match event {
-          @codex.ThreadStarted(thread_id=tid) => {
-            thread_id = Some(tid)
-            @stdio.stdout.write(
-              (
-                #|=== Thread Started ===
-                $|Thread ID: \{tid}
-                #|
-              ),
-            )
-          }
-          @codex.TurnStarted =>
-            if verbose {
-              @stdio.stdout.write(
-                (
-                  #|=== Turn Started ===
-                  #|
-                ),
-              )
-            }
-          @codex.ItemStarted(item) =>
-            if verbose {
-              match item {
-                @codex.ReasoningItem(text~, ..) =>
-                  @stdio.stdout.write("💭 Reasoning: \{text}\n\n")
-                @codex.CommandExecutionItem(command~, ..) =>
-                  @stdio.stdout.write("⚙️ Executing command: \{command}\n")
-                @codex.FileChangeItem(changes~, ..) => {
-                  @stdio.stdout.write("📝 File changes:\n")
-                  for change in changes {
-                    let kind_str = match change.kind {
-                      @codex.Add => "Adding"
-                      @codex.Delete => "Deleting"
-                      @codex.Update => "Updating"
-                    }
-                    @stdio.stdout.write("   \{kind_str}: \{change.path}\n")
-                  }
-                  @stdio.stdout.write("\n")
-                }
-                @codex.TodoListItem(items~, ..) => {
-                  @stdio.stdout.write("📋 Todo List:\n")
-                  for i = 0; i < items.length(); i = i + 1 {
-                    let todo = items[i]
-                    let status = if todo.completed { "✓" } else { " " }
-                    @stdio.stdout.write("   [\{status}] \{todo.text}\n")
-                  }
-                  @stdio.stdout.write("\n")
-                }
-                @codex.McpToolCallItem(server~, tool~, ..) =>
-                  @stdio.stdout.write(
-                    "🔧 Calling MCP tool: \{server}/\{tool}\n",
-                  )
-                @codex.WebSearchItem(query~, ..) =>
-                  @stdio.stdout.write("🔍 Web search: \{query}\n")
-                _ => ()
-              }
-            }
-          @codex.ItemUpdated(item) =>
-            if verbose {
-              match item {
-                @codex.TodoListItem(items~, ..) => {
-                  @stdio.stdout.write("📋 Todo List Updated:\n")
-                  for i = 0; i < items.length(); i = i + 1 {
-                    let todo = items[i]
-                    let status = if todo.completed { "✓" } else { " " }
-                    @stdio.stdout.write("   [\{status}] \{todo.text}\n")
-                  }
-                  @stdio.stdout.write("\n")
-                }
-                @codex.CommandExecutionItem(aggregated_output~, ..) =>
-                  if !aggregated_output.is_empty() {
-                    @stdio.stdout.write("   Output: \{aggregated_output}\n")
-                  }
-                _ => ()
-              }
-            }
-          @codex.ItemCompleted(item) =>
-            if verbose {
-              match item {
-                @codex.AgentMessageItem(text~, ..) => {
-                  final_response = text
-                  @stdio.stdout.write("💬 Agent: \{text}\n\n")
-                }
-                @codex.CommandExecutionItem(status~, exit_code~, ..) => {
-                  let status_str = match status {
-                    @codex.Completed => "✓ Completed"
-                    @codex.Failed => "✗ Failed"
-                    @codex.InProgress => "In Progress"
-                  }
-                  @stdio.stdout.write("   Status: \{status_str}")
-                  if exit_code is Some(code) {
-                    @stdio.stdout.write(" (exit code: \{code})")
-                  }
-                  @stdio.stdout.write("\n\n")
-                }
-                @codex.ErrorItem(message~, ..) =>
-                  @stdio.stdout.write("❌ Error: \{message}\n\n")
-                _ => ()
-              }
-            } else if item is @codex.AgentMessageItem(text~, ..) {
-              final_response = text
-            }
-          @codex.TurnCompleted(u) => {
-            usage = Some(u)
-            if verbose {
-              @stdio.stdout.write("=== Turn Completed ===\n\n")
-            }
-          }
-          @codex.TurnFailed(error) =>
-            @error.fail("Turn failed: \{error.message}")
-          @codex.ThreadErrorEvent(message) =>
-            @error.fail("Thread error: \{message}")
-        }
-      }
-    } catch {
-      e => {
-        while events.events.returns() is Some(_) {
-          // Must drain the generator to avoid unhandled promise rejection
-        }
-        @error.reraise(e)
-      }
-    }
+    let final_response = events.final_response
+    let usage : @codex.Usage? = events.usage
 
     // Print summary
     @stdio.stdout.write(
@@ -370,18 +217,18 @@ async fn solve_task(
     }
     @stdio.stdout.write(
       (
-        $|Thread ID: \{thread_id}
+        $|Thread ID: \{thread.id().unwrap_or("Unknown")}
         #|=== Task Complete ===
         $|
       ),
     )
   } catch {
-    error => @stdio.stdout.write("❌ Error during task execution: \{error}\n")
+    error => @stdio.stderr.write("❌ Error during task execution: \{error}\n")
   }
 }
 
 ///|
-/// Main entry point with CLI argument parsing
+/// Main entry point with CLI argument parsing and interactive mode
 async fn main {
   let help_message =
     $|
@@ -391,11 +238,9 @@ async fn main {
     $|to create new tools in this repository when needed.
     $|
     $|Arguments:
-    $|  [TASK]                    Task description (direct text)
+    $|  [TASK]                    Task description (direct text) - if omitted, enters interactive mode
     $|
     $|Options:
-    $|  --file <path>             Read task from a file
-    $|  --stdin                   Read task from stdin instead of argument
     $|  --working-dir <path>      Working directory for task execution (default: .)
     $|  --model <model>           AI model to use (default: anthropic/claude-sonnet-4)
     $|  --resume <thread_id>      Resume an existing thread by ID
@@ -408,11 +253,8 @@ async fn main {
     $|  # Solve a task from command line
     $|  moon run cmd/task_solver -- "Create a tool that lists all functions in a MoonBit project"
     $|
-    $|  # Solve a task from a file
-    $|  moon run cmd/task_solver -- --file task.txt
-    $|
-    $|  # Read task from stdin
-    $|  echo "Fix all warnings in this project" | moon run cmd/task_solver -- --stdin
+    $|  # Interactive mode (no task argument)
+    $|  moon run cmd/task_solver
     $|
     $|  # Use a different model
     $|  moon run cmd/task_solver -- --model "openai/gpt-4" "Document all exported functions"
@@ -428,6 +270,7 @@ async fn main {
     $|  - Aware of MoonBit project structure and conventions
     $|  - Can use git, moon, and other utilities from x/
     $|  - Has workspace write permissions for implementing solutions
+    $|  - Interactive mode for multi-turn conversations
     $|
   // Parse CLI arguments
   let args = @args.parse(
@@ -435,10 +278,22 @@ async fn main {
     flags=["stdin", "help", "verbose", "v", "skip-git-check"],
     options=["working-dir", "model", "file", "sandbox-mode", "resume"],
     aliases={ "h": "help" },
-  )
+  ) catch {
+    e => {
+      @stdio.stdout.write("Error parsing arguments: \{e}\n")
+      @stdio.stdout.write("\{help_message}\n")
+      return
+    }
+  }
   let arguments = parse_args(args)
   if arguments.help {
     @stdio.stdout.write("\{help_message}\n")
+    return
+  }
+
+  // If no task provided, enter interactive mode
+  if arguments.task.is_empty() {
+    run_interactive_mode(arguments)
     return
   }
 
@@ -447,15 +302,115 @@ async fn main {
   if task.is_empty() {
     @error.fail("No task provided. Use --help for usage information")
   }
-
   // Execute the task solver
   solve_task(
     task,
-    arguments.working_dir,
-    arguments.model,
     arguments.verbose,
-    arguments.skip_git_check,
-    arguments.sandbox_mode,
-    arguments.resume_thread_id,
+    working_directory?=arguments.working_dir,
+    model?=arguments.model,
+    skip_git_repo_check?=arguments.skip_git_repo_check,
+    sandbox_mode?=arguments.sandbox_mode,
+    resume_thread_id?=arguments.resume_thread_id,
   )
+}
+
+///|
+/// Interactive mode for multi-turn conversations
+async fn run_interactive_mode(arguments : Arguments) -> Unit {
+  try {
+    // Initialize Codex with appropriate sandbox mode
+    let codex = @codex.Codex::new(
+      options=@codex.CodexOptions::new(
+        codex_path_override="./alternative_codex.sh",
+      ),
+    )
+    let options = @codex.ThreadOptions::new(
+      model?=arguments.model,
+      sandbox_mode?=arguments.sandbox_mode,
+      working_directory?=arguments.working_dir,
+      skip_git_repo_check?=arguments.skip_git_repo_check,
+    )
+    let thread = if arguments.resume_thread_id is Some(thread_id) {
+      @stdio.stdout.write("Resuming thread: \{thread_id}\n")
+      codex.resume_thread(thread_id, options~)
+    } else {
+      codex.start_thread(options~)
+    }
+
+    // Build the system context once
+    let system_context = build_system_context()
+    @stdio.stdout.write(
+      (
+        #|=== MoonBit Task Solver (Interactive Mode) ===
+        #|
+        $|Model: \{arguments.model.unwrap_or("Unknown")}
+        $|Sandbox mode: \{arguments.sandbox_mode.to_json().as_string().unwrap_or("Unknown")}
+        $|Working directory: \{arguments.working_dir.unwrap_or(@env.current_dir().unwrap_or("Unknown"))}
+        $|Thread ID: \{thread.id().unwrap_or("Unknown")}
+        #|
+        #|Type your tasks at the prompt. Press Ctrl+D or Ctrl+C to exit.
+        #|
+      ),
+    )
+    let reader = @stdio.stdin
+    while true {
+      @stdio.stdout.write(b"> ")
+      try {
+        guard reader.read_until("\n") is Some(line) else { break }
+        if line.trim_space().is_empty() {
+          continue
+        }
+
+        // Build the full prompt with system context
+        let full_prompt =
+          $|\{system_context}
+          #|
+          #|## TASK:
+          $|\{line}
+          #|
+        let turn = @async.with_task_group(taskgroup => {
+          taskgroup.add_defer(() => @stdio.stdout.write(b"\r"))
+          taskgroup.spawn_bg(
+            () => while true {
+              @async.sleep(500)
+              @stdio.stdout.write(b"\r\\")
+              @async.sleep(500)
+              @stdio.stdout.write(b"\r|")
+              @async.sleep(500)
+              @stdio.stdout.write(b"\r/")
+              @async.sleep(500)
+              @stdio.stdout.write(b"\r-")
+            },
+            no_wait=true,
+          )
+          thread.run(full_prompt)
+        })
+        @stdio.stdout.write("\r\{turn.final_response}\n")
+        if turn.usage is Some(u) {
+          @stdio.stdout.write(
+            (
+              $|=== Usage Stats (\{thread.id().unwrap_or("Unknown")}) ===
+              $|Input tokens: \{u.input_tokens}
+              $|Cached tokens: \{u.cached_input_tokens}
+              $|Output tokens: \{u.output_tokens}
+              $|===
+              $|
+            ),
+          )
+        }
+      } catch {
+        e => raise e
+      }
+    }
+    @stdio.stdout.write(
+      (
+        #|
+        #|=== Task Solver Session Complete ===
+        #|
+      ),
+    )
+  } catch {
+    error =>
+      @stdio.stderr.write("❌ Error during interactive session: \{error}\n")
+  }
 }
