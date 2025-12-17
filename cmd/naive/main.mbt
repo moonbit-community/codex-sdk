@@ -15,17 +15,37 @@
 ///|
 async fn main {
   let codex = @codex.Codex::new(
-    options=@codex.CodexOptions::new(base_url="https://openrouter.ai/api/v1"),
+    options=@codex.CodexOptions::new(
+      codex_path_override="./alternative_codex.sh",
+    ),
   )
   let thread = codex.start_thread(
-    options=@codex.ThreadOptions::new(model="anthropic/claude-sonnet-4"),
+    options=@codex.ThreadOptions::new(
+      model="openrouter/moonshotai/kimi-k2-0905:exacto",
+    ),
   )
   try {
-    let turn = thread.run("Hello?")
+    let turn = thread.run("Hello? Please remember me : Bob")
     println(turn.final_response)
     println(turn.items.to_json().stringify())
     println(turn.usage.to_json().stringify())
   } catch {
     e => println(e)
+  }
+  if thread.id() is Some(id) {
+    try {
+      let thread = codex.resume_thread(
+        id,
+        options=@codex.ThreadOptions::new(
+          model="openrouter/moonshotai/kimi-k2-0905:exacto",
+        ),
+      )
+      let turn = thread.run("Hello again? Do you remember who am I?")
+      println(turn.final_response)
+      println(turn.items.to_json().stringify())
+      println(turn.usage.to_json().stringify())
+    } catch {
+      e => println(e)
+    }
   }
 }

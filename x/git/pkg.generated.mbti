@@ -2,7 +2,7 @@
 package "peter-jerry-ye/codex/x/git"
 
 // Values
-pub async fn remove_directory(String) -> Bool
+pub fn extract_repo_name(String) -> String
 
 pub async fn[T] with_workspace(GitRepo, String, String, create_branch? : Bool, async (IsolatedWorkspace) -> T) -> T
 
@@ -11,19 +11,27 @@ pub async fn[T] with_workspace(GitRepo, String, String, create_branch? : Bool, a
 // Types and methods
 pub struct GitRepo {
   path : String
+  url : String?
+  name : String?
+  default_branch : String?
 }
 pub async fn GitRepo::checkout(Self, String) -> Bool
-pub async fn GitRepo::clone(String, String) -> Self?
+pub async fn GitRepo::clone(String, String) -> Self
 pub async fn GitRepo::commit(Self, String, add_all? : Bool) -> Bool
-pub async fn GitRepo::create_branch(Self, String, from_branch? : String) -> Bool
+pub async fn GitRepo::create_branch(Self, String, from_branch? : String) -> Unit
 pub async fn GitRepo::create_workspace(Self, String, String, create_branch? : Bool) -> IsolatedWorkspace?
 pub async fn GitRepo::current_branch(Self) -> String?
 pub async fn GitRepo::diff(Self) -> String
 pub async fn GitRepo::diff_staged(Self) -> String
-pub async fn GitRepo::discover(String) -> Self?
+pub async fn GitRepo::discover(String) -> Self
 pub async fn GitRepo::existing_branches(Self) -> Array[String]
+pub async fn GitRepo::fetch(Self, remote? : String, branch? : String) -> Bool
+pub async fn GitRepo::get_default_branch(Self, remote? : String) -> String?
+pub async fn GitRepo::has_changes(Self) -> Bool
+pub async fn GitRepo::has_staged_changes(Self) -> Bool
 pub async fn GitRepo::is_clean(Self) -> Bool
-pub async fn GitRepo::push(Self, remote? : String, branch? : String, set_upstream? : Bool) -> Bool
+pub async fn GitRepo::pull(Self, remote? : String, branch? : String) -> Unit
+pub async fn GitRepo::push(Self, remote? : String, branch? : String, set_upstream? : Bool) -> Unit
 
 pub struct IsolatedWorkspace {
   path : String

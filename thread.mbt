@@ -36,6 +36,10 @@ pub struct StreamedTurn {
 }
 
 ///|
+/// An input to send to the agent.
+pub type Input = String
+
+///|
 /// Represent a thread of conversation with the agent. One thread can have multiple consecutive turns.
 struct Thread {
   exec : CodexExec
@@ -112,28 +116,30 @@ async fn Thread::run_streamed_internal(
     } else {
       None
     },
-  })
+  }) catch {
+    e => @error.reraise(e)
+  }
   @generator.AsyncGenerator::new(async fn(yield_) {
     try {
       while generator.next() is Some(item) {
         let event = @json.from_json(@json.parse(item)) catch {
-          error => fail("Failed to parse item: \{item}, error: \{error}")
+          error => @error.fail("Failed to parse item: \{item}, error: \{error}")
         }
         if event is ThreadStarted(thread_id~) {
           self.id = Some(thread_id)
         }
         yield_(event)
       }
-      if schema_file is Some(sf) {
-        (sf.cleanup)()
-      }
     } catch {
       e => {
         if schema_file is Some(sf) {
           (sf.cleanup)()
         }
-        while generator.throws(e) is Some(_) {
+        while generator.returns() is Some(_) {
           // Drain remaining items to avoid unhandled promise rejection
+        }
+        if !(e is @generator.Return) {
+          @error.reraise(e)
         }
       }
     }
@@ -158,7 +164,6 @@ pub async fn Thread::run(
   let items : Array[ThreadItem] = []
   let mut final_response = ""
   let mut usage : Usage? = None
-  let mut turn_failure : ThreadError? = None
   while generator.next() is Some(event) {
     match event {
       ItemCompleted(item) => {
@@ -169,17 +174,19 @@ pub async fn Thread::run(
       }
       TurnCompleted(u) => usage = Some(u)
       TurnFailed(error) => {
-        turn_failure = Some(error)
         while generator.returns() is Some(_) {
           // Drain remaining items to avoid unhandled promise rejection
         }
-        break
+        @error.fail(error.message)
+      }
+      ThreadErrorEvent(e) => {
+        while generator.returns() is Some(_) {
+          // Drain remaining items to avoid unhandled promise rejection
+        }
+        @error.fail(e)
       }
       _ => ()
     }
-  }
-  if turn_failure is Some(error) {
-    fail(error.message)
   }
   { items, final_response, usage }
 }

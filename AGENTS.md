@@ -49,3 +49,12 @@ This is a [MoonBit](https://docs.moonbitlang.com) project.
 
 - agent-todo.md has some small tasks that are easy for AI to pick up, agent is
   welcome to finish the tasks and check the box when you are done
+
+## Project-Specific Documentation
+
+For implementation details and design documentation of specific tools/examples:
+
+- **Parallel Repository Fixer** (`cmd/real_world/parallel_fix/`)
+  - See `cmd/real_world/parallel_fix/DESIGN.md` for complete design, architecture, and implementation status
+  - This is the single source of truth for the parallel fix tool
+  - Implementation status is tracked at the bottom of DESIGN.md

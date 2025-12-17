@@ -2,7 +2,7 @@
   "name": "peter-jerry-ye/codex",
   "version": "0.46.2",
   "deps": {
-    "moonbitlang/async": "0.11.0",
+    "moonbitlang/async": "0.13.3",
     "moonbitlang/x": "0.4.36"
   },
   "readme": "README.mbt.md",
@@ -12,5 +12,6 @@
     "AI"
   ],
   "description": "Codex SDK, with some useful tools for building AI applications.",
-  "preferred-target": "native"
+  "preferred-target": "native",
+  "exclude": ["alternative_codex.sh", "openhands-codex"]
 }
