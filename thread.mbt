@@ -29,14 +29,11 @@ pub type RunResult = Turn
 
 ///|
 /// The result of the `run_streamed` method.
+#alias(RunStreamedResult)
 pub struct StreamedTurn {
   /// An async iterator of events produced during the turn
   events : @generator.AsyncGenerator[Event]
 }
-
-///|
-/// Alias for `StreamedTurn` to describe the result of `run_streamed()`.
-pub type RunStreamedResult = StreamedTurn
 
 ///|
 /// An input to send to the agent.
