@@ -15,35 +15,35 @@
 ///|
 test "parse_diagnostics parses errors and warnings" {
   let output =
-    #|Error: [3002]
-    #|   ╭─[ /private/tmp/test_error.mbt:1:3 ]
-    #|   │
-    #| 1 │ fn test() { let x : Int = "string" }
-    #|   │   ┬  
-    #|   │   ╰── Parse error, unexpected token `test`, you may expect id (lowercase start), id (uppercase start) or package name.
-    #|───╯
-    #|Error: [4074]
-    #|   ╭─[ /private/tmp/test_error.mbt:1:3 ]
-    #|   │
-    #| 1 │ fn test() { let x : Int = "string" }
-    #|   │   ┬  
-    #|   │   ╰── Missing type annotation for the return value.
-    #|───╯
-    #|Warning: [0019]
-    #|   ╭─[ /private/tmp/test_error.mbt:1:4 ]
-    #|   │
-    #| 1 │ fn test() { let x : Int = "string" }
-    #|   │    ────────────────┬────────────────  
-    #|   │                    ╰────────────────── Warning: Toplevel declaration is not left aligned.
-    #|───╯
-    #|Warning: [0002]
-    #|   ╭─[ /private/tmp/test_error.mbt:17:8 ]
-    #|   │
-    #|17 │ fn test() { let x : Int = "string" }
-    #|   │                 ┬  
-    #|   │                 ╰── Warning: Unused variable 'x'
-    #|───╯
-    #|Failed with 2 warnings, 2 errors.
+    $|Error: [3002]
+    $|   ╭─[ /private/tmp/test_error.mbt:1:3 ]
+    $|   │
+    $| 1 │ fn test() { let x : Int = "string" }
+    $|   │   ┬  
+    $|   │   ╰── Parse error, unexpected token `test`, you may expect id (lowercase start), id (uppercase start) or package name.
+    $|───╯
+    $|Error: [4074]
+    $|   ╭─[ /private/tmp/test_error.mbt:1:3 ]
+    $|   │
+    $| 1 │ fn test() { let x : Int = "string" }
+    $|   │   ┬  
+    $|   │   ╰── Missing type annotation for the return value.
+    $|───╯
+    $|Warning: [0019]
+    $|   ╭─[ /private/tmp/test_error.mbt:1:4 ]
+    $|   │
+    $| 1 │ fn test() { let x : Int = "string" }
+    $|   │    ────────────────┬────────────────  
+    $|   │                    ╰────────────────── Warning: Toplevel declaration is not left aligned.
+    $|───╯
+    $|Warning: [0002]
+    $|   ╭─[ /private/tmp/test_error.mbt:17:8 ]
+    $|   │
+    $|17 │ fn test() { let x : Int = "string" }
+    $|   │                 ┬  
+    $|   │                 ╰── Warning: Unused variable 'x'
+    $|───╯
+    $|Failed with 2 warnings, 2 errors.
   let diagnostics = parse_diagnostics(output)
   inspect(diagnostics.length(), content="4")
 
@@ -80,16 +80,16 @@ test "parse_diagnostics parses errors and warnings" {
 ///|
 test "get_errors filters only errors" {
   let output =
-    #|Error: [3002]
-    #|   ╭─[ /tmp/test.mbt:1:3 ]
-    #|   │
-    #|   │   ╰── Some error
-    #|───╯
-    #|Warning: [0019]
-    #|   ╭─[ /tmp/test.mbt:2:4 ]
-    #|   │
-    #|   │   ╰── Some warning
-    #|───╯
+    $|Error: [3002]
+    $|   ╭─[ /tmp/test.mbt:1:3 ]
+    $|   │
+    $|   │   ╰── Some error
+    $|───╯
+    $|Warning: [0019]
+    $|   ╭─[ /tmp/test.mbt:2:4 ]
+    $|   │
+    $|   │   ╰── Some warning
+    $|───╯
   let diagnostics = parse_diagnostics(output)
   let errors = get_errors(diagnostics)
   inspect(errors.length(), content="1")
@@ -99,16 +99,16 @@ test "get_errors filters only errors" {
 ///|
 test "get_warnings filters only warnings" {
   let output =
-    #|Error: [3002]
-    #|   ╭─[ /tmp/test.mbt:1:3 ]
-    #|   │
-    #|   │   ╰── Some error
-    #|───╯
-    #|Warning: [0019]
-    #|   ╭─[ /tmp/test.mbt:2:4 ]
-    #|   │
-    #|   │   ╰── Some warning
-    #|───╯
+    $|Error: [3002]
+    $|   ╭─[ /tmp/test.mbt:1:3 ]
+    $|   │
+    $|   │   ╰── Some error
+    $|───╯
+    $|Warning: [0019]
+    $|   ╭─[ /tmp/test.mbt:2:4 ]
+    $|   │
+    $|   │   ╰── Some warning
+    $|───╯
   let diagnostics = parse_diagnostics(output)
   let warnings = get_warnings(diagnostics)
   inspect(warnings.length(), content="1")

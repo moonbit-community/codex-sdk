@@ -95,7 +95,7 @@ test "parse subcommands" {
   inspect(
     result.positional,
     content=(
-      #|["hello"]
+      $|["hello"]
     ),
   )
 }

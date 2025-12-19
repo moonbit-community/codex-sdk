@@ -95,35 +95,35 @@ async fn read_task(arguments : Arguments) -> String {
 /// Build the system prompt that gives the agent awareness of its capabilities
 fn build_system_context() -> String {
   (
-    #|You are an intelligent task solver with special capabilities.
-    #|
-    #|## Your Capabilities:
-    #|1. **File Operations**: You can read, write, and modify files in the workspace.
-    #|2. **MoonBit Ecosystem**: You can use MoonBit commands:
-    #|   - Use `moon new` to create new MoonBit project
-    #|   - Use `moon check` to validate code
-    #|   - Use `moon test` to run tests
-    #|   - Use `moon fmt` to format code
-    #|   - Use `moon info` to update interface files
-    #|3. **Git Operations**: You can clone repos, create branches, commit, and push.
-    #|4. **Other MCP Tools**: You can call other MCP tools as needed.
-    #|5. **Self-Improvement**: You can use MoonBit to create new tools.
-    #|   - Use `peter-jerry-ye/codex` to create AI agent tools.
-    #|
-    #|## Task Solving Approach:
-    #|1. **Analyze** the task requirements carefully 
-    #|2. **Plan** your approach - break down complex tasks into steps
-    #|3. **Execute** - implement the solution step by step
-    #|4. **Verify** - test that your solution works
-    #|5. **Document** - if you create a new tool, document it
-    #|
-    #|## Special Instructions:
-    #|- If the task requires a new tool that doesn't exist, CREATE IT!
-    #|- Follow MoonBit coding conventions
-    #|- Run `moon fmt && moon info` after creating/modifying code
-    #|- Prefer creating reusable tools over one-off solutions
-    #|Now, please solve the task that follows.
-    #|
+    $|You are an intelligent task solver with special capabilities.
+    $|
+    $|## Your Capabilities:
+    $|1. **File Operations**: You can read, write, and modify files in the workspace.
+    $|2. **MoonBit Ecosystem**: You can use MoonBit commands:
+    $|   - Use `moon new` to create new MoonBit project
+    $|   - Use `moon check` to validate code
+    $|   - Use `moon test` to run tests
+    $|   - Use `moon fmt` to format code
+    $|   - Use `moon info` to update interface files
+    $|3. **Git Operations**: You can clone repos, create branches, commit, and push.
+    $|4. **Other MCP Tools**: You can call other MCP tools as needed.
+    $|5. **Self-Improvement**: You can use MoonBit to create new tools.
+    $|   - Use `peter-jerry-ye/codex` to create AI agent tools.
+    $|
+    $|## Task Solving Approach:
+    $|1. **Analyze** the task requirements carefully 
+    $|2. **Plan** your approach - break down complex tasks into steps
+    $|3. **Execute** - implement the solution step by step
+    $|4. **Verify** - test that your solution works
+    $|5. **Document** - if you create a new tool, document it
+    $|
+    $|## Special Instructions:
+    $|- If the task requires a new tool that doesn't exist, CREATE IT!
+    $|- Follow MoonBit coding conventions
+    $|- Run `moon fmt && moon info` after creating/modifying code
+    $|- Prefer creating reusable tools over one-off solutions
+    $|Now, please solve the task that follows.
+    $|
   )
 }
 
@@ -144,16 +144,16 @@ async fn solve_task(
     }
     @stdio.stdout.write(
       (
-        #|=== MoonBit Task Solver ===
-        #|
+        $|=== MoonBit Task Solver ===
+        $|
         $|Working directory: \{working_directory.unwrap_or(@env.current_dir().unwrap_or("Unknown"))}
         $|Model: \{model.unwrap_or("Unknown")}
         $|Sandbox mode: \{sandbox_mode.to_json().as_string().unwrap_or("Unknown")}
         $|Task:
         $|\{task}
         $|
-        #|---
-        #|
+        $|---
+        $|
       ),
     )
 
@@ -161,10 +161,10 @@ async fn solve_task(
     let system_context = build_system_context()
     let full_prompt =
       $|\{system_context}
-      #|
-      #|## TASK:
+      $|
+      $|## TASK:
       $|\{task}
-      #|
+      $|
     if verbose {
       @stdio.stdout.write("=== System Context ===\n\{system_context}\n\n")
     }
@@ -197,7 +197,7 @@ async fn solve_task(
     // Print summary
     @stdio.stdout.write(
       (
-        #|=== Agent Response ===
+        $|=== Agent Response ===
         $|\{final_response}
         $|
       ),
@@ -205,7 +205,7 @@ async fn solve_task(
     if usage is Some(u) {
       @stdio.stdout.write(
         (
-          #|=== Usage Stats ===
+          $|=== Usage Stats ===
           $|Input tokens: \{u.input_tokens}
           $|Output tokens: \{u.output_tokens}
           $|
@@ -218,7 +218,7 @@ async fn solve_task(
     @stdio.stdout.write(
       (
         $|Thread ID: \{thread.id().unwrap_or("Unknown")}
-        #|=== Task Complete ===
+        $|=== Task Complete ===
         $|
       ),
     )
@@ -341,15 +341,15 @@ async fn run_interactive_mode(arguments : Arguments) -> Unit {
     let system_context = build_system_context()
     @stdio.stdout.write(
       (
-        #|=== MoonBit Task Solver (Interactive Mode) ===
-        #|
+        $|=== MoonBit Task Solver (Interactive Mode) ===
+        $|
         $|Model: \{arguments.model.unwrap_or("Unknown")}
         $|Sandbox mode: \{arguments.sandbox_mode.to_json().as_string().unwrap_or("Unknown")}
         $|Working directory: \{arguments.working_dir.unwrap_or(@env.current_dir().unwrap_or("Unknown"))}
         $|Thread ID: \{thread.id().unwrap_or("Unknown")}
-        #|
-        #|Type your tasks at the prompt. Press Ctrl+D or Ctrl+C to exit.
-        #|
+        $|
+        $|Type your tasks at the prompt. Press Ctrl+D or Ctrl+C to exit.
+        $|
       ),
     )
     let reader = @stdio.stdin
@@ -364,10 +364,10 @@ async fn run_interactive_mode(arguments : Arguments) -> Unit {
         // Build the full prompt with system context
         let full_prompt =
           $|\{system_context}
-          #|
-          #|## TASK:
+          $|
+          $|## TASK:
           $|\{line}
-          #|
+          $|
         let turn = @async.with_task_group(taskgroup => {
           taskgroup.add_defer(() => @stdio.stdout.write(b"\r"))
           taskgroup.spawn_bg(
@@ -404,9 +404,9 @@ async fn run_interactive_mode(arguments : Arguments) -> Unit {
     }
     @stdio.stdout.write(
       (
-        #|
-        #|=== Task Solver Session Complete ===
-        #|
+        $|
+        $|=== Task Solver Session Complete ===
+        $|
       ),
     )
   } catch {

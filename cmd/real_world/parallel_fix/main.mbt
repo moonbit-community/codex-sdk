@@ -37,15 +37,15 @@ async fn main {
     [] =>
       @error.fail(
         (
-          #|No subcommand provided.
-          #|Use --help to see available subcommands.",
+          $|No subcommand provided.
+          $|Use --help to see available subcommands.",
         ),
       )
     [subcommand, ..] =>
       @error.fail(
         (
           $|Unknown subcommand \{subcommand}.
-          #|Use --help to see available subcommands.",
+          $|Use --help to see available subcommands.",
         ),
       )
   }
@@ -60,17 +60,17 @@ async fn cmd_init(
   data_dir : String,
 ) -> Unit {
   let help_message =
-    #|Usage: init [OPTIONS]
-    #|
-    #|Initialize workspace and database
-    #|
-    #|Options:
-    #|  --help, -h          Show this help
-    #|
-    #|Global options are set before the subcommand:
-    #|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
-    #|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
-    #|
+    $|Usage: init [OPTIONS]
+    $|
+    $|Initialize workspace and database
+    $|
+    $|Options:
+    $|  --help, -h          Show this help
+    $|
+    $|Global options are set before the subcommand:
+    $|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
+    $|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
+    $|
 
   // Parse arguments
   let parsed_args = @args.parse(args, flags=["help"], options=[], aliases={
@@ -87,11 +87,11 @@ async fn cmd_init(
   let db_path = "\{data_dir}/parallel-fix.db"
   @stdio.stdout.write(
     (
-      #|Initializing parallel fix workspace...
+      $|Initializing parallel fix workspace...
       $|  Work directory (clones): \{work_dir}
       $|  Data directory (database): \{data_dir}
       $|  Database: \{db_path}
-      #|
+      $|
     ),
   )
   // Check if sqlite3 is available
@@ -115,11 +115,11 @@ async fn cmd_init(
   @stdio.stdout.write("✓ Database initialized\n")
   @stdio.stdout.write(
     (
-      #|✓ Workspace initialized successfully!
-      #|
-      #|Next steps:
-      #|1. Add repositories: moon run real_world/parallel_fix -- add repos.txt --task "Your task"
-      #|2. Start processing: moon run real_world/parallel_fix -- run
+      $|✓ Workspace initialized successfully!
+      $|
+      $|Next steps:
+      $|1. Add repositories: moon run real_world/parallel_fix -- add repos.txt --task "Your task"
+      $|2. Start processing: moon run real_world/parallel_fix -- run
     ),
   )
 }
@@ -129,18 +129,18 @@ async fn cmd_init(
 /// Adds repositories from a file to the database
 async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   let help_message =
-    #|Usage: add <repos-file> [OPTIONS]
-    #|
-    #|Add repositories to the queue
-    #|
-    #|Options:
-    #|  --task <desc>       Task description (required)
-    #|  --help, -h          Show this help
-    #|
-    #|Global options are set before the subcommand:
-    #|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
-    #|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
-    #|
+    $|Usage: add <repos-file> [OPTIONS]
+    $|
+    $|Add repositories to the queue
+    $|
+    $|Options:
+    $|  --task <desc>       Task description (required)
+    $|  --help, -h          Show this help
+    $|
+    $|Global options are set before the subcommand:
+    $|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
+    $|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
+    $|
 
   // Parse arguments
   let parsed_args = @args.parse(args, flags=["help"], options=["task"], aliases={
@@ -222,11 +222,11 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   }
   @stdio.stdout.write(
     (
-      #|
+      $|
       $|✓ Done! Added \{added} repository-task pairs, skipped \{skipped}
-      #|
-      #|Next: moon run real_world/parallel_fix -- run --parallelism 8
-      #|
+      $|
+      $|Next: moon run real_world/parallel_fix -- run --parallelism 8
+      $|
     ),
   )
 }
@@ -236,18 +236,18 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
 /// Shows current state of all repositories
 async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   let help_message =
-    #|Usage: status [OPTIONS]
-    #|
-    #|Show current state of all repositories
-    #|
-    #|Options:
-    #|  --verbose, -v       Show detailed output
-    #|  --help, -h          Show this help
-    #|
-    #|Global options are set before the subcommand:
-    #|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
-    #|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
-    #|
+    $|Usage: status [OPTIONS]
+    $|
+    $|Show current state of all repositories
+    $|
+    $|Options:
+    $|  --verbose, -v       Show detailed output
+    $|  --help, -h          Show this help
+    $|
+    $|Global options are set before the subcommand:
+    $|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
+    $|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
+    $|
 
   // Parse arguments
   let parsed_args = @args.parse(args, flags=["help", "verbose"], aliases={
@@ -348,18 +348,18 @@ async fn cmd_sync_prs(
   data_dir : String,
 ) -> Unit {
   let help_message =
-    #|Usage: sync-prs [OPTIONS]
-    #|
-    #|Sync PR status from GitHub for all repositories with PR URLs
-    #|This is useful to restore correct status after errors or interruptions
-    #|
-    #|Options:
-    #|  --help, -h          Show this help
-    #|
-    #|Global options are set before the subcommand:
-    #|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
-    #|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
-    #|
+    $|Usage: sync-prs [OPTIONS]
+    $|
+    $|Sync PR status from GitHub for all repositories with PR URLs
+    $|This is useful to restore correct status after errors or interruptions
+    $|
+    $|Options:
+    $|  --help, -h          Show this help
+    $|
+    $|Global options are set before the subcommand:
+    $|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
+    $|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
+    $|
 
   // Parse arguments
   let parsed_args = @args.parse(args, flags=["help"], options=[], aliases={
@@ -482,42 +482,42 @@ async fn cmd_sync_prs(
 /// Shows help for subcommands
 async fn cmd_help(_args : ArrayView[String]) -> Unit {
   let help_message =
-    #|Usage: moon run real_world/parallel_fix -- [GLOBAL_OPTIONS] <subcommand> [OPTIONS]
-    #|
-    #|Subcommands:
-    #|  init              Initialize workspace and database
-    #|  add <repos-file>  Add repositories to the queue
-    #|  run               Start/resume processing repositories
-    #|  status            Show current state of all repositories
-    #|  sync-prs          Sync PR status from GitHub
-    #|  help              Show this help message
-    #|
-    #|Global Options (set before subcommand):
-    #|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
-    #|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
-    #|  --help, -h          Show help for a subcommand
-    #|
-    #|Note: work-dir is where repositories are cloned (can be temporary).
-    #|      data-dir is where the database is stored (should be persistent).
-    #|
-    #|Examples:
-    #|  # Initialize workspace
-    #|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes init
-    #|
-    #|  # Add repositories
-    #|  moon run real_world/parallel_fix -- --data-dir ~/my-fixes add repos.txt --task "Fix linting"
-    #|
-    #|  # Start processing
-    #|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes run --parallelism 8
-    #|
-    #|  # Sync PR status from GitHub
-    #|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes sync-prs
-    #|
-    #|  # Check status
-    #|  moon run real_world/parallel_fix -- --data-dir ~/my-fixes status --verbose
-    #|
-    #|Use '<subcommand> --help' for more information about a specific subcommand.
-    #|
+    $|Usage: moon run real_world/parallel_fix -- [GLOBAL_OPTIONS] <subcommand> [OPTIONS]
+    $|
+    $|Subcommands:
+    $|  init              Initialize workspace and database
+    $|  add <repos-file>  Add repositories to the queue
+    $|  run               Start/resume processing repositories
+    $|  status            Show current state of all repositories
+    $|  sync-prs          Sync PR status from GitHub
+    $|  help              Show this help message
+    $|
+    $|Global Options (set before subcommand):
+    $|  --work-dir <path>   Working directory for clones (default: /tmp/parallel-fix)
+    $|  --data-dir <path>   Data directory for database (default: ~/.parallel-fix)
+    $|  --help, -h          Show help for a subcommand
+    $|
+    $|Note: work-dir is where repositories are cloned (can be temporary).
+    $|      data-dir is where the database is stored (should be persistent).
+    $|
+    $|Examples:
+    $|  # Initialize workspace
+    $|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes init
+    $|
+    $|  # Add repositories
+    $|  moon run real_world/parallel_fix -- --data-dir ~/my-fixes add repos.txt --task "Fix linting"
+    $|
+    $|  # Start processing
+    $|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes run --parallelism 8
+    $|
+    $|  # Sync PR status from GitHub
+    $|  moon run real_world/parallel_fix -- --work-dir /tmp/fixes --data-dir ~/my-fixes sync-prs
+    $|
+    $|  # Check status
+    $|  moon run real_world/parallel_fix -- --data-dir ~/my-fixes status --verbose
+    $|
+    $|Use '<subcommand> --help' for more information about a specific subcommand.
+    $|
   @stdio.stdout.write(help_message)
 }
 
@@ -530,21 +530,21 @@ async fn cmd_run(
   data_dir : String,
 ) -> Unit {
   let help_message =
-    #|Usage: run [OPTIONS]
-    #|
-    #|Start or resume processing repositories from the database queue
-    #|
-    #|Options:
-    #|  --parallelism <n>      Number of parallel workers (default: 4)
-    #|  --branch-prefix <p>    Branch name prefix (default: "ai-fix")
-    #|  --help, -h             Show this help
-    #|
-    #|Global options are set before the subcommand:
-    #|  --work-dir <path>      Working directory for clones (default: /tmp/parallel-fix)
-    #|  --data-dir <path>      Data directory for database (default: ~/.parallel-fix)
-    #|
-    #|Note: Each run is a fresh start. There is no persistent failure state.
-    #|
+    $|Usage: run [OPTIONS]
+    $|
+    $|Start or resume processing repositories from the database queue
+    $|
+    $|Options:
+    $|  --parallelism <n>      Number of parallel workers (default: 4)
+    $|  --branch-prefix <p>    Branch name prefix (default: "ai-fix")
+    $|  --help, -h             Show this help
+    $|
+    $|Global options are set before the subcommand:
+    $|  --work-dir <path>      Working directory for clones (default: /tmp/parallel-fix)
+    $|  --data-dir <path>      Data directory for database (default: ~/.parallel-fix)
+    $|
+    $|Note: Each run is a fresh start. There is no persistent failure state.
+    $|
 
   // Parse arguments
   let parsed_args = @args.parse(

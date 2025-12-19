@@ -498,7 +498,7 @@ async fn generate_pr_metadata(
     ),
   )
   let prompt =
-    #|Based on the following task and code changes, generate a professional pull request title and body.
+    $|Based on the following task and code changes, generate a professional pull request title and body.
     $|
     $|Task: \{repo.task}
     $|
@@ -585,7 +585,7 @@ async fn generate_commit_message(
       ),
     )
     let prompt =
-      #|Based on the following task and code changes, generate a concise commit message.
+      $|Based on the following task and code changes, generate a concise commit message.
       $|
       $|Task: \{repo.task}
       $|
@@ -753,38 +753,38 @@ async fn run_ai_task(
 ) -> Unit {
   @stdio.stdout.write("info Running AI task: \{repo.task}\n")
   let background =
-    #|## MoonBit Project Guidelines
-    #|
-    #|This is a MoonBit project. Follow these guidelines:
-    #|
-    #|### Project Structure
-    #|- Packages are organized per directory with moon.pkg.json files
-    #|- Test files end in _test.mbt (blackbox) or _wbtest.mbt (whitebox)
-    #|- Each package has a generated .mbti interface file
-    #|
-    #|### Coding Conventions
-    #|- Use block style separated by ///| (block order is irrelevant)
-    #|- Keep deprecated code in deprecated.mbt files
-    #|
-    #|### Tooling Requirements
-    #|- Use `moon doc` to query interfaces
-    #|- Use `moon fmt` to format code
-    #|- Use `moon info` to update .mbti interface files
-    #|- Use `moon test` to run tests (use `moon test --update` for snapshots)
-    #|- Use `moon check` for linting
-    #|- Use `inspect` in tests for snapshot testing, `assert_eq` only in loops
-    #|- Run `moon coverage analyze` to check test coverage
-    #|
-    #|### Important Rules
-    #|- Do NOT create backup files or any irrelevant files in the repository
-    #|- Ensure all changes pass `moon check` and `moon test`
-    #|- Make minimal, focused changes relevant only to the task
-    #|- Update snapshots with `moon test --update` if behavior changes
-    #|- Check .mbti diffs after `moon info` to verify interface changes
-    #|
-    #|After completing the task, commit them. 
-    #|Then run `moon info && moon fmt && moon check && moon test --update` and commit automatic changes to finalize.
-    #|
+    $|## MoonBit Project Guidelines
+    $|
+    $|This is a MoonBit project. Follow these guidelines:
+    $|
+    $|### Project Structure
+    $|- Packages are organized per directory with moon.pkg.json files
+    $|- Test files end in _test.mbt (blackbox) or _wbtest.mbt (whitebox)
+    $|- Each package has a generated .mbti interface file
+    $|
+    $|### Coding Conventions
+    $|- Use block style separated by ///| (block order is irrelevant)
+    $|- Keep deprecated code in deprecated.mbt files
+    $|
+    $|### Tooling Requirements
+    $|- Use `moon doc` to query interfaces
+    $|- Use `moon fmt` to format code
+    $|- Use `moon info` to update .mbti interface files
+    $|- Use `moon test` to run tests (use `moon test --update` for snapshots)
+    $|- Use `moon check` for linting
+    $|- Use `inspect` in tests for snapshot testing, `assert_eq` only in loops
+    $|- Run `moon coverage analyze` to check test coverage
+    $|
+    $|### Important Rules
+    $|- Do NOT create backup files or any irrelevant files in the repository
+    $|- Ensure all changes pass `moon check` and `moon test`
+    $|- Make minimal, focused changes relevant only to the task
+    $|- Update snapshots with `moon test --update` if behavior changes
+    $|- Check .mbti diffs after `moon info` to verify interface changes
+    $|
+    $|After completing the task, commit them. 
+    $|Then run `moon info && moon fmt && moon check && moon test --update` and commit automatic changes to finalize.
+    $|
 
   // Build task description for AI
   let task_description = match pr_comments {

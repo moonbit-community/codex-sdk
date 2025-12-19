@@ -21,6 +21,7 @@ read.
 If you are already paid ChatGPT users, you can run the code below directly
 
 ```mbt check
+///|
 #skip
 async test {
   let codex = @codex.Codex::new()
@@ -30,7 +31,7 @@ async test {
   println(turn.final_response)
   println(turn.items.to_json().stringify())
   println(turn.usage.to_json().stringify())
-}  
+}
 ```
 ```mbt check
 ///|
@@ -126,7 +127,8 @@ async test {
   while turn.events.next() is Some(event) {
     match event {
       ItemStarted(item) => println("started: \{item.to_json().stringify()}")
-      ItemCompleted(AgentMessageItem( text~,..)) => println("assistant: \{text}")
+      ItemCompleted(AgentMessageItem(text~, ..)) =>
+        println("assistant: \{text}")
       TurnCompleted(usage) =>
         println("tokens in/out: \{usage.input_tokens}/\{usage.output_tokens}")
       TurnFailed(error) => fail("codex turn failed: \{error.message}")

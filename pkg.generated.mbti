@@ -160,6 +160,7 @@ pub impl ToJson for Usage
 pub impl @json.FromJson for Usage
 
 // Type aliases
+pub type Input = String
 
 // Traits
 

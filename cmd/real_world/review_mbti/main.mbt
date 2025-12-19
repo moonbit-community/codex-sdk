@@ -338,18 +338,18 @@ async fn process_concurrently(
 async fn main {
   let help_message =
     $|
-    #|Usage: moon run real_world/review_mbti -- [OPTIONS] <path>
-    #|Review MoonBit interface files (pkg.generated.mbti) using Codex.
-    #|
-    #|Options:
-    #|  --all                     Review all mbti files (default)
-    #|  --changed                 Only review changed files in git
-    #|  --files <files>           Specific files to review (comma-separated)
-    #|  -c, --concurrency <num>   Number of concurrent reviews (default: 5)
-    #|  -v, --verbose             Show detailed progress
-    #|  -o, --output <dir>        Output directory for review files (default: mbti-reviews)
-    #|  <path>                    Path to the project root
-    #|
+    $|Usage: moon run real_world/review_mbti -- [OPTIONS] <path>
+    $|Review MoonBit interface files (pkg.generated.mbti) using Codex.
+    $|
+    $|Options:
+    $|  --all                     Review all mbti files (default)
+    $|  --changed                 Only review changed files in git
+    $|  --files <files>           Specific files to review (comma-separated)
+    $|  -c, --concurrency <num>   Number of concurrent reviews (default: 5)
+    $|  -v, --verbose             Show detailed progress
+    $|  -o, --output <dir>        Output directory for review files (default: mbti-reviews)
+    $|  <path>                    Path to the project root
+    $|
   // Parse CLI arguments
   let args = @args.parse(
     @sys.get_cli_args()[1:],
