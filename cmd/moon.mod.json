@@ -5,7 +5,7 @@
     "peter-jerry-ye/codex": {
       "path": ".."
     },
-    "moonbitlang/x": "0.4.36"
+    "moonbitlang/x": "0.4.38"
   },
   "readme": "README.mbt.md",
   "repository": "https://github.com/moonbit-community/codex-sdk",
