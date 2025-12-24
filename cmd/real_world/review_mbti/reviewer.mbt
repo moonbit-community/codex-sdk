@@ -26,7 +26,6 @@ async fn review_mbti_file(
     @stdio.stdout.write("Reviewing: \{relative_path}\n")
   }
   let content = @fs.read_file(file_path).text() catch { e => @error.reraise(e) }
-
   let package_name = extract_package_name(content)
   let thread = reviewer.codex.start_thread(
     options=@codex.ThreadOptions::new(
@@ -57,4 +56,3 @@ async fn review_mbti_file(
     error: "",
   }
 }
-

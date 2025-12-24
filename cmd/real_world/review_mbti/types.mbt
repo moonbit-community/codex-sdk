@@ -7,4 +7,3 @@ struct ReviewResult {
   success : Bool
   error : String
 } derive(Show)
-

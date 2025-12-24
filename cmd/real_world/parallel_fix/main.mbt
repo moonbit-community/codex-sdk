@@ -599,15 +599,11 @@ async fn cmd_run(
   @stdio.stdout.write("  Branch prefix: \{branch_prefix}\n")
   @stdio.stdout.write("\n")
 
-  // Create codex instance
-  let codex = @codex.Codex::new(
-    options=@codex.CodexOptions::new(
-      codex_path_override="./alternative_codex.sh",
-    ),
-  )
+  // Create agent (encapsulates Codex usage)
+  let agent = Agent::new()
 
   // Create worker config
-  let config = WorkerConfig::{ work_dir, branch_prefix, codex, db }
+  let config = WorkerConfig::{ work_dir, branch_prefix, agent, db }
 
   // Get total count and incomplete count
   let total = total_count(db)

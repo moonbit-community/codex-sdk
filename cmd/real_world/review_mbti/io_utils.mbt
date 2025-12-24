@@ -1,11 +1,11 @@
 ///|
 /// Recursively find all pkg.generated.mbti files
 async fn find_mbti_files(dir : String, results : Array[String]) -> Unit {
-  let entries = @fs.readdir(dir, include_hidden=false) catch {
-    _ => return
-  }
+  let entries = @fs.readdir(dir, include_hidden=false) catch { _ => return }
   let basename = dir.split("/").iter().last().unwrap_or("")
-  if basename.has_prefix(".") || basename == "node_modules" || basename == "target" {
+  if basename.has_prefix(".") ||
+    basename == "node_modules" ||
+    basename == "target" {
     return
   }
   if entries.contains("pkg.generated.mbti") {
@@ -29,7 +29,9 @@ async fn get_changed_mbti_files(project_root : String) -> Array[String] {
     ["diff", "--name-only", "HEAD"],
     stdout=process_read,
     cwd=project_root,
-  ) catch { e => @error.reraise(e) }
+  ) catch {
+    e => @error.reraise(e)
+  }
   if status != 0 {
     @error.fail("Git diff failed with status \{status}")
   }
@@ -103,7 +105,8 @@ async fn save_review_to_file(
   }
   let file_name = result.file
     .replace_all(old="/pkg.generated.mbti", new="")
-    .replace_all(old="/", new="_") + ".review.md"
+    .replace_all(old="/", new="_") +
+    ".review.md"
   let output_path = "\{output_dir}/\{file_name}"
   let status_icon = "✓ Success"
   let content_text =
@@ -121,4 +124,3 @@ async fn save_review_to_file(
   }
   Some(output_path)
 }
-

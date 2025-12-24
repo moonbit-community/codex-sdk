@@ -148,7 +148,7 @@ async fn process_repository(
         clone_path,
         repo,
         branch_name,
-        config.codex,
+        config.agent,
       ) catch {
         e => @error.fail_with("Failed to create PR", e)
       }
@@ -406,7 +406,7 @@ async fn commit_changes(
   // Only commit if there are uncommitted changes
   if git_repo.has_changes() {
     // Generate commit message using AI
-    let commit_msg = generate_commit_message(config.codex, clone_path, repo)
+    let commit_msg = config.agent.generate_commit_message(clone_path, repo)
     @stdio.stdout.write("info Commit message: \{commit_msg}\n")
     if !git_repo.commit(commit_msg) {
       @error.fail("Failed to commit changes")
@@ -460,171 +460,18 @@ async fn push_branch(clone_path : String, branch_name : String) -> Unit {
 
 ///|
 /// Generate PR metadata (title and body) using AI
-async fn generate_pr_metadata(
-  codex : @codex.Codex,
-  clone_path : String,
-  repo : RepositoryRecord,
-  branch_name : String,
-  default_branch : String,
-) -> (String, String) {
-  // Get diff summary
-  let (status, stdout, stderr) = @process.collect_output(
-    "git",
-    ["diff", "--stat", "\{default_branch}..\{branch_name}"],
-    cwd=clone_path,
-  ) catch {
-    e => {
-      @stdio.stderr.write("warning Failed to get diff summary: \{e}\n")
-      return (
-        "Automated code improvements",
-        "This PR was automatically created.\n\nTask: \{repo.task}",
-      )
-    }
-  }
-  if status != 0 {
-    @stdio.stderr.write("warning git diff failed: \{stderr.text()}\n")
-    return (
-      "Automated code improvements",
-      "This PR was automatically created.\n\nTask: \{repo.task}",
-    )
-  }
-  let diff_summary = stdout.text()
-
-  // Create a simple thread for PR metadata generation
-  let thread = codex.start_thread(
-    options=@codex.ThreadOptions::new(
-      working_directory=clone_path,
-      model?=@sys.get_env_vars().get("LOWCOST_MODEL"),
-    ),
-  )
-  let prompt =
-    #|Based on the following task and code changes, generate a professional pull request title and body.
-    $|
-    $|Task: \{repo.task}
-    $|
-    $|Changes summary:
-    $|\{diff_summary}
-    $|
-    $|Generate a JSON response with this structure:
-    $|{
-    $|  "title": "A concise PR title (max 72 characters)",
-    $|  "body": "A detailed PR description in markdown format"
-    $|}
-    $|
-    $|The title should be concise and descriptive.
-    $|The body should include:
-    $|   - Summary of what was changed
-    $|   - Why these changes were made (based on the task)
-    $|   - Any notable implementation details
-    $|
-    $|Keep the tone professional and technical.
-
-  // Run with output schema
-  let result = thread.run(prompt) catch {
-    e => {
-      @stdio.stderr.write("warning Failed to generate PR metadata: \{e}\n")
-      return (
-        "Automated code improvements",
-        "This PR was automatically created.\n\nTask: \{repo.task}",
-      )
-    }
-  }
-
-  // Parse the structured response
-  let parsed = @json.parse(result.final_response) catch {
-    e => {
-      @stdio.stderr.write("warning Failed to parse PR metadata JSON: \{e}\n")
-      return (
-        "Automated code improvements",
-        "This PR was automatically created.\n\nTask: \{repo.task}",
-      )
-    }
-  }
-  match parsed {
-    Object({ "title": String(title), "body": String(body), .. }) =>
-      (title, body)
-    _ => {
-      @stdio.stderr.write(
-        "warning PR metadata response missing title/body fields\n",
-      )
-      (
-        "Automated code improvements",
-        "This PR was automatically created.\n\nTask: \{repo.task}",
-      )
-    }
-  }
-}
+// moved to Agent::generate_pr_metadata
 
 ///|
 /// Generate commit message using AI
-async fn generate_commit_message(
-  codex : @codex.Codex,
-  clone_path : String,
-  repo : RepositoryRecord,
-) -> String {
-  try {
-    // Get diff of uncommitted changes
-    let (status, output) = @process.collect_output_merged(
-      "git",
-      ["diff", "--no-color"],
-      cwd=clone_path,
-    )
-    if status != 0 {
-      @error.fail("git diff failed for commit message")
-    }
-    let diff = output.text()
-    if diff.is_empty() {
-      @error.fail("No changes to generate commit message for")
-    }
-
-    // Create a simple thread for commit message generation
-    let thread = codex.start_thread(
-      options=@codex.ThreadOptions::new(
-        working_directory=clone_path,
-        model?=@sys.get_env_vars().get("LOWCOST_MODEL"),
-      ),
-    )
-    let prompt =
-      #|Based on the following task and code changes, generate a concise commit message.
-      $|
-      $|Task: \{repo.task}
-      $|
-      $|Changes:
-      $|\{diff}
-      $|
-      $|Generate a JSON response with this structure:
-      $|{
-      $|  "message": "A concise commit message (max 72 characters)"
-      $|}
-      $|
-      $|The message should follow conventional commit guidelines.
-      $|Keep it professional and technical.
-
-    // Run with output schema
-    let result = thread.run(prompt) catch { e => @error.reraise(e) }
-
-    // Parse the structured response
-    let parsed = @json.parse(result.final_response) catch {
-      e => @error.reraise(e)
-    }
-    match parsed {
-      Object({ "message": String(message), .. }) => message
-      _ => @error.fail("Commit message response missing message field")
-    }
-  } catch {
-    e => {
-      @stdio.stderr.write("warning Failed to generate commit message: \{e}\n")
-      "AI work on: \{repo.task}"
-    }
-  }
-}
+// moved to Agent::generate_commit_message
 
 ///|
 async fn create_pr_from_branch(
   clone_path : String,
   repo : RepositoryRecord,
   branch_name : String,
-  codex : @codex.Codex,
+  agent : Agent,
 ) -> Int {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
@@ -635,8 +482,8 @@ async fn create_pr_from_branch(
 
   // Generate PR metadata using AI
   @stdio.stdout.write("info Generating PR title and description...\n")
-  let (pr_title, pr_body) = generate_pr_metadata(
-    codex, clone_path, repo, branch_name, default_branch,
+  let (pr_title, pr_body) = agent.generate_pr_metadata(
+    clone_path, repo, branch_name, default_branch,
   )
   @stdio.stdout.write("info PR title: \{pr_title}\n")
 
@@ -809,44 +656,24 @@ async fn run_ai_task(
         $|\{background}
       )
   }
-
-  // Create codex thread
-  let thread = config.codex.start_thread(
-    options=@codex.ThreadOptions::new(
-      working_directory=clone_path,
-      model?=@sys.get_env_vars().get("MODEL"),
-    ),
-  )
-
-  // Run AI
-  let _result = thread.run(task_description) catch {
+  let session_id_opt = config.agent.run_task(
+    clone_path, "MODEL", task_description,
+  ) catch {
     e => {
-      if thread.id() is Some(session_id) {
-        @stdio.stderr.write(
-          "error AI task failed (session ID: \{session_id}): \{e}\n",
-        )
-        save_codex_session(config.db, repo.id, session_id) catch {
-          e =>
-            @stdio.stderr.write(
-              "warning Failed to save codex session ID after error: \{e}\n",
-            )
-        }
-      } else {
-        @stdio.stderr.write("error AI task failed: \{e}\n")
-      }
+      @stdio.stderr.write("error AI task failed: \{e}\n")
       @error.reraise(e)
     }
   }
-
-  // Save the thread/session ID to the database
-  if thread.id() is Some(session_id) {
-    @stdio.stdout.write("info Saving codex session ID: \{session_id}\n")
-    save_codex_session(config.db, repo.id, session_id) catch {
-      e =>
-        @stdio.stderr.write("warning Failed to save codex session ID: \{e}\n")
+  match session_id_opt {
+    Some(session_id) => {
+      @stdio.stdout.write("info Saving codex session ID: \{session_id}\n")
+      save_codex_session(config.db, repo.id, session_id) catch {
+        e =>
+          @stdio.stderr.write("warning Failed to save codex session ID: \{e}\n")
+      }
     }
-  } else {
-    @stdio.stderr.write("warning No thread ID available from codex session\n")
+    None =>
+      @stdio.stderr.write("warning No thread ID available from codex session\n")
   }
   @stdio.stdout.write("info AI task completed\n")
 }

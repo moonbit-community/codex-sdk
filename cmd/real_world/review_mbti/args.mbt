@@ -39,4 +39,3 @@ fn parse_args(args : @args.Args) -> Arguments raise {
   arguments.output = args.options.get("output").unwrap_or("mbti-reviews")
   arguments
 }
-

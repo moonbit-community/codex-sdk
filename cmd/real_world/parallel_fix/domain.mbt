@@ -18,6 +18,6 @@ priv struct RepositoryRecord {
 priv struct WorkerConfig {
   work_dir : String
   branch_prefix : String
-  codex : @codex.Codex
+  agent : Agent
   db : @sqlite.Database
 }
