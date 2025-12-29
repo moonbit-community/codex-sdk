@@ -9,6 +9,14 @@ description: Use when building MoonBit tools on this repo's Codex SDK that spawn
 
 Use the Codex SDK to fan out work into multiple threads, run them concurrently with bounded parallelism, and collect results safely across batch jobs.
 
+## Full running projects (scripts)
+
+See `skills/codex-parallel-subagents/scripts/` for multiple full MoonBit projects (single prompt, parallel batch, streaming events, structured output). Each project is self-contained with `moon.mod.json`, `moon.pkg.json`, and a top-level `main.mbt`, so an agent can copy a folder and run `moon run .` immediately.
+
+## Full running examples (copy/paste)
+
+Read `skills/codex-parallel-subagents/references/full-examples.md` for several complete, runnable examples (single prompt, parallel batch, and streaming events). Each example includes every file you need to paste and a single `moon run cmd/main` command.
+
 ## Greenfield setup (new repo)
 
 Read `skills/codex-parallel-subagents/references/greenfield-setup.md` for a full walk-through that starts from `moon new`, adds `peter-jerry-ye/codex`, and ends with a parallel batch example that summarizes books.
