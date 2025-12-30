@@ -11,7 +11,7 @@ Use the Codex SDK to fan out work into multiple threads, run them concurrently w
 
 ## Full running projects (scripts)
 
-See `skills/codex-parallel-subagents/scripts/` for multiple full MoonBit projects (single prompt, parallel batch, streaming events, structured output). Each project is self-contained with `moon.mod.json`, `moon.pkg.json`, and a top-level `main.mbt`, so an agent can copy a folder and run `moon run .` immediately.
+See `skills/codex-parallel-subagents/scripts/` for multiple full MoonBit projects (single prompt, parallel batch, streaming events, structured output, directory summaries, options overrides). Each project is self-contained with `moon.mod.json`, `moon.pkg.json`, and a top-level `main.mbt`, so an agent can copy a folder and run `moon run .` immediately.
 
 ## Full running examples (copy/paste)
 
@@ -111,6 +111,14 @@ Ask Codex for JSON and parse `turn.final_response` into a known shape. Prefer `T
 - Use `allow_failure=true` for background tasks and capture errors per task instead of crashing the batch.
 - When you need `peter-jerry-ye/codex` (or other modules), add it with `moon add` before using it in code.
 - MoonBit resolves dependencies with MVS; if you hit conflicts, try pinning a version like `moon add pkg@0.1.1`.
+
+## Common failure modes + quick fixes
+
+- **Session permissions**: ensure your Codex CLI has access to the working directory; set `working_directory=...` and verify the path exists.
+- **Sandbox constraints**: bump to `SandboxMode::WorkspaceWrite` or `DangerFullAccess` when file reads/writes are blocked.
+- **Missing CLI binary**: set `codex_path_override=...` to the correct CLI wrapper.
+- **API config**: verify `OPENAI_API_KEY` or your provider key and `base_url` settings.
+- **Model errors**: double-check model names and rate-limit your batch with a semaphore.
 
 ## Examples in the SDK repo (optional)
 
