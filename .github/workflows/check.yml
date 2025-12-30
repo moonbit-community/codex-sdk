@@ -31,11 +31,11 @@ jobs:
 
       - name: moon check
         run: |
-          moon check --target all
+          moon check
 
       - name: moon test
         run: |
-          moon test --target all
+          moon test
 
       - name: lint
         run: |
