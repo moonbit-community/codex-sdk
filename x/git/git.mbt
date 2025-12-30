@@ -99,7 +99,7 @@ pub async fn GitRepo::clone(url : String, destination : String) -> GitRepo {
     if status == 0 {
       default_branch = Some(
         {
-          let full = output.text().trim_space().to_string()
+          let full = output.text().trim().to_string()
           full.strip_prefix("origin/").unwrap_or(full)
         }.to_string(),
       )
@@ -150,7 +150,7 @@ pub async fn GitRepo::discover(path : String) -> GitRepo {
     if status == 0 {
       default_branch = Some(
         {
-          let full = output.text().trim_space().to_string()
+          let full = output.text().trim().to_string()
           full.strip_prefix("origin/").unwrap_or(full)
         }.to_string(),
       )
@@ -205,7 +205,7 @@ pub async fn GitRepo::is_clean(self : GitRepo) -> Bool {
     return false
   }
   let output = pipe.read_all().text()
-  output.trim_space().is_empty()
+  output.trim().is_empty()
 }
 
 ///|
@@ -356,7 +356,7 @@ pub async fn GitRepo::current_branch(self : GitRepo) -> String? {
   if status != 0 {
     return None
   }
-  let output = pipe.read_all().text().trim_space().to_string()
+  let output = pipe.read_all().text().trim().to_string()
   if output.is_empty() {
     None
   } else {
@@ -386,7 +386,7 @@ pub async fn GitRepo::get_default_branch(
   if status != 0 {
     return None
   }
-  let default_branch_full = pipe.read_all().text().trim_space().to_string()
+  let default_branch_full = pipe.read_all().text().trim().to_string()
   // Extract branch name from "origin/main" -> "main"
   let prefix = "\{remote}/"
   if default_branch_full.has_prefix(prefix) {
@@ -484,7 +484,7 @@ pub async fn GitRepo::has_changes(self : GitRepo) -> Bool {
     @error.fail("Failed to check git status: \{output.text()}")
   }
   // If output is not empty, there are changes (tracked or untracked)
-  !output.text().trim_space().is_empty()
+  !output.text().trim().is_empty()
 }
 
 ///|

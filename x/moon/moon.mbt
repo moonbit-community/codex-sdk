@@ -110,7 +110,7 @@ pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
     if parts2.length() < 1 {
       continue
     }
-    let location = parts2[0].trim_space()
+    let location = parts2[0].trim()
 
     // Parse location format: /path/to/file.mbt:line:col or /path/to/file.mbt:line
     let parts = []
@@ -145,7 +145,7 @@ pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
           arrow_parts.push(part.to_string())
         }
         if arrow_parts.length() >= 2 {
-          let msg = arrow_parts[1].trim_space()
+          let msg = arrow_parts[1].trim()
           if !msg.is_empty() {
             message_parts.push(msg)
           }

@@ -357,7 +357,7 @@ async fn run_interactive_mode(arguments : Arguments) -> Unit {
       @stdio.stdout.write(b"> ")
       try {
         guard reader.read_until("\n") is Some(line) else { break }
-        if line.trim_space().is_empty() {
+        if line.trim().is_empty() {
           continue
         }
 

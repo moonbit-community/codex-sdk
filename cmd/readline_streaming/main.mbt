@@ -25,7 +25,7 @@ async fn main {
     @stdio.stdout.write(b"\x1b]133;A\x07> \x1b]133;B\x07")
     try {
       guard reader.read_until("\n") is Some(line) else { break }
-      if line.trim_space().is_empty() {
+      if line.trim().is_empty() {
         continue
       }
       @stdio.stdout.write(b"\x1b]133;C\x07")
@@ -91,7 +91,7 @@ async fn main {
     } catch {
       @io.ReaderClosed => {
         let line = reader.read_all().text()
-        if !line.trim_space().is_empty() {
+        if !line.trim().is_empty() {
           let turn = thread.run(line)
           @stdio.stdout.write(turn.final_response)
           @stdio.stdout.write("\n")
