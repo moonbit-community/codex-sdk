@@ -109,7 +109,6 @@ Ask Codex for JSON and parse `turn.final_response` into a known shape. Prefer `T
 - Set `CodexOptions::new(codex_path_override=...)` when you need a custom CLI wrapper (see repo examples).
 - Guard parallel runs with `@semaphore.Semaphore` to avoid rate limits.
 - Use `allow_failure=true` for background tasks and capture errors per task instead of crashing the batch.
-- For long batches, plan for interruptions: track progress in a log (e.g., completed IDs), and support `limit`/`offset` or resume filters so you can restart mid-run safely.
 - When you need `peter-jerry-ye/codex` (or other modules), add it with `moon add` before using it in code.
 - MoonBit resolves dependencies with MVS; if you hit conflicts, try pinning a version like `moon add pkg@0.1.1`.
 

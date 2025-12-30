@@ -73,93 +73,6 @@ async fn read_file_text(
 }
 
 ///|
-fn parse_env_int(env : Map[String, String], key : String) -> Int? {
-  match env.get(key) {
-    Some(value) =>
-      try {
-        Some(@strconv.parse_int(value.trim(chars=" \t\n\r")))
-      } catch {
-        _ => None
-      }
-    None => None
-  }
-}
-
-///|
-async fn load_done_log(
-  log_path : String,
-) -> (Array[String], Map[String, Bool]) {
-  let lines : Array[String] = []
-  let done : Map[String, Bool] = {}
-  let text = @fs.read_file(log_path).text() catch {
-    _ => return (lines, done)
-  }
-  let parts = text.split("\n").collect()
-  for part in parts {
-    let trimmed = part.trim(char_set=" \t\n\r").to_string()
-    if trimmed.is_empty() {
-      continue
-    }
-    lines.push(trimmed)
-    done[trimmed] = true
-  }
-  (lines, done)
-}
-
-///|
-fn slice_files(
-  files : Array[String],
-  offset : Int,
-  limit : Int?,
-) -> Array[String] {
-  let selected : Array[String] = []
-  let start = if offset < 0 { 0 } else { offset }
-  let end = match limit {
-    Some(value) =>
-      if value < 0 {
-        files.length()
-      } else {
-        start + value
-      }
-    None => files.length()
-  }
-  let mut index = 0
-  for path in files {
-    if index < start {
-      index += 1
-      continue
-    }
-    if index >= end {
-      break
-    }
-    selected.push(path)
-    index += 1
-  }
-  selected
-}
-
-///|
-async fn record_done(
-  log_path : String,
-  log_lines : Array[String],
-  done : Map[String, Bool],
-  log_lock : @async.Semaphore,
-  path : String,
-) -> Unit {
-  log_lock.acquire()
-  defer log_lock.release()
-  if done.get(path) is Some(_) {
-    return
-  }
-  done[path] = true
-  log_lines.push(path)
-  let content = log_lines.join("\n") + "\n"
-  @fs.write_file(log_path, @encoding/utf8.encode(content), create=0o600) catch {
-    e => @stdio.stderr.write("Failed to write done log: \{e}\n")
-  }
-}
-
-///|
 async fn summarize_file(
   codex : @codex.Codex,
   workdir : String,
@@ -231,31 +144,16 @@ async fn summarize_repo(
 async fn main {
   let env = @sys.get_env_vars()
   let workdir = env.get("CODEX_WORKDIR").unwrap_or(".")
-  let offset = parse_env_int(env, "CODEX_OFFSET").unwrap_or(0)
-  let limit = parse_env_int(env, "CODEX_LIMIT")
-  let log_path =
-    env.get("CODEX_DONE_LOG").unwrap_or("\{workdir}/.codex_done.log")
   let max_file_chars = 4000
   let max_repo_chars = 20000
   let files = collect_files(workdir)
-  let (log_lines, done) = load_done_log(log_path) catch {
-    _ => ([], {})
-  }
-  let pending_files : Array[String] = []
-  for path in files {
-    if done.get(path) is None {
-      pending_files.push(path)
-    }
-  }
-  let target_files = slice_files(pending_files, offset, limit)
   let codex = @codex.Codex::new()
   let summaries : Array[FileSummary] = []
   let full_content_parts : Array[String] = []
   let parallelism = 4
   @async.with_task_group(fn(task_group) {
     let semaphore = @async.Semaphore::new(parallelism)
-    let log_lock = @async.Semaphore::new(1)
-    for path in target_files {
+    for path in files {
       task_group.spawn_bg(allow_failure=true, fn() {
         semaphore.acquire()
         defer semaphore.release()
@@ -268,9 +166,6 @@ async fn main {
           }
           summaries.push(FileSummary::{ path, summary })
           full_content_parts.push("FILE: \{path}\n\{text}\n")
-          record_done(log_path, log_lines, done, log_lock, path) catch {
-            _ => ()
-          }
         }
       })
     }
