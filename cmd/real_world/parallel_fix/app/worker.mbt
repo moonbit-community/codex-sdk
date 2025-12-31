@@ -2,10 +2,22 @@
 /// Simplified worker: for each incomplete repo, check PR, create draft if needed, run AI, sync changes
 
 ///|
+type RunTask = async (String, String) -> String?
+
+///|
+type CommitMessageGenerator = async (RepositoryRecord, String) -> String
+
+///|
+type PrMetadataGenerator = async (RepositoryRecord, String) -> (String, String)
+
+///|
 /// Process a single repository - simplified logic
-async fn process_repository(
+pub async fn process_repository(
   config : WorkerConfig,
   repo : RepositoryRecord,
+  run_task : RunTask,
+  generate_commit_message : CommitMessageGenerator,
+  generate_pr_metadata : PrMetadataGenerator,
 ) -> Unit {
   let repo_name = extract_repo_name(repo.url)
   @stdio.stdout.write("info [\{repo_name}] Processing...\n")
@@ -88,12 +100,23 @@ async fn process_repository(
 
       // Get PR comments and run AI task
       let comments = get_pr_comments(clone_path, pr_num)
-      run_ai_task(config, repo, clone_path, Some(comments)) catch {
+      @stdio.stdout.write("info Running AI task: \{repo.task}\n")
+      let prompt = task_prompt(repo, Some(comments))
+      let session_id_opt = run_task(clone_path, prompt) catch {
         e => @error.fail_with("AI task failed", e)
+      }
+      if session_id_opt is Some(session_id) {
+        @stdio.stdout.write("info Saving codex session ID: \{session_id}\n")
+        save_codex_session(config.db, repo.id, session_id) catch {
+          e =>
+            @stdio.stderr.write("warning Failed to save codex session ID: \{e}\n")
+        }
+      } else {
+        @stdio.stderr.write("warning No thread ID available from codex session\n")
       }
 
       // Commit AI changes, run moon tools, and push
-      commit_changes(config, clone_path, repo) catch {
+      commit_changes(clone_path, repo, generate_commit_message) catch {
         e => @error.fail_with("Failed to commit changes", e)
       }
       run_moon_tools_and_commit(clone_path) catch {
@@ -113,12 +136,23 @@ async fn process_repository(
       let branch_name = setup_work_branch(clone_path, config.branch_prefix) catch {
         e => @error.fail_with("Failed to setup work branch", e)
       }
-      run_ai_task(config, repo, clone_path, None) catch {
+      @stdio.stdout.write("info Running AI task: \{repo.task}\n")
+      let prompt = task_prompt(repo, None)
+      let session_id_opt = run_task(clone_path, prompt) catch {
         e => @error.fail_with("AI task failed", e)
+      }
+      if session_id_opt is Some(session_id) {
+        @stdio.stdout.write("info Saving codex session ID: \{session_id}\n")
+        save_codex_session(config.db, repo.id, session_id) catch {
+          e =>
+            @stdio.stderr.write("warning Failed to save codex session ID: \{e}\n")
+        }
+      } else {
+        @stdio.stderr.write("warning No thread ID available from codex session\n")
       }
 
       // Commit AI changes and run moon tools
-      commit_changes(config, clone_path, repo) catch {
+      commit_changes(clone_path, repo, generate_commit_message) catch {
         e => @error.fail_with("Failed to commit changes", e)
       }
       run_moon_tools_and_commit(clone_path) catch {
@@ -148,7 +182,7 @@ async fn process_repository(
         clone_path,
         repo,
         branch_name,
-        config.agent,
+        generate_pr_metadata,
       ) catch {
         e => @error.fail_with("Failed to create PR", e)
       }
@@ -395,9 +429,9 @@ async fn check_branch_has_changes(
 ///|
 /// Commit all changes (if there are any uncommitted changes)
 async fn commit_changes(
-  config : WorkerConfig,
   clone_path : String,
   repo : RepositoryRecord,
+  generate_commit_message : CommitMessageGenerator,
 ) -> Unit {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
@@ -406,7 +440,11 @@ async fn commit_changes(
   // Only commit if there are uncommitted changes
   if git_repo.has_changes() {
     // Generate commit message using AI
-    let commit_msg = config.agent.generate_commit_message(clone_path, repo)
+    let diff = read_git_diff(clone_path)
+    if diff.is_empty() {
+      @error.fail("No changes to generate commit message for")
+    }
+    let commit_msg = generate_commit_message(repo, diff)
     @stdio.stdout.write("info Commit message: \{commit_msg}\n")
     if !git_repo.commit(commit_msg) {
       @error.fail("Failed to commit changes")
@@ -471,7 +509,7 @@ async fn create_pr_from_branch(
   clone_path : String,
   repo : RepositoryRecord,
   branch_name : String,
-  agent : Agent,
+  generate_pr_metadata : PrMetadataGenerator,
 ) -> Int {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
@@ -482,9 +520,17 @@ async fn create_pr_from_branch(
 
   // Generate PR metadata using AI
   @stdio.stdout.write("info Generating PR title and description...\n")
-  let (pr_title, pr_body) = agent.generate_pr_metadata(
-    clone_path, repo, branch_name, default_branch,
+  let diff_summary_opt = read_diff_summary(
+    clone_path,
+    default_branch,
+    branch_name,
   )
+  let (pr_title, pr_body) = match diff_summary_opt {
+    Some(diff_summary) =>
+      generate_pr_metadata(repo, diff_summary)
+    None =>
+      (fallback_pr_title(), fallback_pr_body(repo.task))
+  }
   @stdio.stdout.write("info PR title: \{pr_title}\n")
 
   // Extract target repo owner/name for PR creation
@@ -588,92 +634,4 @@ async fn get_pr_comments(clone_path : String, pr_number : Int) -> String {
   } else {
     comments
   }
-}
-
-///|
-/// Run AI task on the repository
-async fn run_ai_task(
-  config : WorkerConfig,
-  repo : RepositoryRecord,
-  clone_path : String,
-  pr_comments : String?,
-) -> Unit {
-  @stdio.stdout.write("info Running AI task: \{repo.task}\n")
-  let background =
-    #|## MoonBit Project Guidelines
-    #|
-    #|This is a MoonBit project. Follow these guidelines:
-    #|
-    #|### Project Structure
-    #|- Packages are organized per directory with moon.pkg.json files
-    #|- Test files end in _test.mbt (blackbox) or _wbtest.mbt (whitebox)
-    #|- Each package has a generated .mbti interface file
-    #|
-    #|### Coding Conventions
-    #|- Use block style separated by ///| (block order is irrelevant)
-    #|- Keep deprecated code in deprecated.mbt files
-    #|
-    #|### Tooling Requirements
-    #|- Use `moon doc` to query interfaces
-    #|- Use `moon fmt` to format code
-    #|- Use `moon info` to update .mbti interface files
-    #|- Use `moon test` to run tests (use `moon test --update` for snapshots)
-    #|- Use `moon check` for linting
-    #|- Use `inspect` in tests for snapshot testing, `assert_eq` only in loops
-    #|- Run `moon coverage analyze` to check test coverage
-    #|
-    #|### Important Rules
-    #|- Do NOT create backup files or any irrelevant files in the repository
-    #|- Ensure all changes pass `moon check` and `moon test`
-    #|- Make minimal, focused changes relevant only to the task
-    #|- Update snapshots with `moon test --update` if behavior changes
-    #|- Check .mbti diffs after `moon info` to verify interface changes
-    #|
-    #|After completing the task, commit them. 
-    #|Then run `moon info && moon fmt && moon check && moon test --update` and commit automatic changes to finalize.
-    #|
-
-  // Build task description for AI
-  let task_description = match pr_comments {
-    Some(comments) =>
-      (
-        $|Task: \{repo.task}
-        $|
-        $|PR Feedback/Comments:
-        $|\{comments}
-        $|
-        $|Please address the task and any feedback from the PR comments.
-        $|If there's nothing new since the last commit and no CI has failed, do nothing.
-        $|
-        $|\{background}
-      )
-    None =>
-      (
-        $|Task: \{repo.task}
-        $|
-        $|This is a new PR. Please implement the task.
-        $|
-        $|\{background}
-      )
-  }
-  let session_id_opt = config.agent.run_task(
-    clone_path, "MODEL", task_description,
-  ) catch {
-    e => {
-      @stdio.stderr.write("error AI task failed: \{e}\n")
-      @error.reraise(e)
-    }
-  }
-  match session_id_opt {
-    Some(session_id) => {
-      @stdio.stdout.write("info Saving codex session ID: \{session_id}\n")
-      save_codex_session(config.db, repo.id, session_id) catch {
-        e =>
-          @stdio.stderr.write("warning Failed to save codex session ID: \{e}\n")
-      }
-    }
-    None =>
-      @stdio.stderr.write("warning No thread ID available from codex session\n")
-  }
-  @stdio.stdout.write("info AI task completed\n")
 }

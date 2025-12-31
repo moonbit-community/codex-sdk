@@ -63,16 +63,102 @@ pub fn parse_cli_args(cli_args : ArrayView[String]) -> ParsedCommand? raise {
 }
 
 ///|
-pub async fn run(codex : @codex.Codex, command : ParsedCommand) -> Unit {
+pub async fn run_non_run(command : ParsedCommand) -> Unit {
   match command.subcommand {
     "init" => cmd_init(command.args, command.work_dir, command.data_dir)
     "add" => cmd_add(command.args, command.data_dir)
-    "run" => cmd_run(command.args, command.work_dir, command.data_dir, codex)
     "status" => cmd_status(command.args, command.data_dir)
     "sync-prs" => cmd_sync_prs(command.args, command.work_dir, command.data_dir)
     "help" => cmd_help(command.args)
+    "run" => @error.fail("Run command should be handled by main")
     _ => @error.fail("Unknown subcommand: \{command.subcommand}")
   }
+}
+
+///|
+pub struct RunContext {
+  work_dir : String
+  data_dir : String
+  parallelism : Int
+  branch_prefix : String
+  db : @sqlite.Database
+  total : Int
+  incomplete_repos : Array[RepositoryRecord]
+}
+
+///|
+pub fn run_help_message() -> String {
+  let message =
+    #|Usage: run [OPTIONS]
+    #|
+    #|Start or resume processing repositories from the database queue
+    #|
+    #|Options:
+    #|  --parallelism <n>      Number of parallel workers (default: 4)
+    #|  --branch-prefix <p>    Branch name prefix (default: "ai-fix")
+    #|  --help, -h             Show this help
+    #|
+    #|Global options are set before the subcommand:
+    #|  --work-dir <path>      Working directory for clones (default: /tmp/parallel-fix)
+    #|  --data-dir <path>      Data directory for database (default: ~/.parallel-fix)
+    #|
+    #|Note: Each run is a fresh start. There is no persistent failure state.
+    #|
+  message
+}
+
+///|
+pub async fn prepare_run(
+  args : ArrayView[String],
+  work_dir : String,
+  data_dir : String,
+) -> RunContext? raise {
+  let parsed_args = @args.parse(
+    args,
+    flags=["help"],
+    options=["parallelism", "branch-prefix"],
+    aliases={ "h": "help" },
+  ) catch {
+    e => @error.reraise(e)
+  }
+  if parsed_args.flags.get("help") is Some(true) {
+    return None
+  }
+  let parallelism_str = parsed_args.options.get("parallelism").unwrap_or("4")
+  let parallelism = @strconv.parse_int(parallelism_str) catch {
+    e => @error.fail_with("Invalid parallelism value", e)
+  }
+  if parallelism <= 0 {
+    @error.fail("Parallelism must be a positive integer")
+  }
+  let branch_prefix = parsed_args.options
+    .get("branch-prefix")
+    .unwrap_or("ai-fix")
+  let db_path = "\{data_dir}/parallel-fix.db"
+  let db = @sqlite.Database::new(db_path)
+  db.ensure() catch {
+    e =>
+      @error.fail_with(
+        "Database not found. Please run 'init' first:\n  moon run real_world/parallel_fix -- init",
+        e,
+      )
+  }
+  ensure_db_schema(db) catch {
+    e => @error.fail_with("Failed to ensure database schema", e)
+  }
+  let total = total_count(db)
+  let incomplete_repos = get_incomplete_repos(db)
+  Some(
+    RunContext::{
+      work_dir,
+      data_dir,
+      parallelism,
+      branch_prefix,
+      db,
+      total,
+      incomplete_repos,
+    },
+  )
 }
 
 ///|
@@ -548,144 +634,4 @@ pub fn help_message() -> String {
 /// Shows help for subcommands
 async fn cmd_help(_args : ArrayView[String]) -> Unit {
   @stdio.stdout.write(help_message())
-}
-
-///|
-/// Handle the 'run' subcommand
-/// Start/resume processing repositories from the database
-async fn cmd_run(
-  args : ArrayView[String],
-  work_dir : String,
-  data_dir : String,
-  codex : @codex.Codex,
-) -> Unit {
-  let help_message =
-    #|Usage: run [OPTIONS]
-    #|
-    #|Start or resume processing repositories from the database queue
-    #|
-    #|Options:
-    #|  --parallelism <n>      Number of parallel workers (default: 4)
-    #|  --branch-prefix <p>    Branch name prefix (default: "ai-fix")
-    #|  --help, -h             Show this help
-    #|
-    #|Global options are set before the subcommand:
-    #|  --work-dir <path>      Working directory for clones (default: /tmp/parallel-fix)
-    #|  --data-dir <path>      Data directory for database (default: ~/.parallel-fix)
-    #|
-    #|Note: Each run is a fresh start. There is no persistent failure state.
-    #|
-
-  // Parse arguments
-  let parsed_args = @args.parse(
-    args,
-    flags=["help"],
-    options=["parallelism", "branch-prefix"],
-    aliases={ "h": "help" },
-  ) catch {
-    e => @error.reraise(e)
-  }
-
-  // Handle help flag
-  if parsed_args.flags.get("help") is Some(true) {
-    @stdio.stdout.write(help_message)
-    return
-  }
-
-  // Main logic - expand ~ in data_dir
-  let parallelism_str = parsed_args.options.get("parallelism").unwrap_or("4")
-  let parallelism = @strconv.parse_int(parallelism_str) catch {
-    e => @error.fail_with("Invalid parallelism value", e)
-  }
-  if parallelism <= 0 {
-    @error.fail("Parallelism must be a positive integer")
-  }
-  let branch_prefix = parsed_args.options
-    .get("branch-prefix")
-    .unwrap_or("ai-fix")
-  let db_path = "\{data_dir}/parallel-fix.db"
-
-  // Check if database exists
-  let db = @sqlite.Database::new(db_path)
-  db.ensure() catch {
-    e =>
-      @error.fail_with(
-        "Database not found. Please run 'init' first:\n  moon run real_world/parallel_fix -- init",
-        e,
-      )
-  }
-
-  // Ensure schema is initialized
-  ensure_db_schema(db) catch {
-    e => @error.fail_with("Failed to ensure database schema", e)
-  }
-  @stdio.stdout.write("=".repeat(60))
-  @stdio.stdout.write("\nSTARTING PARALLEL REPOSITORY PROCESSING\n")
-  @stdio.stdout.write("=".repeat(60))
-  @stdio.stdout.write("\n\n")
-  @stdio.stdout.write("Configuration:\n")
-  @stdio.stdout.write("  Work directory: \{work_dir}\n")
-  @stdio.stdout.write("  Parallelism: \{parallelism}\n")
-  @stdio.stdout.write("  Branch prefix: \{branch_prefix}\n")
-  @stdio.stdout.write("\n")
-
-  // Create agent (encapsulates Codex usage)
-  let agent = Agent::new_with_codex(codex)
-
-  // Create worker config
-  let config = WorkerConfig::{ work_dir, branch_prefix, agent, db }
-
-  // Get total count and incomplete count
-  let total = total_count(db)
-  if total == 0 {
-    @stdio.stdout.write(
-      "No repositories in database. Add some with:\n  moon run real_world/parallel_fix -- add <repos-file> --task \"description\"\n",
-    )
-    return
-  }
-  @stdio.stdout.write("Total repositories: \{total}\n")
-
-  // Get all incomplete repositories
-  let incomplete_repos = get_incomplete_repos(db)
-  if incomplete_repos.is_empty() {
-    @stdio.stdout.write("\nNo incomplete repositories to process. All done!\n")
-    return
-  }
-  @stdio.stdout.write(
-    "\nProcessing \{incomplete_repos.length()} incomplete repositories...\n\n",
-  )
-
-  // Process all repositories in parallel with bounded concurrency
-  let mut processed = 0
-  let mut successful = 0
-  @async.with_task_group(fn(task_group) {
-    let semaphore = @semaphore.Semaphore::new(parallelism)
-    for repo in incomplete_repos {
-      task_group.spawn_bg(allow_failure=true, fn() {
-        semaphore.acquire()
-        defer semaphore.release()
-        processed = processed + 1
-        process_repository(config, repo) catch {
-          e =>
-            @stdio.stderr.write(
-              "error [\{repo.url}] - Unexpected error: \{e}\n",
-            )
-        }
-        successful = successful + 1
-      })
-    }
-  })
-
-  // Print final summary
-  @stdio.stdout.write("\n")
-  @stdio.stdout.write("=".repeat(60))
-  @stdio.stdout.write("\nFINAL SUMMARY\n")
-  @stdio.stdout.write("=".repeat(60))
-  @stdio.stdout.write("\n")
-  @stdio.stdout.write("  Processed: \{processed}\n")
-  @stdio.stdout.write("  Successful: \{successful}\n")
-  @stdio.stdout.write("\n")
-  @stdio.stdout.write(
-    "Run 'moon run real_world/parallel_fix -- status --verbose' for detailed status\n",
-  )
 }

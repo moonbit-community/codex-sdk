@@ -1,140 +1,136 @@
 ///|
-/// Codex agent encapsulating all Codex usage
-struct Agent {
-  codex : @codex.Codex
-}
-
-///|
-fn Agent::new() -> Agent {
-  let codex = @codex.Codex::new(
-    options=@codex.CodexOptions::new(
-      codex_path_override="./alternative_codex.sh",
-    ),
-  )
-  Agent::{ codex, }
-}
-
-///|
-fn Agent::new_with_codex(codex : @codex.Codex) -> Agent {
-  Agent::{ codex, }
-}
-
-///|
-/// Run an AI task and return session id if available
-async fn Agent::run_task(
-  self : Agent,
-  clone_path : String,
-  model_env_key : String,
-  prompt : String,
-) -> String? {
-  let thread = self.codex.start_thread(
-    options=@codex.ThreadOptions::new(
-      working_directory=clone_path,
-      model?=@sys.get_env_vars().get(model_env_key),
-    ),
-  )
-  let _ = thread.run(prompt) catch { e => @error.reraise(e) }
-  match thread.id() {
-    Some(id) => Some(id)
-    None => None
+/// Build the Codex prompt for the main repository task.
+pub fn task_prompt(repo : RepositoryRecord, pr_comments : String?) -> String {
+  let background =
+    #|## MoonBit Project Guidelines
+    #|
+    #|This is a MoonBit project. Follow these guidelines:
+    #|
+    #|### Project Structure
+    #|- Packages are organized per directory with moon.pkg.json files
+    #|- Test files end in _test.mbt (blackbox) or _wbtest.mbt (whitebox)
+    #|- Each package has a generated .mbti interface file
+    #|
+    #|### Coding Conventions
+    #|- Use block style separated by ///| (block order is irrelevant)
+    #|- Keep deprecated code in deprecated.mbt files
+    #|
+    #|### Tooling Requirements
+    #|- Use `moon doc` to query interfaces
+    #|- Use `moon fmt` to format code
+    #|- Use `moon info` to update .mbti interface files
+    #|- Use `moon test` to run tests (use `moon test --update` for snapshots)
+    #|- Use `moon check` for linting
+    #|- Use `inspect` in tests for snapshot testing, `assert_eq` only in loops
+    #|- Run `moon coverage analyze` to check test coverage
+    #|
+    #|### Important Rules
+    #|- Do NOT create backup files or any irrelevant files in the repository
+    #|- Ensure all changes pass `moon check` and `moon test`
+    #|- Make minimal, focused changes relevant only to the task
+    #|- Update snapshots with `moon test --update` if behavior changes
+    #|- Check .mbti diffs after `moon info` to verify interface changes
+    #|
+    #|After completing the task, commit them. 
+    #|Then run `moon info && moon fmt && moon check && moon test --update` and commit automatic changes to finalize.
+    #|
+  match pr_comments {
+    Some(comments) =>
+      (
+        $|Task: \{repo.task}
+        $|
+        $|PR Feedback/Comments:
+        $|\{comments}
+        $|
+        $|Please address the task and any feedback from the PR comments.
+        $|If there's nothing new since the last commit and no CI has failed, do nothing.
+        $|
+        $|\{background}
+      )
+    None =>
+      (
+        $|Task: \{repo.task}
+        $|
+        $|This is a new PR. Please implement the task.
+        $|
+        $|\{background}
+      )
   }
 }
 
 ///|
-/// Generate commit message using AI
-async fn Agent::generate_commit_message(
-  self : Agent,
-  clone_path : String,
-  repo : RepositoryRecord,
-) -> String {
-  try {
-    let (status, output) = @process.collect_output_merged(
-      "git",
-      ["diff", "--no-color"],
-      cwd=clone_path,
-    )
-    if status != 0 {
-      @error.fail("git diff failed for commit message")
-    }
-    let diff = output.text()
-    if diff.is_empty() {
-      @error.fail("No changes to generate commit message for")
-    }
-    let thread = self.codex.start_thread(
-      options=@codex.ThreadOptions::new(
-        working_directory=clone_path,
-        model?=@sys.get_env_vars().get("LOWCOST_MODEL"),
-      ),
-    )
-    let prompt =
-      #|Based on the following task and code changes, generate a concise commit message.
-      $|
-      $|Task: \{repo.task}
-      $|
-      $|Changes:
-      $|\{diff}
-      $|
-      $|Generate a JSON response with this structure:
-      $|{
-      $|  "message": "A concise commit message (max 72 characters)"
-      $|}
-      $|
-      $|The message should follow conventional commit guidelines.
-      $|Keep it professional and technical.
-    let result = thread.run(prompt) catch { e => @error.reraise(e) }
-    let parsed = @json.parse(result.final_response) catch {
-      e => @error.reraise(e)
-    }
-    match parsed {
-      Object({ "message": String(message), .. }) => message
-      _ => @error.fail("Commit message response missing message field")
-    }
-  } catch {
-    e => {
-      @stdio.stderr.write("warning Failed to generate commit message: \{e}\n")
-      "AI work on: \{repo.task}"
-    }
+/// Read the git diff for commit message generation.
+pub async fn read_git_diff(clone_path : String) -> String raise {
+  let (status, output) = @process.collect_output_merged(
+    "git",
+    ["diff", "--no-color"],
+    cwd=clone_path,
+  )
+  if status != 0 {
+    @error.fail("git diff failed for commit message")
+  }
+  output.text()
+}
+
+///|
+/// Build prompt for commit message generation.
+pub fn commit_message_prompt(repo : RepositoryRecord, diff : String) -> String {
+  let prompt =
+    $|Based on the following task and code changes, generate a concise commit message.
+    $|
+    $|Task: \{repo.task}
+    $|
+    $|Changes:
+    $|\{diff}
+    $|
+    $|Generate a JSON response with this structure:
+    $|{
+    $|  "message": "A concise commit message (max 72 characters)"
+    $|}
+    $|
+    $|The message should follow conventional commit guidelines.
+    $|Keep it professional and technical.
+  prompt
+}
+
+///|
+/// Parse commit message from Codex JSON response.
+pub fn parse_commit_message(response : String) -> String? raise {
+  let parsed = @json.parse(response) catch { e => @error.reraise(e) }
+  match parsed {
+    Object({ "message": String(message), .. }) => Some(message)
+    _ => None
   }
 }
 
 ///|
-/// Generate PR metadata (title and body) using AI
-async fn Agent::generate_pr_metadata(
-  self : Agent,
+/// Read diff summary for PR metadata generation.
+pub async fn read_diff_summary(
   clone_path : String,
-  repo : RepositoryRecord,
-  branch_name : String,
   default_branch : String,
-) -> (String, String) {
-  let (status, stdout, stderr) = @process.collect_output(
+  branch_name : String,
+) -> String? {
+  let (status, stdout, _stderr) = @process.collect_output(
     "git",
     ["diff", "--stat", "\{default_branch}..\{branch_name}"],
     cwd=clone_path,
   ) catch {
-    e => {
-      @stdio.stderr.write("warning Failed to get diff summary: \{e}\n")
-      return (
-        "Automated code improvements",
-        "This PR was automatically created.\n\nTask: \{repo.task}",
-      )
-    }
+    _ => return None
   }
   if status != 0 {
-    @stdio.stderr.write("warning git diff failed: \{stderr.text()}\n")
-    return (
-      "Automated code improvements",
-      "This PR was automatically created.\n\nTask: \{repo.task}",
-    )
+    return None
   }
-  let diff_summary = stdout.text()
-  let thread = self.codex.start_thread(
-    options=@codex.ThreadOptions::new(
-      working_directory=clone_path,
-      model?=@sys.get_env_vars().get("LOWCOST_MODEL"),
-    ),
-  )
+  Some(stdout.text())
+}
+
+///|
+/// Build prompt for PR metadata generation.
+pub fn pr_metadata_prompt(
+  repo : RepositoryRecord,
+  diff_summary : String,
+) -> String {
   let prompt =
-    #|Based on the following task and code changes, generate a professional pull request title and body.
+    $|Based on the following task and code changes, generate a professional pull request title and body.
     $|
     $|Task: \{repo.task}
     $|
@@ -154,35 +150,26 @@ async fn Agent::generate_pr_metadata(
     $|   - Any notable implementation details
     $|
     $|Keep the tone professional and technical.
-  let result = thread.run(prompt) catch {
-    e => {
-      @stdio.stderr.write("warning Failed to generate PR metadata: \{e}\n")
-      return (
-        "Automated code improvements",
-        "This PR was automatically created.\n\nTask: \{repo.task}",
-      )
-    }
-  }
-  let parsed = @json.parse(result.final_response) catch {
-    e => {
-      @stdio.stderr.write("warning Failed to parse PR metadata JSON: \{e}\n")
-      return (
-        "Automated code improvements",
-        "This PR was automatically created.\n\nTask: \{repo.task}",
-      )
-    }
-  }
+  prompt
+}
+
+///|
+/// Parse PR metadata from Codex JSON response.
+pub fn parse_pr_metadata(response : String) -> (String, String)? raise {
+  let parsed = @json.parse(response) catch { e => @error.reraise(e) }
   match parsed {
     Object({ "title": String(title), "body": String(body), .. }) =>
-      (title, body)
-    _ => {
-      @stdio.stderr.write(
-        "warning PR metadata response missing title/body fields\n",
-      )
-      (
-        "Automated code improvements",
-        "This PR was automatically created.\n\nTask: \{repo.task}",
-      )
-    }
+      Some((title, body))
+    _ => None
   }
+}
+
+///|
+pub fn fallback_pr_title() -> String {
+  "Automated code improvements"
+}
+
+///|
+pub fn fallback_pr_body(task : String) -> String {
+  "This PR was automatically created.\n\nTask: \{task}"
 }

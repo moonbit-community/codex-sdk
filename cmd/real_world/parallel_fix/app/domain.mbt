@@ -4,7 +4,7 @@
 
 ///|
 /// Repository record from database
-priv struct RepositoryRecord {
+pub struct RepositoryRecord {
   id : Int
   url : String
   task : String
@@ -15,9 +15,8 @@ priv struct RepositoryRecord {
 
 ///|
 /// Configuration for repository processing
-priv struct WorkerConfig {
+pub(all) struct WorkerConfig {
   work_dir : String
   branch_prefix : String
-  agent : Agent
   db : @sqlite.Database
 }

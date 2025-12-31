@@ -1,9 +1,7 @@
 {
   "import": [
     "moonbitlang/async",
-    "peter-jerry-ye/codex",
     "moonbitlang/async/fs",
-    "moonbitlang/async/semaphore",
     "moonbitlang/x/sys",
     "moonbitlang/async/process",
     "moonbitlang/async/io",
