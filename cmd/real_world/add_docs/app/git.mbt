@@ -1,10 +1,10 @@
 ///|
-struct Repo {
+pub struct Repo {
   path : String
 }
 
 ///|
-async fn Repo::at(path : String) -> Self? {
+pub async fn Repo::at(path : String) -> Self? {
   // Verify that the path is a git repository
   let status = @process.run(
     "git",
@@ -16,7 +16,7 @@ async fn Repo::at(path : String) -> Self? {
 }
 
 ///|
-async fn Repo::existing_branches(repo : Self) -> Array[String] {
+pub async fn Repo::existing_branches(repo : Self) -> Array[String] {
   let (pipe, process_read) = @process.read_from_process()
   let status = @process.run(
     "git",
@@ -39,7 +39,7 @@ async fn Repo::existing_branches(repo : Self) -> Array[String] {
 }
 
 ///|
-async fn Repo::create_work_tree(
+pub async fn Repo::create_work_tree(
   repo : Self,
   branch : String,
   path : String,
@@ -48,7 +48,7 @@ async fn Repo::create_work_tree(
 }
 
 ///|
-async fn Repo::create_work_tree_and_branch(
+pub async fn Repo::create_work_tree_and_branch(
   repo : Self,
   branch : String,
   path : String,
@@ -58,7 +58,7 @@ async fn Repo::create_work_tree_and_branch(
 }
 
 ///|
-async fn Repo::remove_work_tree(
+pub async fn Repo::remove_work_tree(
   repo : Self,
   path : String,
   force? : Bool,

@@ -1,22 +1,9 @@
 ///|
-/// Reviewer encapsulates Codex usage
-struct Reviewer {
-  codex : @codex.Codex
-}
-
-///|
-fn Reviewer::new() -> Reviewer {
-  Reviewer::{ codex: @codex.Codex::new() }
-}
-
-///|
-/// Review a single mbti file using Codex
-async fn review_mbti_file(
+pub async fn prepare_review_input(
   file_path : String,
   project_root : String,
-  reviewer : Reviewer,
   verbose : Bool,
-) -> ReviewResult {
+) -> ReviewInput raise {
   let relative_path = if file_path.has_prefix(project_root) {
     try! file_path[project_root.length() + 1:].to_string()
   } else {
@@ -27,12 +14,6 @@ async fn review_mbti_file(
   }
   let content = @fs.read_file(file_path).text() catch { e => @error.reraise(e) }
   let package_name = extract_package_name(content)
-  let thread = reviewer.codex.start_thread(
-    options=@codex.ThreadOptions::new(
-      working_directory=project_root,
-      sandbox_mode=DangerFullAccess,
-    ),
-  )
   let prompt =
     $|Review this MoonBit package interface file (\{relative_path}):
     $|
@@ -46,11 +27,17 @@ async fn review_mbti_file(
     $|3. Suggestions for improvement (if any)
     $|
     $|Keep the review concise and focused on the public API surface.
-  let result = thread.run(prompt) catch { e => @error.reraise(e) }
-  let review_text = result.final_response
+  ReviewInput::{ file: relative_path, relative_path, pkg_name: package_name, prompt }
+}
+
+///|
+pub fn review_result_from_response(
+  input : ReviewInput,
+  review_text : String,
+) -> ReviewResult {
   ReviewResult::{
-    file: relative_path,
-    pkg_name: package_name,
+    file: input.relative_path,
+    pkg_name: input.pkg_name,
     review: review_text,
     success: true,
     error: "",

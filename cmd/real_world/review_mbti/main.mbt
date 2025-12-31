@@ -1,108 +1,114 @@
 ///|
 /// Main entry point
 async fn main {
-  let help_message =
-    $|
-    #|Usage: moon run real_world/review_mbti -- [OPTIONS] <path>
-    #|Review MoonBit interface files (pkg.generated.mbti) using Codex.
-    #|
-    #|Options:
-    #|  --all                     Review all mbti files (default)
-    #|  --changed                 Only review changed files in git
-    #|  --files <files>           Specific files to review (comma-separated)
-    #|  -c, --concurrency <num>   Number of concurrent reviews (default: 5)
-    #|  -v, --verbose             Show detailed progress
-    #|  -o, --output <dir>        Output directory for review files (default: mbti-reviews)
-    #|  <path>                    Path to the project root
-    #|
-  // Parse CLI arguments
-  let args = @args.parse(
-    @sys.get_cli_args()[1:],
-    flags=["all", "changed", "verbose", "help"],
-    options=["files", "concurrency", "output"],
-    aliases={ "h": "help", "v": "verbose", "o": "output", "c": "concurrency" },
-  )
-  if args.flags.get("help") is Some(true) {
-    @stdio.stdout.write("\{help_message}\n")
-    return
-  }
-  let argument = parse_args(args)
-  let project_root = argument.path
-
-  // Make output directory absolute if it's relative
-  let output_dir = if argument.output.has_prefix("/") {
-    argument.output
-  } else {
-    "\{project_root}/\{argument.output}"
-  }
-
-  // Determine which files to review
-  let files_to_review : Array[String] = if argument.files.length() > 0 {
-    @stdio.stdout.write(
-      "Reviewing \{argument.files.length()} specified file(s)\n",
-    )
-    argument.files.map(fn(f) { "\{project_root}/\{f}" })
-  } else if argument.changed {
-    let changed = get_changed_mbti_files(project_root) catch {
-      e => {
-        @stdio.stderr.write("Failed to get changed files:\n\{e}\n")
-        []
+  let arguments_opt = @app.parse_cli_args(@sys.get_cli_args()[1:])
+  match arguments_opt {
+    None => {
+      @stdio.stdout.write(@app.help_message())
+      return
+    }
+    Some(arguments) => {
+      let project_root = arguments.path
+      let output_dir = @app.output_dir(arguments)
+      let files_to_review = @app.resolve_files_to_review(arguments)
+      if files_to_review.is_empty() {
+        @stdio.stdout.write("No files to review. Exiting.\n")
+        return
       }
+      @stdio.stdout.write("Using concurrency limit: \{arguments.concurrency}\n\n")
+      let codex = @codex.Codex::new()
+      let results : Array[@app.ReviewResult] = []
+      let mut completed = 0
+
+      @async.with_task_group(fn(task_group) {
+        let semaphore = @semaphore.Semaphore::new(arguments.concurrency)
+        for i, file in files_to_review {
+          task_group.spawn_bg(allow_failure=true, fn() {
+            semaphore.acquire()
+            @stdio.stdout.write(
+              "info [\{i + 1}/\{files_to_review.length()}] - Acquired semaphore, starting review of \{file}...\n",
+            )
+            defer semaphore.release()
+            let result = try {
+              let input = @app.prepare_review_input(
+                file,
+                project_root,
+                arguments.verbose,
+              )
+              let thread = codex.start_thread(
+                options=@codex.ThreadOptions::new(
+                  working_directory=project_root,
+                  sandbox_mode=DangerFullAccess,
+                ),
+              )
+              let response = thread.run(input.prompt)
+              @app.review_result_from_response(
+                input,
+                response.final_response,
+              )
+            } catch {
+              e => {
+                @stdio.stderr.write("Error reviewing \{file}:\n\{e}\n")
+                @app.error_result(file, e.to_string())
+              }
+            }
+            results.push(result)
+            let output_path = if result.success {
+              @app.save_review_to_file(result, output_dir) catch {
+                e => {
+                  @stdio.stderr.write(
+                    "Failed to save review for \{result.file}:\n\{e}\n",
+                  )
+                  None
+                }
+              }
+            } else {
+              None
+            }
+            completed = completed + 1
+            let status = if result.success { "✓" } else { "✗" }
+            let saved_msg = match output_path {
+              Some(path) => {
+                let rel_path = if path.has_prefix(project_root) {
+                  try! path[project_root.length() + 1:].to_string()
+                } else {
+                  path
+                }
+                " → \{rel_path}"
+              }
+              None => ""
+            }
+            @stdio.stdout.write(
+              "\{status} [\{completed}/\{files_to_review.length()}] \{result.file}\{saved_msg}\n",
+            )
+          })
+        }
+      })
+
+      let successful = results.filter(fn(r) { r.success }).length()
+      let failed = results.filter(fn(r) { !r.success })
+      let rel_output_dir = @app.summary_output_dir(output_dir, project_root)
+      @stdio.stdout.write(
+        (
+          $|
+          $|\{"=".repeat(80)}
+          $|SUMMARY
+          $|\{"=".repeat(80)}
+          $|Total files \{results.length()}
+          $|Successful: \{successful}
+          $|Failed: \{failed.length()}
+          $|Concurrency: \{arguments.concurrency}
+          $|Output Directory: \{rel_output_dir}
+          $|
+        ),
+      )
+      if failed.length() > 0 {
+        @stdio.stdout.write("\n❌ Failed reviews:\n")
+        for f in failed {
+          @stdio.stdout.write("  - \{f.file}: \{f.error}\n")
+        }
+      }
+      @stdio.stdout.write("\n💾 Reviews saved to: \{output_dir}\n")
     }
-    @stdio.stdout.write("Found \{changed.length()} changed mbti file(s)\n")
-    changed
-  } else {
-    let all_files = []
-    find_mbti_files(project_root, all_files)
-    @stdio.stdout.write("Found \{all_files.length()} mbti file(s) to review\n")
-    all_files
   }
-  if files_to_review.is_empty() {
-    @stdio.stdout.write("No files to review. Exiting.\n")
-    return
-  }
-  @stdio.stdout.write("Using concurrency limit: \{argument.concurrency}\n\n")
-
-  // Initialize reviewer (encapsulates Codex usage)
-  let reviewer = Reviewer::new()
-
-  // Process files with concurrency control
-  let results = process_concurrently(
-    files_to_review,
-    project_root,
-    reviewer,
-    output_dir,
-    argument.concurrency,
-    argument.verbose,
-  )
-
-  // Display results summary
-  let successful = results.filter(fn(r) { r.success }).length()
-  let failed = results.filter(fn(r) { !r.success })
-  let rel_output_dir = if output_dir.has_prefix(project_root) {
-    try! output_dir[project_root.length() + 1:].to_string()
-  } else {
-    output_dir
-  }
-  @stdio.stdout.write(
-    (
-      $|
-      $|\{"=".repeat(80)}
-      $|SUMMARY
-      $|\{"=".repeat(80)}
-      $|Total files \{results.length()}
-      $|Successful: \{successful}
-      $|Failed: \{failed.length()}
-      $|Concurrency: \{argument.concurrency}
-      $|Output Directory: \{rel_output_dir}
-      $|
-    ),
-  )
-  if failed.length() > 0 {
-    @stdio.stdout.write("\n❌ Failed reviews:\n")
-    for f in failed {
-      @stdio.stdout.write("  - \{f.file}: \{f.error}\n")
-    }
-  }
-  @stdio.stdout.write("\n💾 Reviews saved to: \{output_dir}\n")
 }

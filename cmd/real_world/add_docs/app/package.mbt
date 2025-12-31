@@ -1,17 +1,17 @@
 ///|
-struct Module {
+pub struct Module {
   root : String
   name : String
 }
 
 ///|
-struct Package {
+pub struct Package {
   mod : Module
   path : String
 }
 
 ///|
-async fn Module::at(path : String) -> Module? {
+pub async fn Module::at(path : String) -> Module? {
   if @fs.exists("\{path}/moon.mod.json") {
     let schema = @json.parse(@fs.read_file("\{path}/moon.mod.json").text())
     guard schema is { "name": String(name), .. } else {
@@ -24,7 +24,7 @@ async fn Module::at(path : String) -> Module? {
 }
 
 ///|
-async fn Module::packages(mod : Self) -> Array[Package] {
+pub async fn Module::packages(mod : Self) -> Array[Package] {
   let result = []
   let root = mod.root
   async fn visit(path : String) {
@@ -51,14 +51,14 @@ async fn Module::packages(mod : Self) -> Array[Package] {
 }
 
 ///|
-struct ExecResult {
+pub struct ExecResult {
   stdout : String
   stderr : String
   status : Int
 }
 
 ///|
-async fn Module::check(mod : Self) -> ExecResult {
+pub async fn Module::check(mod : Self) -> ExecResult {
   let stdout = @process.read_from_process()
   let stderr = @process.read_from_process()
   let value = @process.run(
@@ -73,7 +73,7 @@ async fn Module::check(mod : Self) -> ExecResult {
 }
 
 ///|
-async fn Module::test_(mod : Self) -> ExecResult {
+pub async fn Module::test_(mod : Self) -> ExecResult {
   let stdout = @process.read_from_process()
   let stderr = @process.read_from_process()
   let value = @process.run(
@@ -88,7 +88,7 @@ async fn Module::test_(mod : Self) -> ExecResult {
 }
 
 ///|
-async fn Module::format(mod : Self) -> ExecResult {
+pub async fn Module::format(mod : Self) -> ExecResult {
   let stdout = @process.read_from_process()
   let stderr = @process.read_from_process()
   let value = @process.run(
@@ -103,7 +103,7 @@ async fn Module::format(mod : Self) -> ExecResult {
 }
 
 ///|
-async fn Module::update_info(mod : Self) -> ExecResult {
+pub async fn Module::update_info(mod : Self) -> ExecResult {
   let stdout = @process.read_from_process()
   let stderr = @process.read_from_process()
   let value = @process.run(

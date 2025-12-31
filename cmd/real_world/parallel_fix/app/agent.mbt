@@ -15,6 +15,11 @@ fn Agent::new() -> Agent {
 }
 
 ///|
+fn Agent::new_with_codex(codex : @codex.Codex) -> Agent {
+  Agent::{ codex, }
+}
+
+///|
 /// Run an AI task and return session id if available
 async fn Agent::run_task(
   self : Agent,

@@ -93,7 +93,7 @@ async fn mkdir_recursive(path : String) -> Unit {
 
 ///|
 /// Save review result to file
-async fn save_review_to_file(
+pub async fn save_review_to_file(
   result : ReviewResult,
   output_dir : String,
 ) -> String? {
