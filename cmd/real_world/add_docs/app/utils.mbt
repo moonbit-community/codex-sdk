@@ -1,5 +1,5 @@
 ///|
-suberror Reraise (String, Error?)
+priv suberror Reraise (String, Error?)
 
 ///|
 #callsite(autofill(loc))

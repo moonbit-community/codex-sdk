@@ -2,7 +2,7 @@
 /// Simplified worker: for each incomplete repo, check PR, create draft if needed, run AI, sync changes
 
 ///|
-type RunTask = async (String, String) -> String?
+type RunTask = async (String, String) -> String? raise
 
 ///|
 type CommitMessageGenerator = async (RepositoryRecord, String) -> String

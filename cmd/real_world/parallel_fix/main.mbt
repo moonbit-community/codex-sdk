@@ -128,7 +128,7 @@ async fn run_task_with_codex(
   codex : @codex.Codex,
   clone_path : String,
   prompt : String,
-) -> String? {
+) -> String? raise {
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(
       working_directory=clone_path,

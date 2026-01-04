@@ -56,7 +56,7 @@ pub fn parse_cli_args(cli_args : ArrayView[String]) -> ParsedCommand? raise {
       @error.fail(
         (
           $|Unknown subcommand \{subcommand}.
-          #|Use --help to see available subcommands.",
+          $|Use --help to see available subcommands.",
         ),
       )
   }
@@ -197,11 +197,11 @@ async fn cmd_init(
   let db_path = "\{data_dir}/parallel-fix.db"
   @stdio.stdout.write(
     (
-      #|Initializing parallel fix workspace...
+      $|Initializing parallel fix workspace...
       $|  Work directory (clones): \{work_dir}
       $|  Data directory (database): \{data_dir}
       $|  Database: \{db_path}
-      #|
+      $|
     ),
   )
   // Check if sqlite3 is available
@@ -333,7 +333,7 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   @stdio.stdout.write(
     (
       #|
-      $|✓ Done! Added \{added} repository-task pairs, skipped \{skipped}
+      #|✓ Done! Added \{added} repository-task pairs, skipped \{skipped}
       #|
       #|Next: moon run real_world/parallel_fix -- run --parallelism 8
       #|
