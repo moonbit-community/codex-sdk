@@ -2,7 +2,7 @@
 /// Simplified worker: for each incomplete repo, check PR, create draft if needed, run AI, sync changes
 
 ///|
-type RunTask = async (String, String) -> String? raise
+type RunTask = async (String, String) -> String?
 
 ///|
 type CommitMessageGenerator = async (RepositoryRecord, String) -> String
@@ -109,10 +109,14 @@ pub async fn process_repository(
         @stdio.stdout.write("info Saving codex session ID: \{session_id}\n")
         save_codex_session(config.db, repo.id, session_id) catch {
           e =>
-            @stdio.stderr.write("warning Failed to save codex session ID: \{e}\n")
+            @stdio.stderr.write(
+              "warning Failed to save codex session ID: \{e}\n",
+            )
         }
       } else {
-        @stdio.stderr.write("warning No thread ID available from codex session\n")
+        @stdio.stderr.write(
+          "warning No thread ID available from codex session\n",
+        )
       }
 
       // Commit AI changes, run moon tools, and push
@@ -145,10 +149,14 @@ pub async fn process_repository(
         @stdio.stdout.write("info Saving codex session ID: \{session_id}\n")
         save_codex_session(config.db, repo.id, session_id) catch {
           e =>
-            @stdio.stderr.write("warning Failed to save codex session ID: \{e}\n")
+            @stdio.stderr.write(
+              "warning Failed to save codex session ID: \{e}\n",
+            )
         }
       } else {
-        @stdio.stderr.write("warning No thread ID available from codex session\n")
+        @stdio.stderr.write(
+          "warning No thread ID available from codex session\n",
+        )
       }
 
       // Commit AI changes and run moon tools
@@ -179,10 +187,7 @@ pub async fn process_repository(
       }
       @stdio.stdout.write("info [\{repo_name}] Changes made, creating PR...\n")
       let pr_num = create_pr_from_branch(
-        clone_path,
-        repo,
-        branch_name,
-        generate_pr_metadata,
+        clone_path, repo, branch_name, generate_pr_metadata,
       ) catch {
         e => @error.fail_with("Failed to create PR", e)
       }
@@ -521,15 +526,11 @@ async fn create_pr_from_branch(
   // Generate PR metadata using AI
   @stdio.stdout.write("info Generating PR title and description...\n")
   let diff_summary_opt = read_diff_summary(
-    clone_path,
-    default_branch,
-    branch_name,
+    clone_path, default_branch, branch_name,
   )
   let (pr_title, pr_body) = match diff_summary_opt {
-    Some(diff_summary) =>
-      generate_pr_metadata(repo, diff_summary)
-    None =>
-      (fallback_pr_title(), fallback_pr_body(repo.task))
+    Some(diff_summary) => generate_pr_metadata(repo, diff_summary)
+    None => (fallback_pr_title(), fallback_pr_body(repo.task))
   }
   @stdio.stdout.write("info PR title: \{pr_title}\n")
 

@@ -15,7 +15,6 @@ async fn main {
       }
       let packages = @app.list_packages(project)
       let codex = @codex.Codex::new()
-
       @async.with_task_group(fn(task_group) {
         let semaphore = @semaphore.Semaphore::new(arguments.parallelism)
         for pkg in packages {
@@ -43,7 +42,6 @@ async fn main {
             @stdio.stdout.write(
               "info [\{pkg.path}] - Created git worktree at \{worktree.tmp_path} \n",
             )
-
             try {
               let thread = codex.start_thread(
                 options=@codex.ThreadOptions::new(
@@ -61,7 +59,9 @@ async fn main {
                 response = thread.run(@app.completion_followup())
               }
               if !completed {
-                @error.fail("Codex failed to add documentation after multiple attempts")
+                @error.fail(
+                  "Codex failed to add documentation after multiple attempts",
+                )
               }
               match thread.id() {
                 Some(session_id) =>
@@ -84,7 +84,8 @@ async fn main {
               )
             } catch {
               e => {
-                @app.remove_worktree(repo, worktree.tmp_path, force=true) |> ignore
+                @app.remove_worktree(repo, worktree.tmp_path, force=true)
+                |> ignore
                 @stdio.stderr.write(
                   "error [\{pkg.path}] - Exception while adding docs: \{e}\n",
                 )

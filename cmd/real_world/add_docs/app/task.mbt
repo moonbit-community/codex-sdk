@@ -48,7 +48,7 @@ pub fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
 }
 
 ///|
-pub async fn open_repo(path : String) -> Repo raise {
+pub async fn open_repo(path : String) -> Repo {
   if Repo::at(path) is Some(repo) {
     repo
   } else {
@@ -57,7 +57,7 @@ pub async fn open_repo(path : String) -> Repo raise {
 }
 
 ///|
-pub async fn open_module(path : String) -> Module raise {
+pub async fn open_module(path : String) -> Module {
   if Module::at(path) is Some(project) {
     project
   } else {
@@ -91,7 +91,7 @@ pub fn branch_name(pkg : Package) -> String {
 }
 
 ///|
-pub async fn create_worktree(repo : Repo, pkg : Package) -> WorktreeInfo raise {
+pub async fn create_worktree(repo : Repo, pkg : Package) -> WorktreeInfo {
   let tmp_path = worktree_path()
   let branch = branch_name(pkg)
   let branches = repo.existing_branches()
@@ -102,19 +102,15 @@ pub async fn create_worktree(repo : Repo, pkg : Package) -> WorktreeInfo raise {
     repo.create_work_tree_and_branch(branch, tmp_path)
   }
   if !ok {
-    fail(
-      "error [\{pkg.path}] - Failed to create git worktree at \{tmp_path}\n",
-    )
+    fail("error [\{pkg.path}] - Failed to create git worktree at \{tmp_path}\n")
   }
   WorktreeInfo::{ tmp_path, branch_name: branch, reused_branch }
 }
 
 ///|
-pub async fn verify_package(pkg : Package) -> Unit raise {
+pub async fn verify_package(pkg : Package) -> Unit {
   if pkg.mod.check().status != 0 || pkg.mod.test_().status != 0 {
-    fail(
-      "error [\{pkg.path}] - moon check or test failed after adding docs\n",
-    )
+    fail("error [\{pkg.path}] - moon check or test failed after adding docs\n")
   }
   if pkg.mod.format().status != 0 || pkg.mod.update_info().status != 0 {
     fail(
@@ -129,5 +125,5 @@ pub async fn remove_worktree(
   tmp_path : String,
   force? : Bool,
 ) -> Bool {
-  repo.remove_work_tree(tmp_path, force?=force)
+  repo.remove_work_tree(tmp_path, force?)
 }

@@ -60,7 +60,7 @@ pub fn task_prompt(repo : RepositoryRecord, pr_comments : String?) -> String {
 
 ///|
 /// Read the git diff for commit message generation.
-pub async fn read_git_diff(clone_path : String) -> String raise {
+pub async fn read_git_diff(clone_path : String) -> String {
   let (status, output) = @process.collect_output_merged(
     "git",
     ["diff", "--no-color"],

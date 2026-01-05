@@ -45,11 +45,5 @@ pub fn summary_output_dir(output_dir : String, project_root : String) -> String 
 
 ///|
 pub fn error_result(file : String, error : String) -> ReviewResult {
-  ReviewResult::{
-    file,
-    pkg_name: "unknown",
-    review: "",
-    success: false,
-    error,
-  }
+  ReviewResult::{ file, pkg_name: "unknown", review: "", success: false, error }
 }

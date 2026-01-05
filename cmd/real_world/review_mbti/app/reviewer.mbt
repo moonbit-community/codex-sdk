@@ -3,7 +3,7 @@ pub async fn prepare_review_input(
   file_path : String,
   project_root : String,
   verbose : Bool,
-) -> ReviewInput raise {
+) -> ReviewInput {
   let relative_path = if file_path.has_prefix(project_root) {
     try! file_path[project_root.length() + 1:].to_string()
   } else {
@@ -27,7 +27,12 @@ pub async fn prepare_review_input(
     $|3. Suggestions for improvement (if any)
     $|
     $|Keep the review concise and focused on the public API surface.
-  ReviewInput::{ file: relative_path, relative_path, pkg_name: package_name, prompt }
+  ReviewInput::{
+    file: relative_path,
+    relative_path,
+    pkg_name: package_name,
+    prompt,
+  }
 }
 
 ///|

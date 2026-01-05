@@ -6,7 +6,7 @@ async fn main {
       @stdio.stdout.write(@app.help_message())
       return
     }
-    Some(command) => {
+    Some(command) =>
       if command.subcommand == "run" {
         let run_context_opt = @app.prepare_run(
           command.args,
@@ -26,9 +26,10 @@ async fn main {
             @stdio.stdout.write("Configuration:\n")
             @stdio.stdout.write("  Work directory: \{run_context.work_dir}\n")
             @stdio.stdout.write("  Parallelism: \{run_context.parallelism}\n")
-            @stdio.stdout.write("  Branch prefix: \{run_context.branch_prefix}\n")
+            @stdio.stdout.write(
+              "  Branch prefix: \{run_context.branch_prefix}\n",
+            )
             @stdio.stdout.write("\n")
-
             if run_context.total == 0 {
               @stdio.stdout.write(
                 "No repositories in database. Add some with:\n  moon run real_world/parallel_fix -- add <repos-file> --task \"description\"\n",
@@ -36,7 +37,6 @@ async fn main {
               return
             }
             @stdio.stdout.write("Total repositories: \{run_context.total}\n")
-
             if run_context.incomplete_repos.is_empty() {
               @stdio.stdout.write(
                 "\nNo incomplete repositories to process. All done!\n",
@@ -46,16 +46,12 @@ async fn main {
             @stdio.stdout.write(
               "\nProcessing \{run_context.incomplete_repos.length()} incomplete repositories...\n\n",
             )
-
             let codex = @codex.Codex::new(
               options=@codex.CodexOptions::new(
                 codex_path_override="./alternative_codex.sh",
               ),
             )
-            let run_task = async fn(
-              clone_path : String,
-              prompt : String,
-            ) {
+            let run_task = async fn(clone_path : String, prompt : String) {
               run_task_with_codex(codex, clone_path, prompt)
             }
             let generate_commit_message = async fn(
@@ -78,20 +74,14 @@ async fn main {
             let mut processed = 0
             let mut successful = 0
             @async.with_task_group(fn(task_group) {
-              let semaphore = @semaphore.Semaphore::new(
-                run_context.parallelism,
-              )
+              let semaphore = @semaphore.Semaphore::new(run_context.parallelism)
               for repo in run_context.incomplete_repos {
                 task_group.spawn_bg(allow_failure=true, fn() {
                   semaphore.acquire()
                   defer semaphore.release()
                   processed = processed + 1
                   @app.process_repository(
-                    config,
-                    repo,
-                    run_task,
-                    generate_commit_message,
-                    generate_pr_metadata,
+                    config, repo, run_task, generate_commit_message, generate_pr_metadata,
                   ) catch {
                     e =>
                       @stdio.stderr.write(
@@ -102,7 +92,6 @@ async fn main {
                 })
               }
             })
-
             @stdio.stdout.write("\n")
             @stdio.stdout.write("=".repeat(60))
             @stdio.stdout.write("\nFINAL SUMMARY\n")
@@ -119,7 +108,6 @@ async fn main {
       } else {
         @app.run_non_run(command)
       }
-    }
   }
 }
 
@@ -128,7 +116,7 @@ async fn run_task_with_codex(
   codex : @codex.Codex,
   clone_path : String,
   prompt : String,
-) -> String? raise {
+) -> String? {
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(
       working_directory=clone_path,
@@ -155,9 +143,7 @@ async fn generate_commit_message_with_codex(
     )
     let prompt = @app.commit_message_prompt(repo, diff)
     let result = thread.run(prompt)
-    let message_opt = @app.parse_commit_message(
-      result.final_response,
-    ) catch {
+    let message_opt = @app.parse_commit_message(result.final_response) catch {
       _ => None
     }
     match message_opt {
@@ -187,24 +173,14 @@ async fn generate_pr_metadata_with_codex(
   let prompt = @app.pr_metadata_prompt(repo, diff_summary)
   let result = thread.run(prompt) catch {
     e => {
-      @stdio.stderr.write(
-        "warning Failed to generate PR metadata: \{e}\n",
-      )
-      return (
-        @app.fallback_pr_title(),
-        @app.fallback_pr_body(repo.task),
-      )
+      @stdio.stderr.write("warning Failed to generate PR metadata: \{e}\n")
+      return (@app.fallback_pr_title(), @app.fallback_pr_body(repo.task))
     }
   }
   let parsed = @app.parse_pr_metadata(result.final_response) catch {
     e => {
-      @stdio.stderr.write(
-        "warning Failed to parse PR metadata JSON: \{e}\n",
-      )
-      return (
-        @app.fallback_pr_title(),
-        @app.fallback_pr_body(repo.task),
-      )
+      @stdio.stderr.write("warning Failed to parse PR metadata JSON: \{e}\n")
+      return (@app.fallback_pr_title(), @app.fallback_pr_body(repo.task))
     }
   }
   match parsed {
@@ -213,10 +189,7 @@ async fn generate_pr_metadata_with_codex(
       @stdio.stderr.write(
         "warning PR metadata response missing title/body fields\n",
       )
-      (
-        @app.fallback_pr_title(),
-        @app.fallback_pr_body(repo.task),
-      )
+      (@app.fallback_pr_title(), @app.fallback_pr_body(repo.task))
     }
   }
 }

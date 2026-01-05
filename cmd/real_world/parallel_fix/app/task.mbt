@@ -34,17 +34,47 @@ pub fn parse_cli_args(cli_args : ArrayView[String]) -> ParsedCommand? raise {
   // Check if first positional argument is a subcommand
   match parsed.positional {
     ["init", .. remaining] =>
-      Some(ParsedCommand::{ subcommand: "init", args: remaining, work_dir, data_dir })
+      Some(ParsedCommand::{
+        subcommand: "init",
+        args: remaining,
+        work_dir,
+        data_dir,
+      })
     ["add", .. remaining] =>
-      Some(ParsedCommand::{ subcommand: "add", args: remaining, work_dir, data_dir })
+      Some(ParsedCommand::{
+        subcommand: "add",
+        args: remaining,
+        work_dir,
+        data_dir,
+      })
     ["run", .. remaining] =>
-      Some(ParsedCommand::{ subcommand: "run", args: remaining, work_dir, data_dir })
+      Some(ParsedCommand::{
+        subcommand: "run",
+        args: remaining,
+        work_dir,
+        data_dir,
+      })
     ["status", .. remaining] =>
-      Some(ParsedCommand::{ subcommand: "status", args: remaining, work_dir, data_dir })
+      Some(ParsedCommand::{
+        subcommand: "status",
+        args: remaining,
+        work_dir,
+        data_dir,
+      })
     ["sync-prs", .. remaining] =>
-      Some(ParsedCommand::{ subcommand: "sync-prs", args: remaining, work_dir, data_dir })
+      Some(ParsedCommand::{
+        subcommand: "sync-prs",
+        args: remaining,
+        work_dir,
+        data_dir,
+      })
     ["help", .. remaining] =>
-      Some(ParsedCommand::{ subcommand: "help", args: remaining, work_dir, data_dir })
+      Some(ParsedCommand::{
+        subcommand: "help",
+        args: remaining,
+        work_dir,
+        data_dir,
+      })
     [] =>
       @error.fail(
         (
@@ -112,7 +142,7 @@ pub async fn prepare_run(
   args : ArrayView[String],
   work_dir : String,
   data_dir : String,
-) -> RunContext? raise {
+) -> RunContext? {
   let parsed_args = @args.parse(
     args,
     flags=["help"],
@@ -148,17 +178,15 @@ pub async fn prepare_run(
   }
   let total = total_count(db)
   let incomplete_repos = get_incomplete_repos(db)
-  Some(
-    RunContext::{
-      work_dir,
-      data_dir,
-      parallelism,
-      branch_prefix,
-      db,
-      total,
-      incomplete_repos,
-    },
-  )
+  Some(RunContext::{
+    work_dir,
+    data_dir,
+    parallelism,
+    branch_prefix,
+    db,
+    total,
+    incomplete_repos,
+  })
 }
 
 ///|

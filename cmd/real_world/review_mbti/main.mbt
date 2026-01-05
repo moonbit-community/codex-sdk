@@ -15,11 +15,12 @@ async fn main {
         @stdio.stdout.write("No files to review. Exiting.\n")
         return
       }
-      @stdio.stdout.write("Using concurrency limit: \{arguments.concurrency}\n\n")
+      @stdio.stdout.write(
+        "Using concurrency limit: \{arguments.concurrency}\n\n",
+      )
       let codex = @codex.Codex::new()
       let results : Array[@app.ReviewResult] = []
       let mut completed = 0
-
       @async.with_task_group(fn(task_group) {
         let semaphore = @semaphore.Semaphore::new(arguments.concurrency)
         for i, file in files_to_review {
@@ -42,10 +43,7 @@ async fn main {
                 ),
               )
               let response = thread.run(input.prompt)
-              @app.review_result_from_response(
-                input,
-                response.final_response,
-              )
+              @app.review_result_from_response(input, response.final_response)
             } catch {
               e => {
                 @stdio.stderr.write("Error reviewing \{file}:\n\{e}\n")
@@ -84,7 +82,6 @@ async fn main {
           })
         }
       })
-
       let successful = results.filter(fn(r) { r.success }).length()
       let failed = results.filter(fn(r) { !r.success })
       let rel_output_dir = @app.summary_output_dir(output_dir, project_root)
