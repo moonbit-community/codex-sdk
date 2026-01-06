@@ -89,11 +89,11 @@ async fn ensure_repo_columns(db : @sqlite.Database) -> Unit {
   let rows = db.query("PRAGMA table_info(repositories);") catch {
     e => @error.reraise(e)
   }
-  let mut columns = @hashset.HashSet::new()
+  let columns = @hashset.HashSet::new()
   for row in rows {
     match row {
       Object({ "name": String(name), .. }) => {
-        columns.insert(name)
+        columns.add(name)
       }
       _ => continue
     }
@@ -282,7 +282,8 @@ async fn get_target_repo_url(original_url : String) -> String {
     Some((o, r)) => (o, r)
     None => @error.fail("Invalid repository URL: \{original_url}")
   }
-  let current_user = match get_current_user() catch { _ => None } {
+  let current_user_opt = get_current_user() catch { _ => None }
+  let current_user = match current_user_opt {
     Some(u) => u
     None => @error.fail("Unable to determine current GitHub user")
   }

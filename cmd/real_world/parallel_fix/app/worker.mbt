@@ -11,7 +11,7 @@ type CommitMessageGenerator = async (RepositoryRecord, String) -> String
 type PrMetadataGenerator = async (RepositoryRecord, String) -> (String, String)
 
 ///|
-struct PrMetadata {
+priv struct PrMetadata {
   state : String
   branch_name : String
   head_sha : String
