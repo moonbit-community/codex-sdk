@@ -32,6 +32,12 @@ fn escape_sql(s : String) -> String {
 }
 
 ///|
+/// Get display title for a task (prefer summarized title).
+fn task_display_title(repo : RepositoryRecord) -> String {
+  repo.task_title.unwrap_or(repo.task)
+}
+
+///|
 /// Read repository URLs from file
 async fn read_repos_file(path : String) -> Array[String] {
   let content = @fs.read_file(path).text() catch { e => @error.reraise(e) }
@@ -107,6 +113,11 @@ async fn ensure_repo_columns(db : @sqlite.Database) -> Unit {
     db.exec(
       "ALTER TABLE repositories ADD COLUMN last_pr_comment_count INTEGER;",
     ) catch {
+      e => @error.reraise(e)
+    }
+  }
+  if !columns.contains("task_title") {
+    db.exec("ALTER TABLE repositories ADD COLUMN task_title TEXT;") catch {
       e => @error.reraise(e)
     }
   }

@@ -117,7 +117,9 @@ pub async fn process_repository(
 
       // Get PR comments and run AI task
       let comments = get_pr_comments(clone_path, pr_num)
-      @stdio.stdout.write("info Running AI task: \{repo.task}\n")
+      @stdio.stdout.write(
+        "info Running AI task: \{task_display_title(repo)}\n",
+      )
       let prompt = task_prompt(repo, Some(comments))
       let session_id_opt = run_task(clone_path, prompt) catch {
         e => @error.fail_with("AI task failed", e)
@@ -171,7 +173,9 @@ pub async fn process_repository(
       let branch_name = setup_work_branch(clone_path, config.branch_prefix) catch {
         e => @error.fail_with("Failed to setup work branch", e)
       }
-      @stdio.stdout.write("info Running AI task: \{repo.task}\n")
+      @stdio.stdout.write(
+        "info Running AI task: \{task_display_title(repo)}\n",
+      )
       let prompt = task_prompt(repo, None)
       let session_id_opt = run_task(clone_path, prompt) catch {
         e => @error.fail_with("AI task failed", e)

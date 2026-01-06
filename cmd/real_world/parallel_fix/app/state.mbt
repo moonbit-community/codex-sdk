@@ -7,15 +7,21 @@ async fn add_repository(
   db : @sqlite.Database,
   url : String,
   task : String,
+  task_title : String?,
 ) -> Int? {
   let now = @async.now()
   let escaped_url = escape_sql(url)
   let escaped_task = escape_sql(task)
+  let escaped_task_title = task_title.map(fn(title) { escape_sql(title) })
   let escaped_target_url = escape_sql(url)
+  let task_title_sql = match escaped_task_title {
+    Some(title) => "'\{title}'"
+    None => "NULL"
+  }
 
   // Use INSERT OR IGNORE to handle duplicate (url, task) pairs
   let sql =
-    $|INSERT OR IGNORE INTO repositories (url, task, target_url, completed, created_at, updated_at) VALUES ('\{escaped_url}', '\{escaped_task}', '\{escaped_target_url}', 0, '\{now}', '\{now}');
+    $|INSERT OR IGNORE INTO repositories (url, task, task_title, target_url, completed, created_at, updated_at) VALUES ('\{escaped_url}', '\{escaped_task}', \{task_title_sql}, '\{escaped_target_url}', 0, '\{now}', '\{now}');
     $|SELECT last_insert_rowid();
     $|
   let id_str = db.exec_string(sql) catch {
@@ -38,7 +44,7 @@ async fn add_repository(
 ///|
 /// Get all repositories that are not completed
 async fn get_incomplete_repos(db : @sqlite.Database) -> Array[RepositoryRecord] {
-  let sql = "SELECT id, url, task, target_url, pr_number, last_pr_head_sha, last_pr_comment_count, completed FROM repositories WHERE completed = 0 ORDER BY created_at ASC;"
+  let sql = "SELECT id, url, task, task_title, target_url, pr_number, last_pr_head_sha, last_pr_comment_count, completed FROM repositories WHERE completed = 0 ORDER BY created_at ASC;"
   let rows = db.query(sql)
   let repos = []
   for row in rows {
@@ -48,6 +54,7 @@ async fn get_incomplete_repos(db : @sqlite.Database) -> Array[RepositoryRecord] 
           "id": Number(id, ..),
           "url": String(url),
           "task": String(task),
+          "task_title"? : task_title,
           "target_url": String(target_url),
           "pr_number"? : pr_number,
           "last_pr_head_sha"? : last_pr_head_sha,
@@ -60,6 +67,10 @@ async fn get_incomplete_repos(db : @sqlite.Database) -> Array[RepositoryRecord] 
           id: id.to_int(),
           url,
           task,
+          task_title: match task_title {
+            Some(String(value)) => Some(value)
+            _ => None
+          },
           target_url,
           pr_number: match pr_number {
             Some(Number(n, ..)) => Some(n.to_int())
@@ -148,7 +159,7 @@ async fn count_completed(db : @sqlite.Database) -> Int {
 ///|
 /// Get all repositories for status display
 async fn get_all_repos(db : @sqlite.Database) -> Array[RepositoryRecord] {
-  let sql = "SELECT id, url, task, target_url, pr_number, last_pr_head_sha, last_pr_comment_count, completed FROM repositories ORDER BY completed ASC, created_at ASC;"
+  let sql = "SELECT id, url, task, task_title, target_url, pr_number, last_pr_head_sha, last_pr_comment_count, completed FROM repositories ORDER BY completed ASC, created_at ASC;"
   let rows = db.query(sql)
   let repos = []
   for row in rows {
@@ -158,6 +169,7 @@ async fn get_all_repos(db : @sqlite.Database) -> Array[RepositoryRecord] {
           "id": Number(id, ..),
           "url": String(url),
           "task": String(task),
+          "task_title"? : task_title,
           "target_url": String(target_url),
           "pr_number"? : pr_number,
           "last_pr_head_sha"? : last_pr_head_sha,
@@ -170,6 +182,10 @@ async fn get_all_repos(db : @sqlite.Database) -> Array[RepositoryRecord] {
           id: id.to_int(),
           url,
           task,
+          task_title: match task_title {
+            Some(String(value)) => Some(value)
+            _ => None
+          },
           target_url,
           pr_number: match pr_number {
             Some(Number(n, ..)) => Some(n.to_int())

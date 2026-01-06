@@ -8,6 +8,7 @@ pub struct RepositoryRecord {
   id : Int
   url : String
   task : String
+  task_title : String?
   target_url : String
   pr_number : Int?
   last_pr_head_sha : String?

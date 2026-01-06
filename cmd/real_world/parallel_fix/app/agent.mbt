@@ -104,6 +104,34 @@ pub fn parse_commit_message(response : String) -> String? raise {
 }
 
 ///|
+/// Build prompt for summarizing a task title.
+pub fn task_title_prompt(task : String) -> String {
+  let prompt =
+    $|Summarize the following task into a short, descriptive title.
+    $|
+    $|Task:
+    $|\{task}
+    $|
+    $|Generate a JSON response with this structure:
+    $|{
+    $|  "title": "A concise title (max 72 characters)"
+    $|}
+    $|
+    $|Keep it professional and specific.
+  prompt
+}
+
+///|
+/// Parse task title from Codex JSON response.
+pub fn parse_task_title(response : String) -> String? raise {
+  let parsed = @json.parse(response) catch { e => @error.reraise(e) }
+  match parsed {
+    Object({ "title": String(title), .. }) => Some(title)
+    _ => None
+  }
+}
+
+///|
 /// Read diff summary for PR metadata generation.
 pub async fn read_diff_summary(
   clone_path : String,

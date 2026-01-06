@@ -190,6 +190,40 @@ pub async fn prepare_run(
 }
 
 ///|
+/// Read a task prompt from a file.
+async fn read_prompt_file(path : String) -> String {
+  let content = @fs.read_file(path).text() catch { e => @error.reraise(e) }
+  let prompt = content.trim(char_set=" \t\n\r").to_string()
+  if prompt.is_empty() {
+    @error.fail("Task file is empty")
+  }
+  prompt
+}
+
+///|
+/// Generate a concise task title using Codex.
+async fn generate_task_title_with_codex(prompt : String) -> String {
+  let codex = @codex.Codex::new(
+    options=@codex.CodexOptions::new(
+      codex_path_override="./alternative_codex.sh",
+    ),
+  )
+  let thread = codex.start_thread(
+    options=@codex.ThreadOptions::new(
+      working_directory=".",
+      model?=@sys.get_env_vars().get("LOWCOST_MODEL"),
+    ),
+  )
+  let title_prompt = task_title_prompt(prompt)
+  let result = thread.run(title_prompt)
+  let title_opt = parse_task_title(result.final_response) catch { _ => None }
+  match title_opt {
+    Some(title) => title
+    None => @error.fail("Task title response missing title field")
+  }
+}
+
+///|
 /// Handle the 'init' subcommand
 /// Initializes the database and working directory
 async fn cmd_init(
@@ -272,7 +306,8 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
     #|Add repositories to the queue
     #|
     #|Options:
-    #|  --task <desc>       Task description (required)
+    #|  --task <desc>       Task description (required unless --task-file)
+    #|  --task-file <path>  Task prompt file (required unless --task)
     #|  --help, -h          Show this help
     #|
     #|Global options are set before the subcommand:
@@ -281,9 +316,12 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
     #|
 
   // Parse arguments
-  let parsed_args = @args.parse(args, flags=["help"], options=["task"], aliases={
-    "h": "help",
-  }) catch {
+  let parsed_args = @args.parse(
+    args,
+    flags=["help"],
+    options=["task", "task-file"],
+    aliases={ "h": "help" },
+  ) catch {
     e => @error.reraise(e)
   }
 
@@ -308,11 +346,38 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
     @error.fail("Missing required argument: <repos-file>\n\{help_message}")
   }
 
-  // Get task description
-  guard parsed_args.options.get("task") is Some(task_description) else {
+  // Get task description or task file
+  let task_opt = parsed_args.options.get("task")
+  let task_file_opt = parsed_args.options.get("task-file")
+  if task_opt is Some(_) && task_file_opt is Some(_) {
     @error.fail(
-      "Missing required option: --task <description>\n\{help_message}",
+      "Use only one of --task or --task-file\n\{help_message}",
     )
+  }
+  guard task_opt is Some(_) || task_file_opt is Some(_) else {
+    @error.fail(
+      "Missing required option: --task <description> or --task-file <path>\n\{help_message}",
+    )
+  }
+  let (task_description, task_title) = match task_file_opt {
+    Some(task_file) => {
+      let prompt = read_prompt_file(task_file) catch {
+        e => @error.fail_with("Failed to read task file", e)
+      }
+      let title = generate_task_title_with_codex(prompt) catch {
+        e => {
+          @stdio.stderr.write(
+            "warning Failed to summarize task title: \{e}\n",
+          )
+          "Task"
+        }
+      }
+      (prompt, Some(title))
+    }
+    None => {
+      let task_value = task_opt.unwrap_or("")
+      (task_value, Some(task_value))
+    }
   }
 
   // Check if database exists
@@ -346,10 +411,10 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   let mut added = 0
   let mut skipped = 0
   for repo_url in repos {
-    if add_repository(db, repo_url, task_description) is Some(_) {
+    if add_repository(db, repo_url, task_description, task_title) is Some(_) {
       added = added + 1
       @stdio.stdout.write(
-        "  ✓ Added: \{repo_url} with task: \{task_description}\n",
+        "  ✓ Added: \{repo_url} with task: \{task_title.unwrap_or(task_description)}\n",
       )
     } else {
       skipped = skipped + 1
@@ -446,7 +511,7 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
       if not(repo.completed) {
         shown_incomplete = true
         @stdio.stdout.write("  - \{repo.url}\n")
-        @stdio.stdout.write("    Task: \{repo.task}\n")
+        @stdio.stdout.write("    Task: \{task_display_title(repo)}\n")
         match repo.pr_number {
           Some(pr_num) => @stdio.stdout.write("    PR: #\{pr_num}\n")
           None => @stdio.stdout.write("    PR: Not created yet\n")
@@ -462,7 +527,7 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
       if repo.completed {
         shown_completed = true
         @stdio.stdout.write("  - \{repo.url}\n")
-        @stdio.stdout.write("    Task: \{repo.task}\n")
+        @stdio.stdout.write("    Task: \{task_display_title(repo)}\n")
         match repo.pr_number {
           Some(pr_num) => @stdio.stdout.write("    PR: #\{pr_num}\n")
           None => @stdio.stdout.write("    PR: N/A\n")
@@ -475,6 +540,36 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
   } else {
     @stdio.stdout.write("\nUse --verbose or -v for detailed repository list\n")
   }
+}
+
+///|
+/// Fetch PR cache data (head sha and comment count).
+async fn get_pr_cache_snapshot(
+  clone_path : String,
+  pr_number : Int,
+) -> (String, Int)? {
+  let (status, stdout, _stderr) = @process.collect_output(
+    "gh",
+    [
+      "pr",
+      "view",
+      pr_number.to_string(),
+      "--json",
+      "headRefOid,comments",
+      "--jq",
+      ".headRefOid + \"|\" + (.comments | length | tostring)",
+    ],
+    cwd=clone_path,
+  ) catch {
+    _ => return None
+  }
+  if status != 0 {
+    return None
+  }
+  let output = stdout.trim_output()
+  guard output.split("|").collect() is [head_sha, count_str] else { return None }
+  let count = @strconv.parse_int(count_str) catch { _ => return None }
+  Some((head_sha.to_string(), count))
 }
 
 ///|
@@ -560,6 +655,20 @@ async fn cmd_sync_prs(
             )
             continue
           }
+        }
+        // Update PR cache if possible
+        match get_pr_cache_snapshot(clone_path, pr_num) {
+          Some((head_sha, comment_count)) =>
+            update_pr_cache(db, repo.id, head_sha, comment_count) catch {
+              e =>
+                @stdio.stderr.write(
+                  "warning [\{repo_name}] Failed to update PR cache: \{e}\n",
+                )
+            }
+          None =>
+            @stdio.stderr.write(
+              "warning [\{repo_name}] Failed to read PR cache metadata\n",
+            )
         }
 
         // If completed but PR is still OPEN, reopen it
