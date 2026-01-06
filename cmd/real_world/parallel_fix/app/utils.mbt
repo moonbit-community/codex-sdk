@@ -231,6 +231,23 @@ async fn get_repo_name_and_parent(owner_repo : String) -> (String, String)? {
 }
 
 ///|
+/// Check if a repository exists on GitHub.
+async fn ensure_repo_exists(owner_repo : String) -> Unit {
+  let (status, _stdout, stderr) = @process.collect_output("gh", [
+    "repo",
+    "view",
+    owner_repo,
+    "--json",
+    "nameWithOwner",
+  ]) catch {
+    e => @error.fail_with("Failed to check repository existence", e)
+  }
+  if status != 0 {
+    @error.fail("Repository not found: \{owner_repo}. \{stderr.text()}")
+  }
+}
+
+///|
 /// Create a fork with a specific name and verify the parent repository.
 async fn try_create_fork_url(
   original_repo : String,
@@ -252,9 +269,11 @@ async fn try_create_fork_url(
     }
   }
   if status != 0 {
-    @stdio.stderr.write(
-      "warning Failed to create fork: \{stderr.text()}\n",
-    )
+    let error_text = stderr.text()
+    if error_text.contains("HTTP 404") {
+      @error.fail("Repository not found: \{original_repo}")
+    }
+    @stdio.stderr.write("warning Failed to create fork: \{error_text}\n")
     return None
   }
   let fork_url = @async.retry(
@@ -299,6 +318,9 @@ async fn get_target_repo_url(original_url : String) -> String {
     None => @error.fail("Unable to determine current GitHub user")
   }
   let original_repo = "\{owner}/\{repo}"
+  ensure_repo_exists(original_repo) catch {
+    e => @error.reraise(e)
+  }
   let mut attempt = 0
   while attempt < 20 {
     let fork_name = fork_candidate_name(repo, attempt)
