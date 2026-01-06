@@ -142,18 +142,23 @@ async fn solve_task(
     if task.is_empty() {
       @error.fail("No task provided")
     }
+    let mode = if sandbox_mode is Some(mode) {
+      mode.to_json()
+    } else {
+      "Unknown"
+    }
     @stdio.stdout.write(
       (
-        #|=== MoonBit Task Solver ===
-        #|
+        $|=== MoonBit Task Solver ===
+        $|
         $|Working directory: \{working_directory.unwrap_or(@env.current_dir().unwrap_or("Unknown"))}
         $|Model: \{model.unwrap_or("Unknown")}
-        $|Sandbox mode: \{sandbox_mode.to_json().as_string().unwrap_or("Unknown")}
+        $|Sandbox mode: \{mode}
         $|Task:
         $|\{task}
         $|
-        #|---
-        #|
+        $|---
+        $|
       ),
     )
 
@@ -161,10 +166,10 @@ async fn solve_task(
     let system_context = build_system_context()
     let full_prompt =
       $|\{system_context}
-      #|
-      #|## TASK:
+      $|
+      $|## TASK:
       $|\{task}
-      #|
+      $|
     if verbose {
       @stdio.stdout.write("=== System Context ===\n\{system_context}\n\n")
     }
@@ -197,7 +202,7 @@ async fn solve_task(
     // Print summary
     @stdio.stdout.write(
       (
-        #|=== Agent Response ===
+        $|=== Agent Response ===
         $|\{final_response}
         $|
       ),
@@ -205,7 +210,7 @@ async fn solve_task(
     if usage is Some(u) {
       @stdio.stdout.write(
         (
-          #|=== Usage Stats ===
+          $|=== Usage Stats ===
           $|Input tokens: \{u.input_tokens}
           $|Output tokens: \{u.output_tokens}
           $|
@@ -218,7 +223,7 @@ async fn solve_task(
     @stdio.stdout.write(
       (
         $|Thread ID: \{thread.id().unwrap_or("Unknown")}
-        #|=== Task Complete ===
+        $|=== Task Complete ===
         $|
       ),
     )
@@ -339,17 +344,22 @@ async fn run_interactive_mode(arguments : Arguments) -> Unit {
 
     // Build the system context once
     let system_context = build_system_context()
+    let mode = if arguments.sandbox_mode is Some(mode) {
+      mode.to_json()
+    } else {
+      "Unknown"
+    }
     @stdio.stdout.write(
       (
-        #|=== MoonBit Task Solver (Interactive Mode) ===
-        #|
+        $|=== MoonBit Task Solver (Interactive Mode) ===
+        $|
         $|Model: \{arguments.model.unwrap_or("Unknown")}
-        $|Sandbox mode: \{arguments.sandbox_mode.to_json().as_string().unwrap_or("Unknown")}
+        $|Sandbox mode: \{mode}
         $|Working directory: \{arguments.working_dir.unwrap_or(@env.current_dir().unwrap_or("Unknown"))}
         $|Thread ID: \{thread.id().unwrap_or("Unknown")}
-        #|
-        #|Type your tasks at the prompt. Press Ctrl+D or Ctrl+C to exit.
-        #|
+        $|
+        $|Type your tasks at the prompt. Press Ctrl+D or Ctrl+C to exit.
+        $|
       ),
     )
     let reader = @stdio.stdin
@@ -364,10 +374,10 @@ async fn run_interactive_mode(arguments : Arguments) -> Unit {
         // Build the full prompt with system context
         let full_prompt =
           $|\{system_context}
-          #|
-          #|## TASK:
+          $|
+          $|## TASK:
           $|\{line}
-          #|
+          $|
         let turn = @async.with_task_group(taskgroup => {
           taskgroup.add_defer(() => @stdio.stdout.write(b"\r"))
           taskgroup.spawn_bg(
