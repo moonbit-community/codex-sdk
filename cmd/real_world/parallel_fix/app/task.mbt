@@ -93,10 +93,10 @@ pub fn parse_cli_args(cli_args : ArrayView[String]) -> ParsedCommand? raise {
 }
 
 ///|
-pub async fn run_non_run(command : ParsedCommand) -> Unit {
+pub async fn run_non_run(command : ParsedCommand, codex : @codex.Codex) -> Unit {
   match command.subcommand {
     "init" => cmd_init(command.args, command.work_dir, command.data_dir)
-    "add" => cmd_add(command.args, command.data_dir)
+    "add" => cmd_add(command.args, command.data_dir, codex)
     "status" => cmd_status(command.args, command.data_dir)
     "sync-prs" => cmd_sync_prs(command.args, command.work_dir, command.data_dir)
     "help" => cmd_help(command.args)
@@ -202,12 +202,7 @@ async fn read_prompt_file(path : String) -> String {
 
 ///|
 /// Generate a concise task title using Codex.
-async fn generate_task_title_with_codex(prompt : String) -> String {
-  let codex = @codex.Codex::new(
-    options=@codex.CodexOptions::new(
-      codex_path_override="./alternative_codex.sh",
-    ),
-  )
+async fn generate_task_title_with_codex(codex : @codex.Codex, prompt : String) -> String {
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(
       working_directory=".",
@@ -299,7 +294,7 @@ async fn cmd_init(
 ///|
 /// Handle the 'add' subcommand
 /// Adds repositories from a file to the database
-async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
+async fn cmd_add(args : ArrayView[String], data_dir : String, codex : @codex.Codex) -> Unit {
   let help_message =
     #|Usage: add <repos-file> [OPTIONS]
     #|
@@ -362,9 +357,11 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
       let prompt = read_prompt_file(task_file) catch {
         e => @error.fail_with("Failed to read task file", e)
       }
-      let title = generate_task_title_with_codex(prompt) catch {
+      let title = generate_task_title_with_codex(codex, prompt) catch {
         e => {
-          @stdio.stderr.write("warning Failed to summarize task title: \{e}\n")
+          @stdio.stderr.write(
+            "warning Failed to summarize task title: \{e}\n",
+          )
           "Task"
         }
       }

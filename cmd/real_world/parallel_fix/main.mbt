@@ -1,5 +1,6 @@
 ///|
 async fn main {
+  let codex = @codex.Codex::new()
   let command_opt = @app.parse_cli_args(@sys.get_cli_args()[1:])
   match command_opt {
     None => {
@@ -46,7 +47,6 @@ async fn main {
             @stdio.stdout.write(
               "\nProcessing \{run_context.incomplete_repos.length()} incomplete repositories...\n\n",
             )
-            let codex = @codex.Codex::new()
             let run_task = async fn(clone_path : String, prompt : String) {
               run_task_with_codex(codex, clone_path, prompt)
             }
@@ -102,7 +102,7 @@ async fn main {
           }
         }
       } else {
-        @app.run_non_run(command)
+        @app.run_non_run(command, codex)
       }
   }
 }
