@@ -111,6 +111,7 @@ pub struct RunContext {
   data_dir : String
   parallelism : Int
   branch_prefix : String
+  dry_run : Bool
   db : @sqlite.Database
   total : Int
   incomplete_repos : Array[RepositoryRecord]
@@ -128,6 +129,7 @@ pub fn run_help_message() -> String {
     #|  --branch-prefix <p>    Branch name prefix (default: "ai-fix")
     #|  --offset <n>          Skip first n repositories (default: 0)
     #|  --limit <n>           Process at most n repositories (default: all)
+    #|  --dry-run              Preview what would be processed without executing
     #|  --help, -h             Show this help
     #|
     #|Global options are set before the subcommand:
@@ -147,7 +149,7 @@ pub async fn prepare_run(
 ) -> RunContext? {
   let parsed_args = @args.parse(
     args,
-    flags=["help"],
+    flags=["help", "dry-run"],
     options=["parallelism", "branch-prefix", "offset", "limit"],
     aliases={ "h": "help" },
   ) catch {
@@ -156,6 +158,7 @@ pub async fn prepare_run(
   if parsed_args.flags.get("help") is Some(true) {
     return None
   }
+  let dry_run = parsed_args.flags.get("dry-run") is Some(true)
   let parallelism_str = parsed_args.options.get("parallelism").unwrap_or("4")
   let parallelism = @strconv.parse_int(parallelism_str) catch {
     e => @error.fail_with("Invalid parallelism value", e)
@@ -202,6 +205,7 @@ pub async fn prepare_run(
     data_dir,
     parallelism,
     branch_prefix,
+    dry_run,
     db,
     total,
     incomplete_repos,
