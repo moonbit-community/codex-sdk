@@ -742,22 +742,7 @@ async fn ensure_gitignore_entries(clone_path : String) -> Unit {
     }
 
     // Commit the changes
-    let mut commit_msg = "chore: add missing .gitignore entries"
-    if !has_build && !has_target && !has_target_slash {
-      commit_msg = "chore: add _build/, target, and target/ to .gitignore"
-    } else if !has_build && !has_target {
-      commit_msg = "chore: add _build/ and target to .gitignore"
-    } else if !has_build && !has_target_slash {
-      commit_msg = "chore: add _build/ and target/ to .gitignore"
-    } else if !has_target && !has_target_slash {
-      commit_msg = "chore: add target and target/ to .gitignore"
-    } else if !has_build {
-      commit_msg = "chore: add _build/ to .gitignore"
-    } else if !has_target {
-      commit_msg = "chore: add target to .gitignore"
-    } else if !has_target_slash {
-      commit_msg = "chore: add target/ to .gitignore"
-    }
+    let commit_msg = "chore: update .gitignore for MoonBit artifacts"
     let (commit_status, _, commit_stderr) = @process.collect_output(
       "git",
       ["commit", "-m", commit_msg],
