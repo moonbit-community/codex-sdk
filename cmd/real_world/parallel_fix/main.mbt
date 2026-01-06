@@ -87,6 +87,7 @@ async fn main {
               work_dir: run_context.work_dir,
               branch_prefix: run_context.branch_prefix,
               db: run_context.db,
+              force: run_context.force,
             }
             let mut processed = 0
             let mut successful = 0

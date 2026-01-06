@@ -112,6 +112,7 @@ pub struct RunContext {
   parallelism : Int
   branch_prefix : String
   dry_run : Bool
+  force : Bool
   db : @sqlite.Database
   total : Int
   incomplete_repos : Array[RepositoryRecord]
@@ -130,14 +131,12 @@ pub fn run_help_message() -> String {
     #|  --offset <n>          Skip first n repositories (default: 0)
     #|  --limit <n>           Process at most n repositories (default: all)
     #|  --dry-run              Preview what would be processed without executing
+    #|  --force                Skip cache and run AI on all repos
     #|  --help, -h             Show this help
     #|
     #|Global options are set before the subcommand:
-    #|  --work-dir <path>      Working directory for clones (default: /tmp/parallel-fix)
-    #|  --data-dir <path>      Data directory for database (default: ~/.parallel-fix)
-    #|
-    #|Note: Each run is a fresh start. There is no persistent failure state.
-    #|
+    #|  --data-dir <path>      Database directory (default: ".data")
+    #|  --work-dir <path>      Working directory for clones (default: ".work")
   message
 }
 
@@ -159,6 +158,7 @@ pub async fn prepare_run(
     return None
   }
   let dry_run = parsed_args.flags.get("dry-run") is Some(true)
+  let force = parsed_args.flags.get("force") is Some(true)
   let parallelism_str = parsed_args.options.get("parallelism").unwrap_or("4")
   let parallelism = @strconv.parse_int(parallelism_str) catch {
     e => @error.fail_with("Invalid parallelism value", e)
@@ -210,6 +210,7 @@ pub async fn prepare_run(
     parallelism,
     branch_prefix,
     dry_run,
+    force,
     db,
     total,
     incomplete_repos: incomplete_repos.to_array(),

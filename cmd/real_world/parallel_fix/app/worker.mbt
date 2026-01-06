@@ -104,7 +104,7 @@ pub async fn process_repository(
       )
 
       // Get branch name from PR and checkout
-      if pr_cache_is_fresh(repo, pr_meta) {
+      if !config.force && pr_cache_is_fresh(repo, pr_meta) {
         @stdio.stdout.write(
           "info [\{repo_name}] No new PR updates, skipping AI run\n",
         )

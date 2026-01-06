@@ -71,6 +71,7 @@ pub struct RunContext {
   parallelism : Int
   branch_prefix : String
   dry_run : Bool
+  force : Bool
   db : @sqlite.Database
   total : Int
   incomplete_repos : Array[RepositoryRecord]
@@ -80,6 +81,7 @@ pub(all) struct WorkerConfig {
   work_dir : String
   branch_prefix : String
   db : @sqlite.Database
+  force : Bool
 }
 
 // Type aliases

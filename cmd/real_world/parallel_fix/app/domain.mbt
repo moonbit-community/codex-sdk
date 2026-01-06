@@ -22,4 +22,5 @@ pub(all) struct WorkerConfig {
   work_dir : String
   branch_prefix : String
   db : @sqlite.Database
+  force : Bool
 }
