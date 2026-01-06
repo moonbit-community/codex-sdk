@@ -1,0 +1,84 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex-example/real_world/parallel_fix/app"
+
+import(
+  "peter-jerry-ye/codex/x/sqlite"
+)
+
+// Values
+pub fn commit_message_prompt(RepositoryRecord, String) -> String
+
+pub fn fallback_pr_body(String) -> String
+
+pub fn fallback_pr_title() -> String
+
+pub fn help_message() -> String
+
+pub fn parse_cli_args(ArrayView[String]) -> ParsedCommand? raise
+
+pub fn parse_commit_message(String) -> String? raise
+
+pub fn parse_pr_metadata(String) -> (String, String)? raise
+
+pub fn parse_task_title(String) -> String? raise
+
+pub fn pr_metadata_prompt(RepositoryRecord, String) -> String
+
+pub async fn prepare_run(ArrayView[String], String, String) -> RunContext?
+
+pub async fn process_repository(WorkerConfig, RepositoryRecord, async (String, String) -> String?, async (RepositoryRecord, String) -> String, async (RepositoryRecord, String) -> (String, String)) -> Unit
+
+pub async fn read_diff_summary(String, String, String) -> String?
+
+pub async fn read_git_diff(String) -> String
+
+pub fn run_help_message() -> String
+
+pub async fn run_non_run(ParsedCommand) -> Unit
+
+pub fn task_prompt(RepositoryRecord, String?) -> String
+
+pub fn task_title_prompt(String) -> String
+
+// Errors
+
+// Types and methods
+pub struct ParsedCommand {
+  subcommand : String
+  args : ArrayView[String]
+  work_dir : String
+  data_dir : String
+}
+
+pub struct RepositoryRecord {
+  id : Int
+  url : String
+  task : String
+  task_title : String?
+  target_url : String
+  pr_number : Int?
+  last_pr_head_sha : String?
+  last_pr_comment_count : Int?
+  completed : Bool
+}
+
+pub struct RunContext {
+  work_dir : String
+  data_dir : String
+  parallelism : Int
+  branch_prefix : String
+  db : @sqlite.Database
+  total : Int
+  incomplete_repos : Array[RepositoryRecord]
+}
+
+pub(all) struct WorkerConfig {
+  work_dir : String
+  branch_prefix : String
+  db : @sqlite.Database
+}
+
+// Type aliases
+
+// Traits
+

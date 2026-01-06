@@ -1,0 +1,56 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex-example/real_world/review_mbti/app"
+
+// Values
+pub fn error_result(String, String) -> ReviewResult
+
+pub fn help_message() -> String
+
+pub fn output_dir(Arguments) -> String
+
+pub fn parse_cli_args(ArrayView[String]) -> Arguments? raise
+
+pub async fn prepare_review_input(String, String, Bool) -> ReviewInput
+
+pub async fn resolve_files_to_review(Arguments) -> Array[String]
+
+pub fn review_result_from_response(ReviewInput, String) -> ReviewResult
+
+pub async fn save_review_to_file(ReviewResult, String) -> String?
+
+pub fn summary_output_dir(String, String) -> String
+
+// Errors
+
+// Types and methods
+pub struct Arguments {
+  mut all : Bool
+  mut changed : Bool
+  mut files : Array[String]
+  mut concurrency : Int
+  mut verbose : Bool
+  mut path : String
+  mut output : String
+}
+pub impl Default for Arguments
+
+pub struct ReviewInput {
+  file : String
+  relative_path : String
+  pkg_name : String
+  prompt : String
+}
+
+pub struct ReviewResult {
+  file : String
+  pkg_name : String
+  review : String
+  success : Bool
+  error : String
+}
+pub impl Show for ReviewResult
+
+// Type aliases
+
+// Traits
+

@@ -232,8 +232,7 @@ async fn update_pr_cache(
 ) -> Unit {
   let now = @async.now()
   let escaped_head_sha = escape_sql(head_sha)
-  let sql =
-    "UPDATE repositories SET last_pr_head_sha = '\{escaped_head_sha}', last_pr_comment_count = \{comment_count}, updated_at = '\{now}' WHERE id = \{repo_id};"
+  let sql = "UPDATE repositories SET last_pr_head_sha = '\{escaped_head_sha}', last_pr_comment_count = \{comment_count}, updated_at = '\{now}' WHERE id = \{repo_id};"
   db.exec(sql) catch {
     e => @error.reraise(e)
   }

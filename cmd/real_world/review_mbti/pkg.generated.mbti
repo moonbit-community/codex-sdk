@@ -6,11 +6,6 @@ package "peter-jerry-ye/codex-example/real_world/review_mbti"
 // Errors
 
 // Types and methods
-type Arguments
-pub impl Default for Arguments
-
-type ReviewResult
-pub impl Show for ReviewResult
 
 // Type aliases
 

@@ -4,19 +4,8 @@ package "peter-jerry-ye/codex-example/real_world/add_docs"
 // Values
 
 // Errors
-type Reraise
 
 // Types and methods
-type Arguments
-pub impl Default for Arguments
-
-type ExecResult
-
-type Module
-
-type Package
-
-type Repo
 
 // Type aliases
 

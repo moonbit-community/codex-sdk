@@ -350,9 +350,7 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   let task_opt = parsed_args.options.get("task")
   let task_file_opt = parsed_args.options.get("task-file")
   if task_opt is Some(_) && task_file_opt is Some(_) {
-    @error.fail(
-      "Use only one of --task or --task-file\n\{help_message}",
-    )
+    @error.fail("Use only one of --task or --task-file\n\{help_message}")
   }
   guard task_opt is Some(_) || task_file_opt is Some(_) else {
     @error.fail(
@@ -366,9 +364,7 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
       }
       let title = generate_task_title_with_codex(prompt) catch {
         e => {
-          @stdio.stderr.write(
-            "warning Failed to summarize task title: \{e}\n",
-          )
+          @stdio.stderr.write("warning Failed to summarize task title: \{e}\n")
           "Task"
         }
       }
@@ -567,7 +563,9 @@ async fn get_pr_cache_snapshot(
     return None
   }
   let output = stdout.trim_output()
-  guard output.split("|").collect() is [head_sha, count_str] else { return None }
+  guard output.split("|").collect() is [head_sha, count_str] else {
+    return None
+  }
   let count = @strconv.parse_int(count_str) catch { _ => return None }
   Some((head_sha.to_string(), count))
 }

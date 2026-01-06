@@ -64,6 +64,11 @@ pub async fn process_repository(
     e => @error.reraise(e)
   }
 
+  // Ensure .gitignore has required entries
+  ensure_gitignore_entries(clone_path) catch {
+    e => @stdio.stderr.write("warning Failed to update .gitignore: \{e}\n")
+  }
+
   // Check if PR exists and handle accordingly
   match repo.pr_number {
     Some(pr_num) => {
@@ -117,9 +122,7 @@ pub async fn process_repository(
 
       // Get PR comments and run AI task
       let comments = get_pr_comments(clone_path, pr_num)
-      @stdio.stdout.write(
-        "info Running AI task: \{task_display_title(repo)}\n",
-      )
+      @stdio.stdout.write("info Running AI task: \{task_display_title(repo)}\n")
       let prompt = task_prompt(repo, Some(comments))
       let session_id_opt = run_task(clone_path, prompt) catch {
         e => @error.fail_with("AI task failed", e)
@@ -151,16 +154,8 @@ pub async fn process_repository(
       let head_sha = get_head_sha(clone_path) catch {
         e => @error.fail_with("Failed to read HEAD sha", e)
       }
-      update_pr_cache(
-        config.db,
-        repo.id,
-        head_sha,
-        pr_meta.comment_count,
-      ) catch {
-        e =>
-          @stdio.stderr.write(
-            "warning Failed to update PR cache: \{e}\n",
-          )
+      update_pr_cache(config.db, repo.id, head_sha, pr_meta.comment_count) catch {
+        e => @stdio.stderr.write("warning Failed to update PR cache: \{e}\n")
       }
     }
     None => {
@@ -173,9 +168,7 @@ pub async fn process_repository(
       let branch_name = setup_work_branch(clone_path, config.branch_prefix) catch {
         e => @error.fail_with("Failed to setup work branch", e)
       }
-      @stdio.stdout.write(
-        "info Running AI task: \{task_display_title(repo)}\n",
-      )
+      @stdio.stdout.write("info Running AI task: \{task_display_title(repo)}\n")
       let prompt = task_prompt(repo, None)
       let session_id_opt = run_task(clone_path, prompt) catch {
         e => @error.fail_with("AI task failed", e)
@@ -235,10 +228,7 @@ pub async fn process_repository(
         e => @error.fail_with("Failed to read HEAD sha", e)
       }
       update_pr_cache(config.db, repo.id, head_sha, 0) catch {
-        e =>
-          @stdio.stderr.write(
-            "warning Failed to update PR cache: \{e}\n",
-          )
+        e => @stdio.stderr.write("warning Failed to update PR cache: \{e}\n")
       }
       @stdio.stdout.write("info [\{repo_name}] PR #\{pr_num} created\n")
     }
@@ -667,6 +657,107 @@ async fn ensure_repo_cloned(clone_path : String, url : String) -> Unit {
     e => @error.fail_with("Failed to clone repository", e)
   }
 
+}
+
+///|
+/// Check and update .gitignore with required entries
+async fn ensure_gitignore_entries(clone_path : String) -> Unit {
+  let gitignore_path = "\{clone_path}/.gitignore"
+
+  // Check if .gitignore exists
+  let content = @fs.read_file(gitignore_path).text() catch {
+    e => {
+      @stdio.stderr.write("warning Could not read .gitignore: \{e}\n")
+      return
+    }
+  }
+
+  // Check for required entries
+  let mut has_build = false
+  let mut has_target = false
+  for line in content.split("\n") {
+    let trimmed = line.trim(char_set=" \t").to_string()
+    if trimmed == "_build/" || trimmed == "_build" {
+      has_build = true
+    }
+    if trimmed == "target" || trimmed == "/target" || trimmed == "target/" {
+      has_target = true
+    }
+  }
+
+  // Update .gitignore if needed
+  if !has_build || !has_target {
+    @stdio.stdout.write("info Updating .gitignore with missing entries...\n")
+    let mut new_content = content
+
+    // Add _build/ if missing
+    if !has_build {
+      if !new_content.is_empty() && !new_content.has_suffix("\n") {
+        new_content = "\{new_content}\n"
+      }
+      new_content = "\{new_content}_build/\n"
+    }
+
+    // Add target if missing
+    if !has_target {
+      if !new_content.is_empty() && !new_content.has_suffix("\n") {
+        new_content = "\{new_content}\n"
+      }
+      new_content = "\{new_content}target\n"
+    }
+
+    // Write updated content
+    @fs.write_file(gitignore_path, new_content) catch {
+      e => @error.fail_with("Failed to update .gitignore", e)
+    }
+
+    // Stage the changes using git add
+    let (status, _, stderr) = @process.collect_output(
+      "git",
+      ["add", ".gitignore"],
+      cwd=clone_path,
+    ) catch {
+      e => {
+        @stdio.stderr.write("warning Failed to stage .gitignore: \{e}\n")
+        return
+      }
+    }
+    if status != 0 {
+      @stdio.stderr.write(
+        "warning Failed to stage .gitignore: \{stderr.text()}\n",
+      )
+      return
+    }
+
+    // Commit the changes
+    let mut commit_msg = "chore: add missing .gitignore entries"
+    if !has_build && !has_target {
+      commit_msg = "chore: add _build/ and target to .gitignore"
+    } else if !has_build {
+      commit_msg = "chore: add _build/ to .gitignore"
+    } else if !has_target {
+      commit_msg = "chore: add target to .gitignore"
+    }
+    let (commit_status, _, commit_stderr) = @process.collect_output(
+      "git",
+      ["commit", "-m", commit_msg],
+      cwd=clone_path,
+    ) catch {
+      e => {
+        @stdio.stderr.write(
+          "warning Failed to commit .gitignore update: \{e}\n",
+        )
+        return
+      }
+    }
+    if commit_status != 0 {
+      @stdio.stderr.write(
+        "warning Failed to commit .gitignore update: \{commit_stderr.text()}\n",
+      )
+    } else {
+      @stdio.stdout.write("info Committed .gitignore update\n")
+    }
+  }
 }
 
 ///|

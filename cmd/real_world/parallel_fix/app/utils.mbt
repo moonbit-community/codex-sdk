@@ -98,9 +98,7 @@ async fn ensure_repo_columns(db : @sqlite.Database) -> Unit {
   let columns = @hashset.HashSet::new()
   for row in rows {
     match row {
-      Object({ "name": String(name), .. }) => {
-        columns.add(name)
-      }
+      Object({ "name": String(name), .. }) => columns.add(name)
       _ => continue
     }
   }
@@ -212,13 +210,7 @@ fn fork_candidate_name(repo : String, attempt : Int) -> String {
 /// Get repository nameWithOwner and parent nameWithOwner (empty if no parent)
 async fn get_repo_name_and_parent(owner_repo : String) -> (String, String)? {
   let (status, stdout, _) = @process.collect_output("gh", [
-    "repo",
-    "view",
-    owner_repo,
-    "--json",
-    "nameWithOwner,parent",
-    "--jq",
-    ".nameWithOwner + \"|\" + (.parent.nameWithOwner // \"\")",
+    "repo", "view", owner_repo, "--json", "nameWithOwner,parent", "--jq", ".nameWithOwner + \"|\" + (.parent.nameWithOwner // \"\")",
   ]) catch {
     _ => return None
   }
@@ -234,11 +226,7 @@ async fn get_repo_name_and_parent(owner_repo : String) -> (String, String)? {
 /// Check if a repository exists on GitHub.
 async fn ensure_repo_exists(owner_repo : String) -> Unit {
   let (status, _stdout, stderr) = @process.collect_output("gh", [
-    "repo",
-    "view",
-    owner_repo,
-    "--json",
-    "nameWithOwner",
+    "repo", "view", owner_repo, "--json", "nameWithOwner",
   ]) catch {
     e => @error.fail_with("Failed to check repository existence", e)
   }
@@ -256,12 +244,7 @@ async fn try_create_fork_url(
 ) -> String? {
   @stdio.stdout.write("info Creating fork \{current_user}/\{fork_name}...\n")
   let (status, _stdout, stderr) = @process.collect_output("gh", [
-    "repo",
-    "fork",
-    original_repo,
-    "--clone=false",
-    "--fork-name",
-    fork_name,
+    "repo", "fork", original_repo, "--clone=false", "--fork-name", fork_name,
   ]) catch {
     e => {
       @stdio.stderr.write("warning Failed to create fork: \{e}\n")
