@@ -21,39 +21,17 @@ async fn main {
           }
           Some(run_context) => {
             if run_context.dry_run {
-              @stdio.stdout.write("DRY RUN - Preview of repositories to process:\n\n")
-              @stdio.stdout.write("Configuration:\n")
-              @stdio.stdout.write("  Work directory: \{run_context.work_dir}\n")
-              @stdio.stdout.write("  Parallelism: \{run_context.parallelism}\n")
-              @stdio.stdout.write(
-                "  Branch prefix: \{run_context.branch_prefix}\n",
-              )
-              @stdio.stdout.write("\n")
-              if run_context.total == 0 {
-                @stdio.stdout.write(
-                  "No repositories in database. Add some with:\n  moon run real_world/parallel_fix -- add <repos-file> --task \"description\"\n",
-                )
-                return
-              }
-              @stdio.stdout.write("Total repositories: \{run_context.total}\n")
-              if run_context.incomplete_repos.is_empty() {
-                @stdio.stdout.write(
-                  "\nNo incomplete repositories to process. All done!\n",
-                )
-                return
-              }
-              @stdio.stdout.write(
-                "\n\{run_context.incomplete_repos.length()} incomplete repositories would be processed:\n\n",
-              )
-              for repo in run_context.incomplete_repos {
-                @stdio.stdout.write("  - \{repo.url}\n")
-                @stdio.stdout.write("    Task: \{task_display_title(repo)}\n")
-                match repo.pr_number {
-                  Some(pr_num) => @stdio.stdout.write("    PR: #\{pr_num}\n")
-                  None => @stdio.stdout.write("    PR: Not created yet\n")
+              @stdio.stdout.write("Repositories to process:\n\n")
+              for (i, repo) in run_context.incomplete_repos.enumerate() {
+                let repo_num = i + 1
+                let pr_info = match repo.pr_number {
+                  Some(pr_num) => "#\{pr_num}"
+                  None => "TODO"
                 }
+                @stdio.stdout.write("  \{repo_num}. \{repo.url} \{pr_info} Task: \{task_display_title(repo)}\n")
               }
-              @stdio.stdout.write("\nUse the same command without --dry-run to execute.\n")
+              @stdio.stdout.write("\nTotal: \{run_context.incomplete_repos.length()}\n")
+              @stdio.stdout.write("Use the same command without --dry-run to execute.\n")
               return
             }
 
