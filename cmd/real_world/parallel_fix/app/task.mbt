@@ -126,6 +126,8 @@ pub fn run_help_message() -> String {
     #|Options:
     #|  --parallelism <n>      Number of parallel workers (default: 4)
     #|  --branch-prefix <p>    Branch name prefix (default: "ai-fix")
+    #|  --offset <n>          Skip first n repositories (default: 0)
+    #|  --limit <n>           Process at most n repositories (default: all)
     #|  --help, -h             Show this help
     #|
     #|Global options are set before the subcommand:
@@ -146,7 +148,7 @@ pub async fn prepare_run(
   let parsed_args = @args.parse(
     args,
     flags=["help"],
-    options=["parallelism", "branch-prefix"],
+    options=["parallelism", "branch-prefix", "offset", "limit"],
     aliases={ "h": "help" },
   ) catch {
     e => @error.reraise(e)
@@ -164,6 +166,17 @@ pub async fn prepare_run(
   let branch_prefix = parsed_args.options
     .get("branch-prefix")
     .unwrap_or("ai-fix")
+  let offset_str = parsed_args.options.get("offset").unwrap_or("0")
+  let offset = @strconv.parse_int(offset_str) catch {
+    e => @error.fail_with("Invalid offset value", e)
+  }
+  if offset < 0 {
+    @error.fail("Offset must be a non-negative integer")
+  }
+  let limit_str = parsed_args.options.get("limit").unwrap_or("-1")
+  let limit = @strconv.parse_int(limit_str) catch {
+    e => @error.fail_with("Invalid limit value", e)
+  }
   let db_path = "\{data_dir}/parallel-fix.db"
   let db = @sqlite.Database::new(db_path)
   db.ensure() catch {
@@ -177,7 +190,13 @@ pub async fn prepare_run(
     e => @error.fail_with("Failed to ensure database schema", e)
   }
   let total = total_count(db)
-  let incomplete_repos = get_incomplete_repos(db)
+  let all_incomplete_repos = get_incomplete_repos(db)
+  let incomplete_repos = if limit == -1 {
+    all_incomplete_repos.slice(offset, all_incomplete_repos.length())
+  } else {
+    let end_idx = @builtin.min_int(offset + limit, all_incomplete_repos.length())
+    all_incomplete_repos.slice(offset, end_idx)
+  }
   Some(RunContext::{
     work_dir,
     data_dir,
