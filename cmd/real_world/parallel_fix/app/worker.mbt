@@ -64,11 +64,6 @@ pub async fn process_repository(
     e => @error.reraise(e)
   }
 
-  // Ensure .gitignore has required entries
-  ensure_gitignore_entries(clone_path) catch {
-    e => @stdio.stderr.write("warning Failed to update .gitignore: \{e}\n")
-  }
-
   // Check if PR exists and handle accordingly
   match repo.pr_number {
     Some(pr_num) => {
@@ -120,6 +115,11 @@ pub async fn process_repository(
         e => @error.fail_with("Failed to checkout PR branch", e)
       }
 
+      // Ensure .gitignore has required entries on the PR branch
+      ensure_gitignore_entries(clone_path) catch {
+        e => @stdio.stderr.write("warning Failed to update .gitignore: \{e}\n")
+      }
+
       // Get PR comments and run AI task
       let comments = get_pr_comments(clone_path, pr_num)
       @stdio.stdout.write("info Running AI task: \{task_display_title(repo)}\n")
@@ -168,6 +168,12 @@ pub async fn process_repository(
       let branch_name = setup_work_branch(clone_path, config.branch_prefix) catch {
         e => @error.fail_with("Failed to setup work branch", e)
       }
+
+      // Ensure .gitignore has required entries on the work branch
+      ensure_gitignore_entries(clone_path) catch {
+        e => @stdio.stderr.write("warning Failed to update .gitignore: \{e}\n")
+      }
+
       @stdio.stdout.write("info Running AI task: \{task_display_title(repo)}\n")
       let prompt = task_prompt(repo, None)
       let session_id_opt = run_task(clone_path, prompt) catch {
@@ -677,7 +683,7 @@ async fn ensure_gitignore_entries(clone_path : String) -> Unit {
   let mut has_target = false
   let mut has_target_slash = false
   for line in content.split("\n") {
-    let trimmed = line.trim(char_set=" \t").to_string()
+    let trimmed = line.trim()
     if trimmed == "_build/" || trimmed == "_build" {
       has_build = true
     }
