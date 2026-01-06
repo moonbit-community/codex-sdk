@@ -46,11 +46,7 @@ async fn main {
             @stdio.stdout.write(
               "\nProcessing \{run_context.incomplete_repos.length()} incomplete repositories...\n\n",
             )
-            let codex = @codex.Codex::new(
-              options=@codex.CodexOptions::new(
-                codex_path_override="./alternative_codex.sh",
-              ),
-            )
+            let codex = @codex.Codex::new()
             let run_task = async fn(clone_path : String, prompt : String) {
               run_task_with_codex(codex, clone_path, prompt)
             }

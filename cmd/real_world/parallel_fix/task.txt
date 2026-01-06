@@ -1,0 +1,19 @@
+Your goal is to fix as many deprecated warnings / errors as possible.
+
+Usually you can try to run `moon fmt` first which will fix some warnings. Other warnings have enough error messages. Consult the skills if you need more info.
+
+One of the current major breaking change is `Iter` to `Iterator`, and `Iter2` to `Iterator2`. If there were a function `iter2` returning `Iter2`, you need to define another function `iterator2` returning `Iterator2`, and let the `iter2` to call this new function.
+
+The `Iterator2::new` and `Iterator::new` accepts a simple callback, that will return `Some(elem)` or `None` based on the state it captured. A typical implementation may look like this:
+
+```
+let mut i = 0
+Iterator::new(fn() {
+    if i < array.length() { 
+        i += 1
+        Some(array[i])
+    } else { None }
+})
+```
+
+Other than that, you must add `target` and `_build` into the `.gitignore` file to prepare for the future migration. And you must commit the change to the `.gitignore` file 

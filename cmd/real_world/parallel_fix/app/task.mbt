@@ -425,11 +425,11 @@ async fn cmd_add(args : ArrayView[String], data_dir : String) -> Unit {
   }
   @stdio.stdout.write(
     (
-      #|
-      #|✓ Done! Added \{added} repository-task pairs, skipped \{skipped}
-      #|
-      #|Next: moon run real_world/parallel_fix -- run --parallelism 8
-      #|
+      $|
+      $|✓ Done! Added \{added} repository-task pairs, skipped \{skipped}
+      $|
+      $|Next: moon run real_world/parallel_fix -- run --parallelism 8
+      $|
     ),
   )
 }
