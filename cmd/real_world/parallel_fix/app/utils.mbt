@@ -78,6 +78,38 @@ async fn ensure_db_schema(db : @sqlite.Database) -> Unit {
   db.exec(schema_sql) catch {
     e => @error.fail_with("Failed to ensure database schema", e)
   }
+  ensure_repo_columns(db) catch {
+    e => @error.fail_with("Failed to ensure repository columns", e)
+  }
+}
+
+///|
+/// Ensure optional columns exist for the repositories table
+async fn ensure_repo_columns(db : @sqlite.Database) -> Unit {
+  let rows = db.query("PRAGMA table_info(repositories);") catch {
+    e => @error.reraise(e)
+  }
+  let mut columns = @hashset.HashSet::new()
+  for row in rows {
+    match row {
+      Object({ "name": String(name), .. }) => {
+        columns.insert(name)
+      }
+      _ => continue
+    }
+  }
+  if !columns.contains("last_pr_head_sha") {
+    db.exec("ALTER TABLE repositories ADD COLUMN last_pr_head_sha TEXT;") catch {
+      e => @error.reraise(e)
+    }
+  }
+  if !columns.contains("last_pr_comment_count") {
+    db.exec(
+      "ALTER TABLE repositories ADD COLUMN last_pr_comment_count INTEGER;",
+    ) catch {
+      e => @error.reraise(e)
+    }
+  }
 }
 
 ///|

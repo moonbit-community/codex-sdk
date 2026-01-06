@@ -11,6 +11,14 @@ type CommitMessageGenerator = async (RepositoryRecord, String) -> String
 type PrMetadataGenerator = async (RepositoryRecord, String) -> (String, String)
 
 ///|
+struct PrMetadata {
+  state : String
+  branch_name : String
+  head_sha : String
+  comment_count : Int
+}
+
+///|
 /// Process a single repository - simplified logic
 pub async fn process_repository(
   config : WorkerConfig,
@@ -64,20 +72,25 @@ pub async fn process_repository(
         "info [\{repo_name}] PR #\{pr_num} exists, checking status...\n",
       )
 
-      // Get PR state from GitHub
-      let pr_state = get_pr_state(clone_path, pr_num) catch {
+      // Get PR metadata from GitHub
+      let pr_meta = get_pr_metadata(clone_path, pr_num) catch {
         e => {
           @stdio.stderr.write(
-            "warning [\{repo_name}] Failed to get PR state: \{e}\n",
+            "warning [\{repo_name}] Failed to get PR metadata: \{e}\n",
           )
-          "UNKNOWN"
+          PrMetadata::{
+            state: "UNKNOWN",
+            branch_name: "",
+            head_sha: "",
+            comment_count: 0,
+          }
         }
       }
 
       // Check if PR is merged or closed
-      if pr_state == "MERGED" || pr_state == "CLOSED" {
+      if pr_meta.state == "MERGED" || pr_meta.state == "CLOSED" {
         @stdio.stdout.write(
-          "info [\{repo_name}] PR #\{pr_num} is \{pr_state}, marking as completed\n",
+          "info [\{repo_name}] PR #\{pr_num} is \{pr_meta.state}, marking as completed\n",
         )
         mark_completed(config.db, repo.id) catch {
           e => @error.fail_with("Failed to mark repository as completed", e)
@@ -87,13 +100,17 @@ pub async fn process_repository(
 
       // PR is still open, get comments and continue work
       @stdio.stdout.write(
-        "info [\{repo_name}] PR #\{pr_num} is \{pr_state}, continuing work...\n",
+        "info [\{repo_name}] PR #\{pr_num} is \{pr_meta.state}, continuing work...\n",
       )
 
       // Get branch name from PR and checkout
-      let branch_name = get_pr_branch(clone_path, pr_num) catch {
-        e => @error.fail_with("Failed to get PR branch", e)
+      if pr_cache_is_fresh(repo, pr_meta) {
+        @stdio.stdout.write(
+          "info [\{repo_name}] No new PR updates, skipping AI run\n",
+        )
+        return
       }
+      let branch_name = pr_meta.branch_name
       checkout_branch(clone_path, branch_name) catch {
         e => @error.fail_with("Failed to checkout PR branch", e)
       }
@@ -128,6 +145,20 @@ pub async fn process_repository(
       }
       push_branch(clone_path, branch_name) catch {
         e => @error.fail_with("Failed to push changes", e)
+      }
+      let head_sha = get_head_sha(clone_path) catch {
+        e => @error.fail_with("Failed to read HEAD sha", e)
+      }
+      update_pr_cache(
+        config.db,
+        repo.id,
+        head_sha,
+        pr_meta.comment_count,
+      ) catch {
+        e =>
+          @stdio.stderr.write(
+            "warning Failed to update PR cache: \{e}\n",
+          )
       }
     }
     None => {
@@ -196,6 +227,15 @@ pub async fn process_repository(
       update_pr_number(config.db, repo.id, pr_num) catch {
         e => @error.fail_with("Failed to save PR number", e)
       }
+      let head_sha = get_head_sha(clone_path) catch {
+        e => @error.fail_with("Failed to read HEAD sha", e)
+      }
+      update_pr_cache(config.db, repo.id, head_sha, 0) catch {
+        e =>
+          @stdio.stderr.write(
+            "warning Failed to update PR cache: \{e}\n",
+          )
+      }
       @stdio.stdout.write("info [\{repo_name}] PR #\{pr_num} created\n")
     }
   }
@@ -203,7 +243,7 @@ pub async fn process_repository(
 
 ///|
 /// Get PR branch name from GitHub
-async fn get_pr_branch(clone_path : String, pr_number : Int) -> String {
+async fn get_pr_metadata(clone_path : String, pr_number : Int) -> PrMetadata {
   let (status, stdout, stderr) = @process.collect_output(
     "gh",
     [
@@ -211,22 +251,57 @@ async fn get_pr_branch(clone_path : String, pr_number : Int) -> String {
       "view",
       pr_number.to_string(),
       "--json",
-      "headRefName",
-      "--jq",
-      ".headRefName",
+      "state,headRefName,headRefOid,comments",
     ],
     cwd=clone_path,
   ) catch {
     e =>
       @error.fail_with(
-        "Failed to get PR branch for \{clone_path} #\{pr_number}",
+        "Failed to get PR metadata for \{clone_path} #\{pr_number}",
         e,
       )
   }
   if status != 0 {
     @error.fail(
-      "Failed to get PR branch for \{clone_path} #\{pr_number}\n\{stderr.text()}",
+      "Failed to get PR metadata for \{clone_path} #\{pr_number}\n\{stderr.text()}",
     )
+  }
+  let parsed = @json.parse(stdout.text()) catch {
+    e => @error.fail_with("Failed to parse PR metadata JSON", e)
+  }
+  match parsed {
+    Object(
+      {
+        "state": String(state),
+        "headRefName": String(branch_name),
+        "headRefOid": String(head_sha),
+        "comments": Array(comments),
+        ..
+      }
+    ) =>
+      PrMetadata::{
+        state,
+        branch_name,
+        head_sha,
+        comment_count: comments.length(),
+      }
+    _ => @error.fail("Unexpected PR metadata JSON shape")
+  }
+}
+
+///|
+fn pr_cache_is_fresh(repo : RepositoryRecord, pr_meta : PrMetadata) -> Bool {
+  match (repo.last_pr_head_sha, repo.last_pr_comment_count) {
+    (Some(head_sha), Some(comment_count)) =>
+      head_sha == pr_meta.head_sha && comment_count == pr_meta.comment_count
+    _ => false
+  }
+}
+
+///|
+async fn get_head_sha(clone_path : String) -> String {
+  let stdout = execute("git", ["rev-parse", "HEAD"], cwd=clone_path) catch {
+    e => @error.reraise(e)
   }
   stdout.trim_output()
 }

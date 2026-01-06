@@ -10,6 +10,8 @@ pub struct RepositoryRecord {
   task : String
   target_url : String
   pr_number : Int?
+  last_pr_head_sha : String?
+  last_pr_comment_count : Int?
   completed : Bool
 }
 

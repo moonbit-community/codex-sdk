@@ -38,7 +38,7 @@ async fn add_repository(
 ///|
 /// Get all repositories that are not completed
 async fn get_incomplete_repos(db : @sqlite.Database) -> Array[RepositoryRecord] {
-  let sql = "SELECT id, url, task, target_url, pr_number, completed FROM repositories WHERE completed = 0 ORDER BY created_at ASC;"
+  let sql = "SELECT id, url, task, target_url, pr_number, last_pr_head_sha, last_pr_comment_count, completed FROM repositories WHERE completed = 0 ORDER BY created_at ASC;"
   let rows = db.query(sql)
   let repos = []
   for row in rows {
@@ -50,6 +50,8 @@ async fn get_incomplete_repos(db : @sqlite.Database) -> Array[RepositoryRecord] 
           "task": String(task),
           "target_url": String(target_url),
           "pr_number"? : pr_number,
+          "last_pr_head_sha"? : last_pr_head_sha,
+          "last_pr_comment_count"? : last_pr_comment_count,
           "completed": Number(completed, ..),
           ..
         }
@@ -60,6 +62,14 @@ async fn get_incomplete_repos(db : @sqlite.Database) -> Array[RepositoryRecord] 
           task,
           target_url,
           pr_number: match pr_number {
+            Some(Number(n, ..)) => Some(n.to_int())
+            _ => None
+          },
+          last_pr_head_sha: match last_pr_head_sha {
+            Some(String(value)) => Some(value)
+            _ => None
+          },
+          last_pr_comment_count: match last_pr_comment_count {
             Some(Number(n, ..)) => Some(n.to_int())
             _ => None
           },
@@ -138,7 +148,7 @@ async fn count_completed(db : @sqlite.Database) -> Int {
 ///|
 /// Get all repositories for status display
 async fn get_all_repos(db : @sqlite.Database) -> Array[RepositoryRecord] {
-  let sql = "SELECT id, url, task, target_url, pr_number, completed FROM repositories ORDER BY completed ASC, created_at ASC;"
+  let sql = "SELECT id, url, task, target_url, pr_number, last_pr_head_sha, last_pr_comment_count, completed FROM repositories ORDER BY completed ASC, created_at ASC;"
   let rows = db.query(sql)
   let repos = []
   for row in rows {
@@ -150,6 +160,8 @@ async fn get_all_repos(db : @sqlite.Database) -> Array[RepositoryRecord] {
           "task": String(task),
           "target_url": String(target_url),
           "pr_number"? : pr_number,
+          "last_pr_head_sha"? : last_pr_head_sha,
+          "last_pr_comment_count"? : last_pr_comment_count,
           "completed": Number(completed, ..),
           ..
         }
@@ -160,6 +172,14 @@ async fn get_all_repos(db : @sqlite.Database) -> Array[RepositoryRecord] {
           task,
           target_url,
           pr_number: match pr_number {
+            Some(Number(n, ..)) => Some(n.to_int())
+            _ => None
+          },
+          last_pr_head_sha: match last_pr_head_sha {
+            Some(String(value)) => Some(value)
+            _ => None
+          },
+          last_pr_comment_count: match last_pr_comment_count {
             Some(Number(n, ..)) => Some(n.to_int())
             _ => None
           },
@@ -181,6 +201,23 @@ async fn save_codex_session(
   let now = @async.now()
   let escaped_session_id = escape_sql(session_id)
   let sql = "INSERT INTO codex_sessions (repository_id, session_id, created_at) VALUES (\{repo_id}, '\{escaped_session_id}', '\{now}');"
+  db.exec(sql) catch {
+    e => @error.reraise(e)
+  }
+}
+
+///|
+/// Update cached PR metadata for a repository
+async fn update_pr_cache(
+  db : @sqlite.Database,
+  repo_id : Int,
+  head_sha : String,
+  comment_count : Int,
+) -> Unit {
+  let now = @async.now()
+  let escaped_head_sha = escape_sql(head_sha)
+  let sql =
+    "UPDATE repositories SET last_pr_head_sha = '\{escaped_head_sha}', last_pr_comment_count = \{comment_count}, updated_at = '\{now}' WHERE id = \{repo_id};"
   db.exec(sql) catch {
     e => @error.reraise(e)
   }

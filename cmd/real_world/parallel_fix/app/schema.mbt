@@ -11,6 +11,8 @@ let schema_sql : String =
   #|    task TEXT NOT NULL,
   #|    target_url TEXT NOT NULL,
   #|    pr_number INTEGER,
+  #|    last_pr_head_sha TEXT,
+  #|    last_pr_comment_count INTEGER,
   #|    completed INTEGER NOT NULL DEFAULT 0,
   #|    created_at TEXT NOT NULL,
   #|    updated_at TEXT NOT NULL,
