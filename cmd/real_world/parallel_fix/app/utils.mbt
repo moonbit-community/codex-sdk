@@ -33,7 +33,7 @@ fn escape_sql(s : String) -> String {
 
 ///|
 /// Get display title for a task (prefer summarized title).
-fn task_display_title(repo : RepositoryRecord) -> String {
+pub fn task_display_title(repo : RepositoryRecord) -> String {
   repo.task_title.unwrap_or(repo.task)
 }
 

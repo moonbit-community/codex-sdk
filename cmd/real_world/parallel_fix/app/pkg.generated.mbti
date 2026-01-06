@@ -2,6 +2,7 @@
 package "peter-jerry-ye/codex-example/real_world/parallel_fix/app"
 
 import(
+  "peter-jerry-ye/codex"
   "peter-jerry-ye/codex/x/sqlite"
 )
 
@@ -34,7 +35,9 @@ pub async fn read_git_diff(String) -> String
 
 pub fn run_help_message() -> String
 
-pub async fn run_non_run(ParsedCommand) -> Unit
+pub async fn run_non_run(ParsedCommand, @codex.Codex) -> Unit
+
+pub fn task_display_title(RepositoryRecord) -> String
 
 pub fn task_prompt(RepositoryRecord, String?) -> String
 
@@ -67,6 +70,7 @@ pub struct RunContext {
   data_dir : String
   parallelism : Int
   branch_prefix : String
+  dry_run : Bool
   db : @sqlite.Database
   total : Int
   incomplete_repos : Array[RepositoryRecord]

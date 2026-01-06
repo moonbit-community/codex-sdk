@@ -117,18 +117,25 @@ pub async fn process_repository(
 
       // Ensure .gitignore has required entries on PR branch
       ensure_gitignore_entries(clone_path, repo_name) catch {
-        e => @stdio.stderr.write("warning [\{repo_name}] Failed to update .gitignore: \{e}\n")
+        e =>
+          @stdio.stderr.write(
+            "warning [\{repo_name}] Failed to update .gitignore: \{e}\n",
+          )
       }
 
       // Get PR comments and run AI task
       let comments = get_pr_comments(clone_path, pr_num)
-      @stdio.stdout.write("info [\{repo_name}] Running AI task: \{task_display_title(repo)}\n")
+      @stdio.stdout.write(
+        "info [\{repo_name}] Running AI task: \{task_display_title(repo)}\n",
+      )
       let prompt = task_prompt(repo, Some(comments))
       let session_id_opt = run_task(clone_path, prompt) catch {
         e => @error.fail_with("AI task failed", e)
       }
       if session_id_opt is Some(session_id) {
-        @stdio.stdout.write("info [\{repo_name}] Saving codex session ID: \{session_id}\n")
+        @stdio.stdout.write(
+          "info [\{repo_name}] Saving codex session ID: \{session_id}\n",
+        )
         save_codex_session(config.db, repo.id, session_id) catch {
           e =>
             @stdio.stderr.write(
@@ -161,8 +168,16 @@ pub async fn process_repository(
           pr_meta
         }
       }
-      update_pr_cache(config.db, repo.id, fresh_pr_meta.head_sha, fresh_pr_meta.comment_count) catch {
-        e => @stdio.stderr.write("warning [\{repo_name}] Failed to update PR cache: \{e}\n")
+      update_pr_cache(
+        config.db,
+        repo.id,
+        fresh_pr_meta.head_sha,
+        fresh_pr_meta.comment_count,
+      ) catch {
+        e =>
+          @stdio.stderr.write(
+            "warning [\{repo_name}] Failed to update PR cache: \{e}\n",
+          )
       }
     }
     None => {
@@ -178,16 +193,22 @@ pub async fn process_repository(
 
       // Ensure .gitignore has required entries on the work branch
       ensure_gitignore_entries(clone_path, repo_name) catch {
-        e => @stdio.stderr.write("warning [\{repo_name}] Failed to update .gitignore: \{e}\n")
+        e =>
+          @stdio.stderr.write(
+            "warning [\{repo_name}] Failed to update .gitignore: \{e}\n",
+          )
       }
-
-      @stdio.stdout.write("info [\{repo_name}] Running AI task: \{task_display_title(repo)}\n")
+      @stdio.stdout.write(
+        "info [\{repo_name}] Running AI task: \{task_display_title(repo)}\n",
+      )
       let prompt = task_prompt(repo, None)
       let session_id_opt = run_task(clone_path, prompt) catch {
         e => @error.fail_with("AI task failed", e)
       }
       if session_id_opt is Some(session_id) {
-        @stdio.stdout.write("info [\{repo_name}] Saving codex session ID: \{session_id}\n")
+        @stdio.stdout.write(
+          "info [\{repo_name}] Saving codex session ID: \{session_id}\n",
+        )
         save_codex_session(config.db, repo.id, session_id) catch {
           e =>
             @stdio.stderr.write(
@@ -545,7 +566,10 @@ async fn commit_changes(
 
 ///|
 /// Run moon fmt and moon info, then commit any changes they make
-async fn run_moon_tools_and_commit(clone_path : String, repo_name : String) -> Unit {
+async fn run_moon_tools_and_commit(
+  clone_path : String,
+  repo_name : String,
+) -> Unit {
   @stdio.stdout.write("info [\{repo_name}] Running moon fmt and moon info...\n")
 
   // Run moon fmt (allow failure)
@@ -563,9 +587,13 @@ async fn run_moon_tools_and_commit(clone_path : String, repo_name : String) -> U
     e => @error.fail_with("Failed to discover repository", e)
   }
   if git_repo.has_changes() {
-    @stdio.stdout.write("info [\{repo_name}] Committing formatting and interface changes...\n")
+    @stdio.stdout.write(
+      "info [\{repo_name}] Committing formatting and interface changes...\n",
+    )
     if !git_repo.commit("chore: run moon fmt and moon info") {
-      @stdio.stderr.write("warning [\{repo_name}] Failed to commit moon tool changes\n")
+      @stdio.stderr.write(
+        "warning [\{repo_name}] Failed to commit moon tool changes\n",
+      )
     }
   } else {
     @stdio.stdout.write("info [\{repo_name}] No changes from moon tools\n")
@@ -674,7 +702,10 @@ async fn ensure_repo_cloned(clone_path : String, url : String) -> Unit {
 
 ///|
 /// Check and update .gitignore with required entries
-async fn ensure_gitignore_entries(clone_path : String, repo_name : String) -> Unit {
+async fn ensure_gitignore_entries(
+  clone_path : String,
+  repo_name : String,
+) -> Unit {
   let gitignore_path = "\{clone_path}/.gitignore"
 
   // Check if .gitignore exists
@@ -704,7 +735,9 @@ async fn ensure_gitignore_entries(clone_path : String, repo_name : String) -> Un
 
   // Update .gitignore if needed
   if !has_build || !has_target || !has_target_slash {
-    @stdio.stdout.write("info [\{repo_name}] Updating .gitignore with missing entries...\n")
+    @stdio.stdout.write(
+      "info [\{repo_name}] Updating .gitignore with missing entries...\n",
+    )
     let mut new_content = content
 
     // Add _build/ if missing

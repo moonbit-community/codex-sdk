@@ -21,20 +21,26 @@ async fn main {
           }
           Some(run_context) => {
             if run_context.dry_run {
-              @stdio.stdout.write("Repositories to process:\n\n")
-              for (i, repo) in run_context.incomplete_repos.enumerate() {
-                let repo_num = i + 1
+              let mut index = 0
+              let mut output = "Repositories to process:\n\n"
+              while index < run_context.incomplete_repos.length() {
+                let repo = run_context.incomplete_repos[index]
+                let repo_num = index + 1
                 let pr_info = match repo.pr_number {
                   Some(pr_num) => "#\{pr_num}"
                   None => "TODO"
                 }
-                @stdio.stdout.write("  \{repo_num}. \{repo.url} \{pr_info} Task: \{task_display_title(repo)}\n")
+                output = output +
+                  "  \{repo_num}. \{repo.url} \{pr_info} Task: \{@app.task_display_title(repo)}\n"
+                index = index + 1
               }
-              @stdio.stdout.write("\nTotal: \{run_context.incomplete_repos.length()}\n")
-              @stdio.stdout.write("Use the same command without --dry-run to execute.\n")
+              output = output +
+                "\nTotal: \{run_context.incomplete_repos.length()}\n"
+              output = output +
+                "Use the same command without --dry-run to execute.\n"
+              @stdio.stdout.write(output)
               return
             }
-
             @stdio.stdout.write("=".repeat(60))
             @stdio.stdout.write("\nSTARTING PARALLEL REPOSITORY PROCESSING\n")
             @stdio.stdout.write("=".repeat(60))

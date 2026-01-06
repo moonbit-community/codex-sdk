@@ -195,10 +195,14 @@ pub async fn prepare_run(
   let total = total_count(db)
   let all_incomplete_repos = get_incomplete_repos(db)
   let incomplete_repos = if limit == -1 {
-    all_incomplete_repos.slice(offset, all_incomplete_repos.length())
+    all_incomplete_repos[offset:]
   } else {
-    let end_idx = @builtin.min_int(offset + limit, all_incomplete_repos.length())
-    all_incomplete_repos.slice(offset, end_idx)
+    let end_idx = if offset + limit > all_incomplete_repos.length() {
+      all_incomplete_repos.length()
+    } else {
+      offset + limit
+    }
+    all_incomplete_repos[offset:end_idx]
   }
   Some(RunContext::{
     work_dir,
@@ -208,7 +212,7 @@ pub async fn prepare_run(
     dry_run,
     db,
     total,
-    incomplete_repos,
+    incomplete_repos: incomplete_repos.to_array(),
   })
 }
 
@@ -225,7 +229,10 @@ async fn read_prompt_file(path : String) -> String {
 
 ///|
 /// Generate a concise task title using Codex.
-async fn generate_task_title_with_codex(codex : @codex.Codex, prompt : String) -> String {
+async fn generate_task_title_with_codex(
+  codex : @codex.Codex,
+  prompt : String,
+) -> String {
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(
       working_directory=".",
@@ -317,7 +324,11 @@ async fn cmd_init(
 ///|
 /// Handle the 'add' subcommand
 /// Adds repositories from a file to the database
-async fn cmd_add(args : ArrayView[String], data_dir : String, codex : @codex.Codex) -> Unit {
+async fn cmd_add(
+  args : ArrayView[String],
+  data_dir : String,
+  codex : @codex.Codex,
+) -> Unit {
   let help_message =
     #|Usage: add <repos-file> [OPTIONS]
     #|
@@ -382,9 +393,7 @@ async fn cmd_add(args : ArrayView[String], data_dir : String, codex : @codex.Cod
       }
       let title = generate_task_title_with_codex(codex, prompt) catch {
         e => {
-          @stdio.stderr.write(
-            "warning Failed to summarize task title: \{e}\n",
-          )
+          @stdio.stderr.write("warning Failed to summarize task title: \{e}\n")
           "Task"
         }
       }
