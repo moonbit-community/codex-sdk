@@ -151,10 +151,7 @@ pub async fn process_repository(
       push_branch(clone_path, branch_name) catch {
         e => @error.fail_with("Failed to push changes", e)
       }
-      let head_sha = get_head_sha(clone_path) catch {
-        e => @error.fail_with("Failed to read HEAD sha", e)
-      }
-      update_pr_cache(config.db, repo.id, head_sha, pr_meta.comment_count) catch {
+      update_pr_cache(config.db, repo.id, pr_meta.head_sha, pr_meta.comment_count) catch {
         e => @stdio.stderr.write("warning Failed to update PR cache: \{e}\n")
       }
     }
