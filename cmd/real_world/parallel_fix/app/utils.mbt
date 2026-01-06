@@ -188,79 +188,83 @@ async fn get_current_user() -> String? {
 }
 
 ///|
-/// Get the fork URL for the current user
-async fn get_fork_url(original_url : String) -> String? {
-  let (_owner, repo) = match extract_owner_repo(original_url) {
-    Some(pair) => pair
-    None => return None
+/// Choose a fork name, adding a numeric suffix on collisions.
+fn fork_candidate_name(repo : String, attempt : Int) -> String {
+  if attempt == 0 {
+    repo
+  } else {
+    "\{repo}-\{attempt + 1}"
   }
-  let current_user_opt = get_current_user() catch { _ => None }
-  let current_user = match current_user_opt {
-    Some(u) => u
-    None => return None
-  }
-  // Use exact match instead of contains to avoid false positives
-  // Set limit to 1000 to avoid pagination issues with users who have many forks
-  let (fork_status, fork_stdout, _) = @process.collect_output("gh", [
-    "repo",
-    "list",
-    current_user,
-    "--fork",
-    "--limit",
-    "1000",
-    "--json",
-    "nameWithOwner",
-    "--jq",
-    ".[] | select(.nameWithOwner == \"\{current_user}/\{repo}\") | .nameWithOwner",
-  ]) catch {
-    _ => return None
-  }
-  if fork_status != 0 {
-    return None
-  }
-  let fork_name = fork_stdout.trim_output()
-  if fork_name.is_empty() {
-    return None
-  }
-  Some("https://github.com/\{fork_name}.git")
 }
 
 ///|
-/// Create a fork of the repository
-async fn create_fork(original_url : String) -> String {
-  let (owner, repo) = match extract_owner_repo(original_url) {
-    Some((o, r)) => (o, r)
-    None => @error.fail("Invalid repository URL: \{original_url}")
+/// Get repository nameWithOwner and parent nameWithOwner (empty if no parent)
+async fn get_repo_name_and_parent(owner_repo : String) -> (String, String)? {
+  let (status, stdout, _) = @process.collect_output("gh", [
+    "repo",
+    "view",
+    owner_repo,
+    "--json",
+    "nameWithOwner,parent",
+    "--jq",
+    ".nameWithOwner + \"|\" + (.parent.nameWithOwner // \"\")",
+  ]) catch {
+    _ => return None
   }
-  @stdio.stdout.write("info Creating fork of \{owner}/\{repo}...\n")
+  if status != 0 {
+    return None
+  }
+  let output = stdout.trim_output()
+  guard output.split("|").collect() is [name, parent] else { return None }
+  Some((name.to_string(), parent.to_string()))
+}
+
+///|
+/// Create a fork with a specific name and verify the parent repository.
+async fn try_create_fork_url(
+  original_repo : String,
+  current_user : String,
+  fork_name : String,
+) -> String? {
+  @stdio.stdout.write("info Creating fork \{current_user}/\{fork_name}...\n")
   let (status, _stdout, stderr) = @process.collect_output("gh", [
     "repo",
     "fork",
-    "\{owner}/\{repo}",
+    original_repo,
     "--clone=false",
+    "--fork-name",
+    fork_name,
   ]) catch {
-    e => @error.fail_with("Failed to create fork", e)
+    e => {
+      @stdio.stderr.write("warning Failed to create fork: \{e}\n")
+      return None
+    }
   }
   if status != 0 {
-    @error.fail("Failed to create fork: \{stderr.text()}")
+    @stdio.stderr.write(
+      "warning Failed to create fork: \{stderr.text()}\n",
+    )
+    return None
   }
-  @stdio.stdout.write("info Fork created successfully\n")
-
-  // Wait for fork to be available in API with retry logic
   let fork_url = @async.retry(
     @async.RetryMethod::FixedDelay(2000),
     max_retry=10,
     async fn() {
-      match get_fork_url(original_url) {
-        Some(url) => url
+      match get_repo_name_and_parent("\{current_user}/\{fork_name}") {
+        Some((name, parent)) if parent == original_repo =>
+          "https://github.com/\{name}.git"
+        Some(_) => @error.fail("Fork parent mismatch")
         None => @error.fail("Fork not yet available in API")
       }
     },
   ) catch {
-    e => @error.fail_with("Failed to get fork URL after creation", e)
+    e => {
+      @stdio.stderr.write("warning Failed to verify fork: \{e}\n")
+      return None
+    }
   }
   @stdio.stdout.write("info Fork URL: \{fork_url}\n")
-  fork_url
+  Some(fork_url)
 }
 
 ///|
@@ -274,15 +278,40 @@ async fn get_target_repo_url(original_url : String) -> String {
   @stdio.stdout.write(
     "info No write access to \{original_url}, checking for fork...\n",
   )
-
-  // Check if fork exists
-  match get_fork_url(original_url) {
-    Some(fork_url) => {
-      @stdio.stdout.write("info Using existing fork: \{fork_url}\n")
-      fork_url
-    }
-    None =>
-      // Fork doesn't exist, create one
-      create_fork(original_url)
+  let (owner, repo) = match extract_owner_repo(original_url) {
+    Some((o, r)) => (o, r)
+    None => @error.fail("Invalid repository URL: \{original_url}")
   }
+  let current_user = match get_current_user() catch { _ => None } {
+    Some(u) => u
+    None => @error.fail("Unable to determine current GitHub user")
+  }
+  let original_repo = "\{owner}/\{repo}"
+  let mut attempt = 0
+  while attempt < 20 {
+    let fork_name = fork_candidate_name(repo, attempt)
+    let candidate_owner_repo = "\{current_user}/\{fork_name}"
+    match get_repo_name_and_parent(candidate_owner_repo) {
+      Some((name, parent)) =>
+        if parent == original_repo {
+          let fork_url = "https://github.com/\{name}.git"
+          @stdio.stdout.write("info Using existing fork: \{fork_url}\n")
+          return fork_url
+        } else {
+          @stdio.stdout.write(
+            "info Fork name \{candidate_owner_repo} is not a fork of \{original_repo}, trying next...\n",
+          )
+        }
+      None =>
+        match try_create_fork_url(original_repo, current_user, fork_name) {
+          Some(fork_url) => return fork_url
+          None =>
+            @stdio.stdout.write(
+              "info Failed to create fork \{candidate_owner_repo}, trying next...\n",
+            )
+        }
+    }
+    attempt = attempt + 1
+  }
+  @error.fail("Unable to find or create a valid fork for \{original_repo}")
 }
