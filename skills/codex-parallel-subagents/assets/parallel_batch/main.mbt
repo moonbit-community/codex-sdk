@@ -14,24 +14,53 @@ struct TaskResult {
 }
 
 ///|
-/// Parse command line arguments for offset and limit
-fn parse_args(args : Array[String]) -> (Int, Int) {
+struct TaskInput {
+  label : String
+  prompt : String
+} derive(FromJson)
+
+///|
+/// Parse command line arguments
+fn parse_args(args : Array[String]) -> (Int, Int, String?) {
   let mut offset = 0
-  let mut limit = -1 // -1 means no limit
-  let mut i = 0
-  while i < args.length() {
-    let arg = args[i]
-    if arg == "--offset" && i + 1 < args.length() {
-      offset = @strconv.parse_int(args[i + 1]) catch { _ => 0 }
-      i = i + 2
-    } else if arg == "--limit" && i + 1 < args.length() {
-      limit = @strconv.parse_int(args[i + 1]) catch { _ => -1 }
-      i = i + 2
-    } else {
-      i = i + 1
+  let mut limit = -1
+  let mut file : String? = None
+  loop args[:] {
+    ["--offset", val, .. rest] => {
+      offset = @strconv.parse_int(val) catch { _ => 0 }
+      continue rest
     }
+    ["--limit", val, .. rest] => {
+      limit = @strconv.parse_int(val) catch { _ => -1 }
+      continue rest
+    }
+    ["--file", val, .. rest] => {
+      file = Some(val)
+      continue rest
+    }
+    [_, .. rest] => continue rest
+    [] => break
   }
-  (offset, limit)
+  (offset, limit, file)
+}
+
+///|
+/// Read tasks from JSON file or stdin
+async fn read_tasks(file : String?) -> Array[Task] raise Error {
+  let content = match file {
+    Some(path) => @fs.read_file(path).text() catch { e => raise e }
+    None => @stdio.stdin.read_all().text()
+  }
+  let json = @json.parse(content) catch { e => raise e }
+  guard json is Array(items) else {
+    raise @builtin.Failure("Expected JSON array of tasks")
+  }
+  let tasks : Array[Task] = []
+  for i, item in items {
+    let input : TaskInput = @json.from_json(item) catch { e => raise e }
+    tasks.push({ index: i, label: input.label, prompt: input.prompt })
+  }
+  tasks
 }
 
 ///|
@@ -44,6 +73,23 @@ async fn log_progress(
 ) -> Unit {
   let status = if success { "OK" } else { "FAIL" }
   @stdio.stderr.write("[\{completed}/\{total}] \{status}: \{label}\n")
+}
+
+///|
+/// Escape string for JSON output
+fn escape_json(s : String) -> String {
+  let result = StringBuilder::new()
+  for c in s {
+    match c {
+      '\\' => result.write_string("\\\\")
+      '"' => result.write_string("\\\"")
+      '\n' => result.write_string("\\n")
+      '\r' => result.write_string("\\r")
+      '\t' => result.write_string("\\t")
+      _ => result.write_char(c)
+    }
+  }
+  result.to_string()
 }
 
 ///|
@@ -79,18 +125,22 @@ async fn run_task(
 async fn main {
   let env = @sys.get_env_vars()
   let args = @sys.get_cli_args()
-  let (offset, limit) = parse_args(args)
+  let (offset, limit, file) = parse_args(args)
   let workdir = env.get("CODEX_WORKDIR").unwrap_or(".")
   let parallelism_str = env.get("PARALLELISM").unwrap_or("2")
   let parallelism = @strconv.parse_int(parallelism_str) catch { _ => 2 }
 
-  // Define all tasks
-  let all_tasks : Array[Task] = [
-    { index: 0, label: "Alpha", prompt: "Give 3 ideas for a CLI tool." },
-    { index: 1, label: "Beta", prompt: "Summarize async/await in 2 sentences." },
-    { index: 2, label: "Gamma", prompt: "Write a haiku about compilers." },
-    { index: 3, label: "Delta", prompt: "List 4 MoonBit features." },
-  ]
+  // Read tasks from file or stdin
+  let all_tasks = read_tasks(file) catch {
+    e => {
+      @stdio.stderr.write("Error reading tasks: \{e}\n")
+      return
+    }
+  }
+  if all_tasks.is_empty() {
+    @stdio.stderr.write("No tasks provided\n")
+    return
+  }
 
   // Apply offset and limit for reentrant runs
   let end_index = if limit < 0 {
@@ -109,7 +159,7 @@ async fn main {
   }
   if tasks.is_empty() {
     @stdio.stderr.write(
-      "No tasks to process (offset=\{offset}, limit=\{limit}, total=\{all_tasks.length()})\n",
+      "No tasks in range (offset=\{offset}, limit=\{limit}, total=\{all_tasks.length()})\n",
     )
     return
   }
@@ -120,7 +170,7 @@ async fn main {
   let results : Array[TaskResult] = []
   let completed = @ref.new(0)
   @async.with_task_group(fn(task_group) {
-    let semaphore = @semaphore.Semaphore::new(parallelism)
+    let semaphore = @async.Semaphore::new(parallelism)
     for task in tasks {
       task_group.spawn_bg(allow_failure=true, fn() {
         semaphore.acquire()
@@ -145,16 +195,24 @@ async fn main {
   // Sort results by original index
   results.sort_by_key(fn(r) { r.index })
 
-  // Output results to stdout
-  @stdio.stdout.write("== Results ==\n")
-  for result in results {
-    match result.error {
-      Some(e) => @stdio.stdout.write("# \{result.label} [ERROR]\n\{e}\n\n")
-      None => @stdio.stdout.write("# \{result.label}\n\{result.output}\n\n")
+  // Output results to stdout as JSON
+  @stdio.stdout.write("[\n")
+  for i, result in results {
+    let error_json = match result.error {
+      Some(e) => "\"" + escape_json(e) + "\""
+      None => "null"
+    }
+    let output_escaped = escape_json(result.output)
+    let json = "  {\"label\": \"\{result.label}\", \"output\": \"\{output_escaped}\", \"error\": \{error_json}}"
+    if i < results.length() - 1 {
+      @stdio.stdout.write(json + ",\n")
+    } else {
+      @stdio.stdout.write(json + "\n")
     }
   }
+  @stdio.stdout.write("]\n")
 
-  // Summary
+  // Summary to stderr
   let failed = results.filter(fn(r) { r.error is Some(_) }).length()
   let succeeded = results.length() - failed
   @stdio.stderr.write("Completed: \{succeeded} succeeded, \{failed} failed\n")

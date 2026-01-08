@@ -25,57 +25,27 @@ Run multiple Codex SDK threads concurrently with bounded parallelism and collect
 | New repo setup | [references/greenfield-setup.md](references/greenfield-setup.md) |
 | Troubleshooting | [references/troubleshooting.md](references/troubleshooting.md) |
 
-## Assets
+## Production-ready assets
 
-Production-ready examples in `assets/`:
+Copy these to jumpstart your implementation:
 
-| Asset | Description |
-|-------|-------------|
-| `parallel_batch` | Reentrant batch processing with offset/limit and progress logging |
-| `package_analyzer` | Discover and summarize all MoonBit packages in a project |
+| Asset | Description | Run |
+|-------|-------------|-----|
+| [parallel_batch](assets/parallel_batch) | Reentrant batch processing with stdin/file input, offset/limit, JSON output | `moon run -C assets/parallel_batch assets/parallel_batch` |
+| [package_analyzer](assets/package_analyzer) | Discover and summarize all MoonBit packages | `moon run -C assets/package_analyzer assets/package_analyzer` |
 
-Run with:
-```bash
-moon run -C <asset_path> <asset_path>
-```
+### How to use these assets
 
-## Quick start: one subagent
+1. **Copy the asset directory** to your project
+2. **Customize `run_task()`** (or the main processing function) for your use case
+3. **Adjust structs** (`TaskInput`, etc.) if you need additional fields
+4. **Set environment variables** as needed (`CODEX_WORKDIR`, `PARALLELISM`)
 
-```moonbit
-async fn run_once(prompt : String, workdir : String) -> String {
-  let codex = @codex.Codex::new()
-  let thread = codex.start_thread(
-    options=@codex.ThreadOptions::new(working_directory=workdir),
-  )
-  let turn = thread.run(prompt) catch { e => @error.reraise(e) }
-  turn.final_response
-}
-```
-
-## Parallel fan-out with bounded concurrency
-
-```moonbit
-async fn run_batch(tasks : Array[String], workdir : String, parallelism : Int) {
-  let codex = @codex.Codex::new()
-  @async.with_task_group(fn(task_group) {
-    let semaphore = @semaphore.Semaphore::new(parallelism)
-    for task in tasks {
-      task_group.spawn_bg(allow_failure=true, fn() {
-        semaphore.acquire()
-        defer semaphore.release()
-        let thread = codex.start_thread(
-          options=@codex.ThreadOptions::new(working_directory=workdir),
-        )
-        let _ = thread.run(task) catch { e => @stdio.stderr.write("\{e}\n") }
-      })
-    }
-  })
-}
-```
+See each asset's README for detailed usage and options.
 
 ## Key rules
 
 1. **One thread per task** - never share threads across concurrent tasks
-2. **Use semaphores** - guard parallel runs with `@semaphore.Semaphore` to avoid rate limits
+2. **Use semaphores** - guard parallel runs with `@async.Semaphore::new(n)` to avoid rate limits
 3. **Set working directory** - use `ThreadOptions::new(working_directory=...)` for task isolation
 4. **Allow failures** - use `allow_failure=true` and capture errors per task
