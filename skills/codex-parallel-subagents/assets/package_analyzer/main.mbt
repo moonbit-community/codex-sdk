@@ -7,14 +7,10 @@ struct PackageSummary {
 ///|
 /// Find all directories containing moon.pkg.json using `find` command
 async fn find_packages(root : String) -> Array[String] {
-  let (exit_code, stdout, _stderr) = @process.collect_output(
-    "find",
-    [
-      root, "-name", "moon.pkg.json", "-type", "f", "-not", "-path",
-      "*/.mooncakes/*", "-not", "-path", "*/_build/*", "-not", "-path",
-      "*/target/*",
-    ],
-  )
+  let (exit_code, stdout, _stderr) = @process.collect_output("find", [
+    root, "-name", "moon.pkg.json", "-type", "f", "-not", "-path", "*/.mooncakes/*",
+    "-not", "-path", "*/_build/*", "-not", "-path", "*/target/*",
+  ])
   if exit_code != 0 {
     return []
   }
@@ -51,11 +47,13 @@ async fn read_mbti(pkg_dir : String) -> String? {
 /// Read .mbt source files in a package directory
 async fn read_sources(pkg_dir : String) -> String {
   let sources : Array[String] = []
-  let entries = @fs.readdir(pkg_dir, include_hidden=false) catch { _ => return "" }
+  let entries = @fs.readdir(pkg_dir, include_hidden=false) catch {
+    _ => return ""
+  }
   for entry in entries {
-    if entry.has_suffix(".mbt") && !entry.has_suffix("_test.mbt") && !entry.has_suffix(
-        "_wbtest.mbt",
-      ) {
+    if entry.has_suffix(".mbt") &&
+      !entry.has_suffix("_test.mbt") &&
+      !entry.has_suffix("_wbtest.mbt") {
       let content = @fs.read_file("\{pkg_dir}/\{entry}").text() catch {
         _ => continue
       }
@@ -164,6 +162,8 @@ async fn main {
   for s in summaries {
     @stdio.stdout.write("\n## \{s.path}\n\{s.summary}\n")
   }
-  let overall = summarize_all(codex, summaries, workdir) catch { e => "ERROR: \{e}" }
+  let overall = summarize_all(codex, summaries, workdir) catch {
+    e => "ERROR: \{e}"
+  }
   @stdio.stdout.write("\n== Overall Project Summary ==\n\{overall}\n")
 }
