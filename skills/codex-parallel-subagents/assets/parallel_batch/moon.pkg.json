@@ -3,7 +3,7 @@
   "import": [
     "peter-jerry-ye/codex",
     "moonbitlang/async",
-    "moonbitlang/async/stdio",
-    "moonbitlang/x/sys"
+    "moonbitlang/async/semaphore",
+    "moonbitlang/async/stdio"
   ]
 }

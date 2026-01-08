@@ -4,11 +4,7 @@ struct Task {
 }
 
 async fn run_task(codex : @codex.Codex, task : Task) -> String {
-  let thread = codex.start_thread(
-    options=@codex.ThreadOptions::new(
-      model?=@sys.get_env_vars().get("MODEL"),
-    ),
-  )
+  let thread = codex.start_thread()
   let turn = thread.run(task.prompt) catch {
     e => return "error: \{e}"
   }

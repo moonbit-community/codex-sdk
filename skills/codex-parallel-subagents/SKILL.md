@@ -1,25 +1,29 @@
 ---
 name: codex-parallel-subagents
-description: Use when building MoonBit tools on this repo's Codex SDK that spawn multiple agent threads in parallel or in batch, including bounded concurrency, per-task threads, streaming events, and collecting session IDs or structured outputs.
+description: Run multiple Codex agent threads in parallel or batch. Use when you need concurrent execution, fan-out patterns, parallel batch processing, multiple agents, bounded concurrency, streaming events, or structured outputs with the Codex SDK.
 ---
 
 # Codex Parallel Subagents
 
-## Overview
+Run multiple Codex SDK threads concurrently with bounded parallelism and collect results safely.
 
-Use the Codex SDK to fan out work into multiple threads, run them concurrently with bounded parallelism, and collect results safely across batch jobs.
+## When to use this skill
 
-## Full running projects (scripts)
+- Running multiple agent tasks in parallel
+- Fan-out work across files, packages, or repositories
+- Batch processing with rate limiting
+- Streaming progress from concurrent tasks
+- Collecting structured outputs from multiple agents
 
-See `skills/codex-parallel-subagents/scripts/` for multiple full MoonBit projects (single prompt, parallel batch, streaming events, structured output, directory summaries, options overrides). Each project is self-contained with `moon.mod.json`, `moon.pkg.json`, and a top-level `main.mbt`, so an agent can copy a folder and run `moon run .` immediately.
+## Quick navigation
 
-## Full running examples (copy/paste)
-
-Read `skills/codex-parallel-subagents/references/full-examples.md` for several complete, runnable examples (single prompt, parallel batch, and streaming events). Each example includes every file you need to paste and a single `moon run cmd/main` command.
-
-## Greenfield setup (new repo)
-
-Read `skills/codex-parallel-subagents/references/greenfield-setup.md` for a full walk-through that starts from `moon new`, adds `peter-jerry-ye/codex`, and ends with a parallel batch example that summarizes books.
+| Need | Resource |
+|------|----------|
+| New to Codex SDK | [references/codex-basics.md](references/codex-basics.md) |
+| Async patterns | [references/async-basics.md](references/async-basics.md) |
+| New repo from scratch | [references/greenfield-setup.md](references/greenfield-setup.md) |
+| Troubleshooting | [references/troubleshooting.md](references/troubleshooting.md) |
+| Runnable examples | `assets/` directory (run with `moon run .`) |
 
 ## Quick start: one subagent
 
@@ -29,10 +33,7 @@ Create a Codex client, start a thread, run a prompt, and read the final response
 async fn run_once(prompt : String, workdir : String) -> String {
   let codex = @codex.Codex::new()
   let thread = codex.start_thread(
-    options=@codex.ThreadOptions::new(
-      working_directory=workdir,
-      model?=@sys.get_env_vars().get("MODEL"),
-    ),
+    options=@codex.ThreadOptions::new(working_directory=workdir),
   )
   let turn = thread.run(prompt) catch { e => @error.reraise(e) }
   turn.final_response
@@ -53,10 +54,7 @@ async fn run_batch(tasks : Array[String], workdir : String, parallelism : Int) {
         semaphore.acquire()
         defer semaphore.release()
         let thread = codex.start_thread(
-          options=@codex.ThreadOptions::new(
-            working_directory=workdir,
-            model?=@sys.get_env_vars().get("MODEL"),
-          ),
+          options=@codex.ThreadOptions::new(working_directory=workdir),
         )
         let _ = thread.run(task) catch { e => @stdio.stderr.write("\{e}\n") }
       })
@@ -102,24 +100,9 @@ async fn run_streamed(prompt : String, workdir : String) {
 
 Ask Codex for JSON and parse `turn.final_response` into a known shape. Prefer `TurnOptions::new(output_schema=...)` when strict output is required.
 
-## Tips and pitfalls
+## Key rules
 
-- Create a new `Thread` per subagent task; do not share a single thread across concurrent tasks.
-- Use `ThreadOptions::new(working_directory=...)` so each task operates in the right repo or worktree.
-- Set `CodexOptions::new(codex_path_override=...)` when you need a custom CLI wrapper (see repo examples).
-- Guard parallel runs with `@semaphore.Semaphore` to avoid rate limits.
-- Use `allow_failure=true` for background tasks and capture errors per task instead of crashing the batch.
-- When you need `peter-jerry-ye/codex` (or other modules), add it with `moon add` before using it in code.
-- MoonBit resolves dependencies with MVS; if you hit conflicts, try pinning a version like `moon add pkg@0.1.1`.
-
-## Common failure modes + quick fixes
-
-- **Session permissions**: ensure your Codex CLI has access to the working directory; set `working_directory=...` and verify the path exists.
-- **Sandbox constraints**: bump to `SandboxMode::WorkspaceWrite` or `DangerFullAccess` when file reads/writes are blocked.
-- **Missing CLI binary**: set `codex_path_override=...` to the correct CLI wrapper.
-- **API config**: verify `OPENAI_API_KEY` or your provider key and `base_url` settings.
-- **Model errors**: double-check model names and rate-limit your batch with a semaphore.
-
-## Examples in the SDK repo (optional)
-
-If you are browsing the Codex SDK repository, read `skills/codex-parallel-subagents/references/repo-examples.md` for concrete patterns from `cmd/real_world/*`.
+1. **One thread per task** - never share threads across concurrent tasks
+2. **Use semaphores** - guard parallel runs with `@semaphore.Semaphore` to avoid rate limits
+3. **Set working directory** - use `ThreadOptions::new(working_directory=...)` for task isolation
+4. **Allow failures** - use `allow_failure=true` and capture errors per task

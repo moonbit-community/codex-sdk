@@ -32,8 +32,7 @@ Replace the imports with this shape (keep your module name):
     "peter-jerry-ye/codex",
     "moonbitlang/async",
     "moonbitlang/async/semaphore",
-    "moonbitlang/async/stdio",
-    "moonbitlang/x/sys"
+    "moonbitlang/async/stdio"
   ]
 }
 ```
@@ -66,11 +65,7 @@ async fn summarize_book(codex : @codex.Codex, book : Book) -> String {
     #|Summarize the following book in 3 bullet points, then give a 1-sentence hook.
     $|Title: \{book.title}
     $|Author: \{book.author}
-  let thread = codex.start_thread(
-    options=@codex.ThreadOptions::new(
-      model?=@sys.get_env_vars().get("MODEL"),
-    ),
-  )
+  let thread = codex.start_thread()
   let turn = thread.run(prompt) catch {
     e => return "error: \{e}"
   }
@@ -110,7 +105,6 @@ Notes:
 - `async fn main` is required because Codex calls are async.
 - Create a new `Thread` per book; do not reuse a single thread concurrently.
 - Use a semaphore to bound concurrency and reduce rate-limit risk.
-- Set `MODEL` if you need a specific model; otherwise the CLI default applies.
 
 ## 4) Run it
 
