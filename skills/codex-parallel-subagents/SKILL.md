@@ -1,11 +1,11 @@
 ---
 name: codex-parallel-subagents
-description: Run multiple Codex agent threads in parallel or batch. Use when you need concurrent execution, fan-out patterns, parallel batch processing, multiple agents, bounded concurrency, streaming events, or structured outputs with the Codex SDK.
+description: Run multiple AI agent threads in parallel with bounded concurrency. Use for parallel file processing, multi-package updates, batch codebase operations, or fan-out tasks. Uses the MoonBit Codex SDK for agent orchestration.
 ---
 
 # Codex Parallel Subagents
 
-Run multiple Codex SDK threads concurrently with bounded parallelism and collect results safely.
+Run multiple AI agent threads concurrently with bounded parallelism and collect results safely.
 
 ## When to use this skill
 
@@ -22,7 +22,6 @@ Run multiple Codex SDK threads concurrently with bounded parallelism and collect
 | New to Codex SDK | [references/codex-basics.md](references/codex-basics.md) |
 | Advanced options | [references/codex-advanced.md](references/codex-advanced.md) |
 | Async patterns | [references/async-basics.md](references/async-basics.md) |
-| New repo setup | [references/greenfield-setup.md](references/greenfield-setup.md) |
 | Troubleshooting | [references/troubleshooting.md](references/troubleshooting.md) |
 
 ## Production-ready assets
@@ -49,3 +48,4 @@ See each asset's README for detailed usage and options.
 2. **Use semaphores** - guard parallel runs with `@async.Semaphore::new(n)` to avoid rate limits
 3. **Set working directory** - use `ThreadOptions::new(working_directory=...)` for task isolation
 4. **Allow failures** - use `allow_failure=true` and capture errors per task
+5. **Avoid conflicts** - for tasks that modify shared resources (e.g., building software, editing same files), use git worktrees or separate directories to isolate each agent
