@@ -49,12 +49,12 @@ Key points:
 
 ## Semaphores for bounded concurrency
 
-Limit parallel execution with `@semaphore.Semaphore`:
+Limit parallel execution with `@async.Semaphore`:
 
 ```moonbit
 async fn run_with_limit(items : Array[String], max_concurrent : Int) {
   @async.with_task_group(fn(task_group) {
-    let semaphore = @semaphore.Semaphore::new(max_concurrent)
+    let semaphore = @async.Semaphore::new(max_concurrent)
     for item in items {
       task_group.spawn_bg(allow_failure=true, fn() {
         semaphore.acquire()
@@ -156,9 +156,10 @@ async fn run_collecting_errors(items : Array[String]) -> Array[TaskResult] {
   "import": [
     "moonbitlang/async",
     "moonbitlang/async/process",
-    "moonbitlang/async/semaphore",
     "moonbitlang/async/fs",
     "moonbitlang/async/stdio"
   ]
 }
 ```
+
+Note: `@async.Semaphore` is available directly from the `moonbitlang/async` package.

@@ -48,7 +48,7 @@ CodexOptions::new(codex_path_override="/path/to/codex")
 - Double-check model names (e.g., `anthropic/claude-sonnet-4`)
 - Rate-limit your batch with a semaphore:
 ```moonbit
-let semaphore = @semaphore.Semaphore::new(2)  // max 2 concurrent
+let semaphore = @async.Semaphore::new(2)  // max 2 concurrent
 ```
 
 ## Dependency issues

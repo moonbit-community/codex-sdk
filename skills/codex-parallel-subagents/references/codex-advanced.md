@@ -24,6 +24,7 @@ let codex = @codex.Codex::new(
 | `codex_path_override` | Path to custom Codex CLI binary |
 | `base_url` | Override API base URL |
 | `api_key` | Override API key |
+| `env` | Environment variables passed to the Codex CLI process (when provided, SDK will not inherit variables) |
 
 ## Thread options
 
@@ -48,6 +49,11 @@ let thread = codex.start_thread(
 | `sandbox_mode` | File access level (`ReadOnly`, `WorkspaceWrite`, `DangerFullAccess`) |
 | `working_directory` | Directory for agent to operate in |
 | `skip_git_repo_check` | Skip git repository validation |
+| `model_reasoning_effort` | Reasoning effort level (`Minimal`, `Low`, `High`, `Xhigh`) |
+| `network_access_enabled` | Whether network access is enabled |
+| `web_search_enabled` | Whether web search is enabled |
+| `approval_policy` | Approval mode for actions (`Never`, `OnRequest`, `OnFailure`, `Untrusted`) |
+| `additional_directories` | Additional directories to mount into the agent's sandbox |
 
 ## Streaming events
 
@@ -55,22 +61,26 @@ Process events as the agent works for real-time progress:
 
 ```moonbit
 async fn run_with_progress(codex : @codex.Codex, prompt : String) -> String {
-  let thread = codex.start_thread()
-  let streamed = thread.run_streamed(prompt)
-  let mut response = ""
-  while streamed.events.next() is Some(event) {
-    match event {
-      ItemCompleted(item) => {
-        @stdio.stderr.write("completed: \{item}\n")
+  @async.with_task_group(fn(taskgroup) {
+    let thread = codex.start_thread()
+    let streamed = thread.run_streamed(prompt, taskgroup~)
+    let mut response = ""
+    while streamed.events.next() is Some(event) {
+      match event {
+        ItemCompleted(item) => {
+          @stdio.stderr.write("completed: \{item}\n")
+          if item is AgentMessageItem(text~, ..) {
+            response = text
+          }
+        }
+        TurnCompleted(usage) => {
+          @stdio.stderr.write("turn completed, tokens: \{usage.input_tokens} in, \{usage.output_tokens} out\n")
+        }
+        _ => ()
       }
-      TurnCompleted(turn) => {
-        response = turn.final_response
-        @stdio.stderr.write("turn completed\n")
-      }
-      _ => ()
     }
-  }
-  response
+    response
+  })
 }
 ```
 
@@ -78,8 +88,14 @@ async fn run_with_progress(codex : @codex.Codex, prompt : String) -> String {
 
 | Event | Description |
 |-------|-------------|
-| `ItemCompleted(item)` | A thread item (message, tool call) completed |
-| `TurnCompleted(turn)` | The entire turn completed, contains final response |
+| `ThreadStarted(thread_id~)` | Emitted when a new thread is started |
+| `TurnStarted` | Emitted when a turn begins processing |
+| `ItemStarted(item)` | A thread item (message, tool call) started |
+| `ItemUpdated(item)` | A thread item was updated |
+| `ItemCompleted(item)` | A thread item completed - check for `AgentMessageItem` to get the final response text |
+| `TurnCompleted(usage)` | The turn completed, contains token usage information |
+| `TurnFailed(error)` | The turn failed with an error |
+| `ThreadErrorEvent(message)` | An unrecoverable error occurred |
 
 ## Structured outputs
 
@@ -130,21 +146,26 @@ async fn run_production_task(
       codex_path_override?=env.get("CODEX_PATH"),
     ),
   )
-  let thread = codex.start_thread(
-    options=@codex.ThreadOptions::new(
-      working_directory=workdir,
-      sandbox_mode=@codex.SandboxMode::WorkspaceWrite,
-    ),
-  )
-  let streamed = thread.run_streamed(prompt)
-  let mut response = ""
-  while streamed.events.next() is Some(event) {
-    match event {
-      TurnCompleted(turn) => response = turn.final_response
-      _ => ()
+  @async.with_task_group(fn(taskgroup) {
+    let thread = codex.start_thread(
+      options=@codex.ThreadOptions::new(
+        working_directory=workdir,
+        sandbox_mode=@codex.SandboxMode::WorkspaceWrite,
+      ),
+    )
+    let streamed = thread.run_streamed(prompt, taskgroup~)
+    let mut response = ""
+    while streamed.events.next() is Some(event) {
+      match event {
+        ItemCompleted(item) =>
+          if item is AgentMessageItem(text~, ..) {
+            response = text
+          }
+        _ => ()
+      }
     }
-  }
-  response
+    response
+  })
 }
 ```
 
