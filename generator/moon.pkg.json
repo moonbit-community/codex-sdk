@@ -1,5 +1,5 @@
 {
-    "test-import": [
-        "moonbitlang/async"
-    ]
+  "import": [
+    "moonbitlang/async"
+  ]
 }

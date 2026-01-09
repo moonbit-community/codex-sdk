@@ -13,19 +13,6 @@
 // limitations under the License.
 
 ///|
-/// Suspends the current async computation and invokes the callback with resolve and reject functions.
-/// The callback must call resolve with a value of type T or reject with an error of type E.
-/// This function resumes the computation when the callback completes.
-async fn[T, E : Error] async_suspend(
-  cb : ((T) -> Unit, (E) -> Unit) -> Unit,
-) -> T raise E = "%async.suspend"
-
-///|
-/// Runs an async function that returns Unit and does not raise errors.
-/// This is the entry point for executing async computations.
-fn run_async(f : async () -> Unit noraise) = "%async.run"
-
-///|
 /// Asynchronous generator producing values of type T.
 /// 
 /// Similar to JavaScript's async generators, but with explicit
@@ -33,21 +20,30 @@ fn run_async(f : async () -> Unit noraise) = "%async.run"
 /// 
 /// The generator must be drained to completion to avoid resource leaks.
 struct AsyncGenerator[T] {
-  mut consumer : ((Result[T?, Error]) -> Unit)?
-  mut ok_cont : (Unit) -> Unit
-  mut err_cont : (Error) -> Unit
+  in_ : @async.Queue[InMsg]
+  out : @async.Queue[OutMsg[T]]
+  mut closed : Bool
+}
+
+///|
+priv struct OutMsg[T](T?)
+
+///|
+priv enum InMsg {
+  Next
+  Throw(Error)
 }
 
 ///|
 pub async fn[T] AsyncGenerator::next(self : AsyncGenerator[T]) -> T? {
-  guard self.consumer is None else { raise Running }
-  async_suspend((resolve, reject) => {
-    self.consumer = Some(value => match value {
-      Ok(v) => resolve(v)
-      Err(e) => reject(e)
-    })
-    (self.ok_cont)(())
-  })
+  if self.closed {
+    return None
+  }
+  self.in_.put(Next)
+  self.out.get().0 catch {
+    Return => None
+    e => raise e
+  }
 }
 
 ///|
@@ -57,91 +53,59 @@ pub async fn[T] AsyncGenerator::throws(
   self : AsyncGenerator[T],
   e : Error,
 ) -> T? {
-  guard self.consumer is None else { raise Running }
-  async_suspend((resolve, reject) => {
-    self.consumer = Some(value => match value {
-      Ok(v) => resolve(v)
-      Err(e) => reject(e)
-    })
-    (self.err_cont)(e)
-  })
+  if self.closed {
+    return None
+  }
+  self.in_.put(Throw(e))
+  self.out.get().0 catch {
+    Return => None
+    e => raise e
+  }
 }
 
 ///|
 /// Signals the async generator to return, indicating normal completion.
 /// Returns the next value or None if the generator completes.
 pub async fn[T] AsyncGenerator::returns(self : AsyncGenerator[T]) -> T? {
-  guard self.consumer is None else { raise Running }
-  async_suspend((resolve, reject) => {
-    self.consumer = Some(value => match value {
-      Ok(v) => resolve(v)
-      Err(e) => reject(e)
-    })
-    (self.err_cont)(Return)
-  })
+  self.throws(Return)
 }
 
 ///|
-/// Error indicating that the async generator has returned normally.
+/// Error indicating that the async generator should return
 pub suberror Return
-
-///|
-/// Error indicating that the async generator is already running and cannot accept new operations.
-pub suberror Running
 
 ///|
 /// Creates a new AsyncGenerator from an async function that takes a yield function.
 /// The yield function is used to produce values asynchronously.
-/// The generator must be fully consumed to avoid resource leaks.
-pub fn[T] AsyncGenerator::new(
+/// 
+/// The generator runs in the provided TaskGroup.
+/// If `no_wait` is true (default), the taskgroup will not wait for the generator to finish
+/// when other tasks are done, implicitly cancel it.
+/// If `no_wait` is false, the taskgroup will wait for the generator to finish, potentially blocking shutdown.
+/// 
+/// It is encouraged to set `no_wait` to true to avoid resource leaks, and spawn the generator
+/// in a dedicated TaskGroup with the consumer.
+pub fn[T, G] AsyncGenerator::new(
   f : async (async (T) -> Unit) -> Unit,
+  taskgroup : @async.TaskGroup[G],
+  no_wait? : Bool = true,
 ) -> AsyncGenerator[T] {
-  let iterator = { consumer: None, ok_cont: _ => (), err_cont: _ => () }
-  async fn yield_(value) {
-    async_suspend((resolve, reject) => {
-      iterator.ok_cont = resolve
-      iterator.err_cont = reject
-      guard iterator.consumer is Some(consumer)
-      iterator.consumer = None
-      consumer(Ok(Some(value)))
-    })
-  }
-
-  iterator.ok_cont = _ => run_async(fn() {
-    let ok_fin = _ => {
-      guard iterator.consumer is Some(consumer)
-      iterator.consumer = None
-      consumer(Ok(None))
+  let in_ = @async.Queue::new(kind=Blocking(1))
+  let out = @async.Queue::new(kind=Unbounded)
+  let generator = { in_, out, closed: false }
+  taskgroup.spawn_bg(no_wait~, () => {
+    defer {
+      generator.closed = true
     }
-    let err_fin = _ => {
-      guard iterator.consumer is Some(consumer)
-      iterator.consumer = None
-      consumer(Ok(None))
-    }
-    try f(yield_) catch {
-      Return => {
-        iterator.ok_cont = ok_fin
-        iterator.err_cont = err_fin
-        guard iterator.consumer is Some(consumer)
-        iterator.consumer = None
-        consumer(Ok(None))
+    f(value => {
+      out.put(OutMsg(Some(value)))
+      match in_.get() {
+        Next => ()
+        Throw(e) => raise e
       }
-      e => {
-        iterator.ok_cont = ok_fin
-        iterator.err_cont = err_fin
-        guard iterator.consumer is Some(consumer)
-        iterator.consumer = None
-        consumer(Err(e))
-      }
-    } noraise {
-      _ => {
-        iterator.ok_cont = ok_fin
-        iterator.err_cont = err_fin
-        guard iterator.consumer is Some(consumer)
-        iterator.consumer = None
-        consumer(Ok(None))
-      }
+    }) catch {
+      e => out.close(error=e)
     }
   })
-  iterator
+  generator
 }
