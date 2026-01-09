@@ -137,6 +137,7 @@ async fn[G] Thread::run_streamed_internal(
           }
           yield_(event)
         }
+        ignore(generator.returns())
       } catch {
         @generator.Return => ignore(generator.returns())
         e => {

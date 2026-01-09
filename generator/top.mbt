@@ -22,7 +22,6 @@
 struct AsyncGenerator[T] {
   in_ : @async.Queue[InMsg]
   out : @async.Queue[OutMsg[T]]
-  mut closed : Bool
 }
 
 ///|
@@ -36,13 +35,16 @@ priv enum InMsg {
 
 ///|
 pub async fn[T] AsyncGenerator::next(self : AsyncGenerator[T]) -> T? {
-  if self.closed {
-    return None
-  }
-  self.in_.put(Next)
-  self.out.get().0 catch {
+  try self.in_.try_put(Next) catch {
     Return => None
     e => raise e
+  } noraise {
+    false => raise Running
+    true =>
+      self.out.get().0 catch {
+        Return => None
+        e => raise e
+      }
   }
 }
 
@@ -53,13 +55,16 @@ pub async fn[T] AsyncGenerator::throws(
   self : AsyncGenerator[T],
   e : Error,
 ) -> T? {
-  if self.closed {
-    return None
-  }
-  self.in_.put(Throw(e))
-  self.out.get().0 catch {
+  try self.in_.try_put(Throw(e)) catch {
     Return => None
     e => raise e
+  } noraise {
+    false => raise Running
+    true =>
+      self.out.get().0 catch {
+        Return => None
+        e => raise e
+      }
   }
 }
 
@@ -73,6 +78,10 @@ pub async fn[T] AsyncGenerator::returns(self : AsyncGenerator[T]) -> T? {
 ///|
 /// Error indicating that the async generator should return
 pub suberror Return
+
+///|
+/// Error indicating that the async generator is already running and cannot accept new operations.
+pub suberror Running
 
 ///|
 /// Creates a new AsyncGenerator from an async function that takes a yield function.
@@ -92,20 +101,22 @@ pub fn[T, G] AsyncGenerator::new(
 ) -> AsyncGenerator[T] {
   let in_ = @async.Queue::new(kind=Blocking(1))
   let out = @async.Queue::new(kind=Unbounded)
-  let generator = { in_, out, closed: false }
+  let generator = { in_, out }
   taskgroup.spawn_bg(no_wait~, () => {
-    defer {
-      generator.closed = true
-    }
-    f(value => {
-      out.put(OutMsg(Some(value)))
-      match in_.get() {
-        Next => ()
-        Throw(e) => raise e
-      }
-    }) catch {
+    try
+      f(value => {
+        out.put(OutMsg(Some(value)))
+        match in_.get() {
+          Next => ()
+          Throw(e) => raise e
+        }
+      })
+    catch {
       e => out.close(error=e)
+    } noraise {
+      _ => out.close(error=Return)
     }
+    in_.close(error=Return)
   })
   generator
 }

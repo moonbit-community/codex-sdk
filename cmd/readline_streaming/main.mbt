@@ -14,12 +14,8 @@
 
 ///|
 async fn main {
-  let codex = @codex.Codex::new(
-    options=@codex.CodexOptions::new(base_url="https://openrouter.ai/api/v1"),
-  )
-  let thread = codex.start_thread(
-    options=@codex.ThreadOptions::new(model="anthropic/claude-sonnet-4"),
-  )
+  let codex = @codex.Codex::new()
+  let thread = codex.start_thread()
   let reader = @stdio.stdin
   while true {
     @stdio.stdout.write(b"\x1b]133;A\x07> \x1b]133;B\x07")
