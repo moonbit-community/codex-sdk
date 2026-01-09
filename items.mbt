@@ -37,8 +37,9 @@ pub enum ThreadItem {
     id~ : String,
     server~ : String,
     tool~ : String,
-    status~ : McpToolCallStatus
-    // TODO : add other fields of MCP tool call item
+    status~ : McpToolCallStatus,
+    arguments~ : Json?,
+    result~ : Result[McpToolCallResult, String]?
   )
   /// Captures a web search request. Completes when results are returned to the agent.
   WebSearchItem(id~ : String, query~ : String)
@@ -75,14 +76,24 @@ pub impl ToJson for ThreadItem with to_json(item) {
       }
     FileChangeItem(id~, changes~, status~) =>
       { "type": "file_change", "id": id, "changes": changes, "status": status }
-    McpToolCallItem(id~, server~, tool~, status~) =>
-      {
+    McpToolCallItem(id~, server~, tool~, status~, arguments~, result~) => {
+      let item : Map[String, Json] = {
         "type": "mcp_tool_call",
         "id": id,
         "server": server,
         "tool": tool,
         "status": status,
       }
+      if arguments is Some(arguments) {
+        item.set("arguments", arguments)
+      }
+      if result is Some(Ok(res)) {
+        item.set("result", res.to_json())
+      } else if result is Some(Err(err)) {
+        item.set("error", { "message": err })
+      }
+      Json::object(item)
+    }
     WebSearchItem(id~, query~) =>
       { "type": "web_search", "id": id, "query": query }
     TodoListItem(id~, items~) =>
@@ -161,15 +172,36 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
           "server": String(server),
           "tool": String(tool),
           "status": status,
+          "arguments"? : arguments,
+          "result"? : result,
+          "error"? : error,
           ..
         } else {
         raise @json.JsonDecodeError((path, "expected McpToolCallItem"))
+      }
+      if error is Some(error) {
+        guard error is Object({ "message": String(_), .. }) else {
+          raise @json.JsonDecodeError(
+            (
+              path.add_key("error"),
+              "expected error object with message string, got \{error}",
+            ),
+          )
+        }
       }
       McpToolCallItem(
         id~,
         server~,
         tool~,
         status=@json.from_json(status, path=path.add_key("status")),
+        arguments~,
+        result=if result is Some(res) {
+          Some(Ok(@json.from_json(res, path=path.add_key("result"))))
+        } else if error is Some(Object({ "message": String(msg), .. })) {
+          Some(Err(msg))
+        } else {
+          None
+        },
       )
     }
     "web_search" => {
@@ -189,7 +221,7 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
     }
     "error" => {
       guard obj is { "id": String(id), "message": String(message), .. } else {
-        raise @json.JsonDecodeError((path, "expected  ErrorItem"))
+        raise @json.JsonDecodeError((path, "expected ErrorItem"))
       }
       ErrorItem(id~, message~)
     }
@@ -338,4 +370,33 @@ pub impl @json.FromJson for McpToolCallStatus with from_json(value, path) {
         ),
       )
   }
+}
+
+///|
+pub struct McpToolCallResult {
+  content : Array[Json]
+  structured_content : Json
+}
+
+///|
+pub impl ToJson for McpToolCallResult with to_json(result) {
+  { "content": result.content, "structured_content": result.structured_content }
+}
+
+///|
+pub impl FromJson for McpToolCallResult with from_json(value, path) {
+  guard value
+    is {
+      "content": Array(content),
+      "structured_content": structured_content,
+      ..
+    } else {
+    raise @json.JsonDecodeError(
+      (
+        path,
+        "expected McpToolCallResult object with content and structured_content. Got \{value}",
+      ),
+    )
+  }
+  McpToolCallResult::{ content, structured_content }
 }

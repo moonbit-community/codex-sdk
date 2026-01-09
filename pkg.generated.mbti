@@ -59,6 +59,13 @@ pub impl Show for FileUpdateChange
 pub impl ToJson for FileUpdateChange
 pub impl @json.FromJson for FileUpdateChange
 
+pub struct McpToolCallResult {
+  content : Array[Json]
+  structured_content : Json
+}
+pub impl ToJson for McpToolCallResult
+pub impl @json.FromJson for McpToolCallResult
+
 pub enum McpToolCallStatus {
   InProgress
   Completed
@@ -121,7 +128,7 @@ pub enum ThreadItem {
   ReasoningItem(id~ : String, text~ : String)
   CommandExecutionItem(id~ : String, command~ : String, aggregated_output~ : String, exit_code~ : Int?, status~ : CommandExecutionStatus)
   FileChangeItem(id~ : String, changes~ : Array[FileUpdateChange], status~ : PatchApplyStatus)
-  McpToolCallItem(id~ : String, server~ : String, tool~ : String, status~ : McpToolCallStatus)
+  McpToolCallItem(id~ : String, server~ : String, tool~ : String, status~ : McpToolCallStatus, arguments~ : Json?, result~ : Result[McpToolCallResult, String]?)
   WebSearchItem(id~ : String, query~ : String)
   TodoListItem(id~ : String, items~ : Array[TodoItem])
   ErrorItem(id~ : String, message~ : String)

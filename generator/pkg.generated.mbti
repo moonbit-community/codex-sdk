@@ -10,6 +10,8 @@ import(
 // Errors
 pub suberror Return
 
+pub suberror Running
+
 // Types and methods
 type AsyncGenerator[T]
 pub fn[T, G] AsyncGenerator::new(async (async (T) -> Unit) -> Unit, @async.TaskGroup[G], no_wait? : Bool) -> Self[T]
