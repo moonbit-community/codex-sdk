@@ -96,9 +96,10 @@ fn CodexExec::new(executable_path? : String = "codex") -> CodexExec {
 ///
 /// # Returns
 /// An iterator that yields String lines from the Codex output
-fn CodexExec::run(
+fn[T] CodexExec::run(
   self : Self,
   args : CodexExecArgs,
+  taskgroup : @async.TaskGroup[T],
 ) -> @generator.AsyncGenerator[String] raise {
   // Build command arguments
   let command_args : Array[String] = ["exec", "--experimental-json"]
@@ -146,35 +147,37 @@ fn CodexExec::run(
   }
 
   // CodexExec
-  @generator.AsyncGenerator::new(fn(yield_) {
-    @async.with_task_group(taskgroup => {
-      taskgroup.spawn_bg(() => {
-        let (exit_code, stderr) = @process.collect_stderr(
-          self.executable_path,
-          command_args,
-          stdin=stdin.0,
-          stdout=stdout.1,
-          extra_env~,
-        )
-        if exit_code != 0 {
-          @error.fail("Codex CLI failed: \{stderr.text()}")
-        }
-      })
-      taskgroup.spawn_bg(() => {
-        defer stdin.1.close()
-        stdin.1.write(args.input)
-      })
-      taskgroup.spawn_bg(() => {
+  @generator.AsyncGenerator::new(
+    fn(yield_) {
+      @async.with_task_group(taskgroup => {
+        taskgroup.spawn_bg(() => {
+          let (exit_code, stderr) = @process.collect_stderr(
+            self.executable_path,
+            command_args,
+            stdin=stdin.0,
+            stdout=stdout.1,
+            extra_env~,
+          )
+          if exit_code != 0 {
+            @error.fail("Codex CLI failed: \{stderr.text()}")
+          }
+        })
+        taskgroup.spawn_bg(() => {
+          defer stdin.1.close()
+          stdin.1.write(args.input)
+        })
         let reader = stdout.0
         defer reader.close()
         while reader.read_until("\n") is Some(text) {
           yield_(text)
         }
-      })
-    }) catch {
-      e => if !(e is @generator.Return) { raise @error.reraise(e) }
-    }
-  })
+      }) catch {
+        @generator.Return => ()
+        e => raise @error.reraise(e)
+      }
+    },
+    taskgroup,
+  )
 }
 
 ///|

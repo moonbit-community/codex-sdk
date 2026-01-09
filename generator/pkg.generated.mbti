@@ -1,16 +1,18 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "peter-jerry-ye/codex/generator"
 
+import(
+  "moonbitlang/async"
+)
+
 // Values
 
 // Errors
 pub suberror Return
 
-pub suberror Running
-
 // Types and methods
 type AsyncGenerator[T]
-pub fn[T] AsyncGenerator::new(async (async (T) -> Unit) -> Unit) -> Self[T]
+pub fn[T, G] AsyncGenerator::new(async (async (T) -> Unit) -> Unit, @async.TaskGroup[G], no_wait? : Bool) -> Self[T]
 pub async fn[T] AsyncGenerator::next(Self[T]) -> T?
 pub async fn[T] AsyncGenerator::returns(Self[T]) -> T?
 pub async fn[T] AsyncGenerator::throws(Self[T], Error) -> T?

@@ -29,7 +29,7 @@ pub fn[A] reraise(e : Error, loc~ : SourceLoc) -> A raise {
           cause,
         ),
       )
-    Failure(msg) =>
+    Failure::Failure(msg) =>
       lexmatch msg {
         (prefix, "FAILED", rest) =>
           raise Reraise(

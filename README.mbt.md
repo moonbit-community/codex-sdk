@@ -33,6 +33,7 @@ async test {
   println(turn.usage.to_json().stringify())
 }
 ```
+
 ```mbt check
 ///|
 #skip
@@ -63,12 +64,12 @@ async test {
   let thread = codex.start_thread(
     options=@codex.ThreadOptions::new(model="anthropic/claude-sonnet-4.5"),
   )
-  try {
-    let streamed_turn = thread.run_streamed("Hello?")
+  @async.with_task_group(tg => {
+    let streamed_turn = thread.run_streamed("Hello?", tg)
     while streamed_turn.events.next() is Some(event) {
       println(event.to_json().stringify())
     }
-  } catch {
+  }) catch {
     e => println(e)
   }
 }
@@ -77,45 +78,85 @@ async test {
 ## Architecture Overview
 
 ### Process boundary and transport
+
 The MoonBit SDK is a thin but strongly typed wrapper around `codex exec`:
 
-1. `@codex.CodexExec::run` spawns the CLI with `--experimental-json`, automatically wiring API endpoint overrides, API keys, sandbox flags, working directory overrides, and thread resumption arguments.
-2. The CLI's JSONL stream is fed through `@generator.AsyncGenerator` so the SDK can yield events as soon as they arrive. This keeps Codex long-running commands responsive while avoiding blocking MoonBit's async runtime.
-3. Each line is decoded into the rich `@codex.Event` / `@codex.ThreadItem` hierarchy (`events.mbt` and `items.mbt`), which means MoonBit callers never manipulate raw JSON.
+1. `@codex.CodexExec::run` spawns the CLI with `--experimental-json`,
+   automatically wiring API endpoint overrides, API keys, sandbox flags, working
+   directory overrides, and thread resumption arguments.
+2. The CLI's JSONL stream is fed through `@generator.AsyncGenerator` so the SDK
+   can yield events as soon as they arrive. This keeps Codex long-running
+   commands responsive while avoiding blocking MoonBit's async runtime.
+3. Each line is decoded into the rich `@codex.Event` / `@codex.ThreadItem`
+   hierarchy (`events.mbt` and `items.mbt`), which means MoonBit callers never
+   manipulate raw JSON.
 
-The `Codex`/`Thread`/`Turn` trio mirrors the CLI lifecycle: a `Codex` holds process-level configuration, a `Thread` models a Codex conversation, and a `Turn` captures the completed response plus token usage metrics.
+The `Codex`/`Thread`/`Turn` trio mirrors the CLI lifecycle: a `Codex` holds
+process-level configuration, a `Thread` models a Codex conversation, and a
+`Turn` captures the completed response plus token usage metrics.
 
 ### Thread lifecycle and safety
-- `Thread::run_streamed` owns the async generator returned by `CodexExec::run`. The method updates the cached thread id when `ThreadStarted` surfaces, so a later `Thread::run` call automatically resumes the same conversation.
-- `Thread::run` is implemented on top of the streaming primitive. It drains the generator, records `AgentMessageItem` content as the `Turn.final_response`, retains the full item history for post-processing (e.g., capturing diffs or tool invocations), and surfaces `TurnFailed` by raising an error after draining the iterator to prevent resource leaks.
-- Structured cleanup exists everywhere a temporary artifact is created; for example, `@codex::create_output_schema_file` creates `/tmp/codex-output-schema-*` directories and ensures they are removed even when errors occur.
+
+- `Thread::run_streamed` owns the async generator returned by `CodexExec::run`.
+  The method updates the cached thread id when `ThreadStarted` surfaces, so a
+  later `Thread::run` call automatically resumes the same conversation.
+- `Thread::run` is implemented on top of the streaming primitive. It drains the
+  generator, records `AgentMessageItem` content as the `Turn.final_response`,
+  retains the full item history for post-processing (e.g., capturing diffs or
+  tool invocations), and surfaces `TurnFailed` by raising an error after
+  draining the iterator to prevent resource leaks.
+- Structured cleanup exists everywhere a temporary artifact is created; for
+  example, `@codex::create_output_schema_file` creates
+  `/tmp/codex-output-schema-*` directories and ensures they are removed even
+  when errors occur.
 
 ### Events, items, and observability
+
 The CLI emits high-level telemetry that is mirrored by the SDK:
 
-- `Event::ThreadStarted`, `TurnStarted`, `TurnCompleted`, and `TurnFailed` make it trivial to instrument throughput, retries, and token usage.
-- `ThreadItem` variants capture everything the agent does: `CommandExecutionItem` surfaces shell commands with exit codes, `FileChangeItem` contains per-file diffs, `McpToolCallItem` shows MCP tool usage, and `TodoListItem` exposes the agent's internal plan.
-- All enums (sandbox mode, approval mode, command status, etc.) expose `ToJson`/`FromJson` so you can persist structured logs or forward them to observability backends without lossy string manipulation.
+- `Event::ThreadStarted`, `TurnStarted`, `TurnCompleted`, and `TurnFailed` make
+  it trivial to instrument throughput, retries, and token usage.
+- `ThreadItem` variants capture everything the agent does:
+  `CommandExecutionItem` surfaces shell commands with exit codes,
+  `FileChangeItem` contains per-file diffs, `McpToolCallItem` shows MCP tool
+  usage, and `TodoListItem` exposes the agent's internal plan.
+- All enums (sandbox mode, approval mode, command status, etc.) expose
+  `ToJson`/`FromJson` so you can persist structured logs or forward them to
+  observability backends without lossy string manipulation.
 
 ### Structured output and schema enforcement
-`TurnOptions.output_schema` accepts an arbitrary JSON schema. When provided, `Thread::run` / `run_streamed` transparently:
+
+`TurnOptions.output_schema` accepts an arbitrary JSON schema. When provided,
+`Thread::run` / `run_streamed` transparently:
 
 1. Creates a temporary schema file on disk.
 2. Passes `--output-schema /tmp/.../schema.json` to the CLI.
-3. Deletes the schema file after the turn completes or fails (even if exceptions arise).
+3. Deletes the schema file after the turn completes or fails (even if exceptions
+   arise).
 
-This makes it safe to require JSON output without managing files yourself. The final assistant message still flows through `ThreadItem::AgentMessageItem`, so you can parse it with `@json.parse` once the turn completes.
+This makes it safe to require JSON output without managing files yourself. The
+final assistant message still flows through `ThreadItem::AgentMessageItem`, so
+you can parse it with `@json.parse` once the turn completes.
 
 ### Configuration layers
-- `CodexOptions` sets global API concerns (binary override, base URL, API key) once per process.
-- `ThreadOptions` controls per-thread concerns such as the model, sandbox levels (`read-only`, `workspace-write`, `danger-full-access`), working directory routing, and Git safety checks.
-- `TurnOptions` tunes per-turn behavior, currently focusing on structured output but intentionally keeping room for future features (e.g., custom completion criteria).
-Because configuration objects implement `ToJson`/`FromJson`, they can be marshalled into other systems (task schedulers, Codex automation) without reimplementing serialization.
+
+- `CodexOptions` sets global API concerns (binary override, base URL, API key)
+  once per process.
+- `ThreadOptions` controls per-thread concerns such as the model, sandbox levels
+  (`read-only`, `workspace-write`, `danger-full-access`), working directory
+  routing, and Git safety checks.
+- `TurnOptions` tunes per-turn behavior, currently focusing on structured output
+  but intentionally keeping room for future features (e.g., custom completion
+  criteria). Because configuration objects implement `ToJson`/`FromJson`, they
+  can be marshalled into other systems (task schedulers, Codex automation)
+  without reimplementing serialization.
 
 ## Advanced Usage Patterns
 
 ### Instrument streaming events
-You can subscribe to the event stream for telemetry, custom retry logic, or UI overlays without waiting for a completed turn:
+
+You can subscribe to the event stream for telemetry, custom retry logic, or UI
+overlays without waiting for a completed turn:
 
 ```mbt check
 ///|
@@ -123,23 +164,27 @@ You can subscribe to the event stream for telemetry, custom retry logic, or UI o
 async test {
   let codex = @codex.Codex::new()
   let thread = codex.start_thread()
-  let turn = thread.run_streamed("Summarize today's commits")
-  while turn.events.next() is Some(event) {
-    match event {
-      ItemStarted(item) => println("started: \{item.to_json().stringify()}")
-      ItemCompleted(AgentMessageItem(text~, ..)) =>
-        println("assistant: \{text}")
-      TurnCompleted(usage) =>
-        println("tokens in/out: \{usage.input_tokens}/\{usage.output_tokens}")
-      TurnFailed(error) => fail("codex turn failed: \{error.message}")
-      _ => ()
+  @async.with_task_group(tg => {
+    let turn = thread.run_streamed("Summarize today's commits", tg)
+    while turn.events.next() is Some(event) {
+      match event {
+        ItemStarted(item) => println("started: \{item.to_json().stringify()}")
+        ItemCompleted(AgentMessageItem(text~, ..)) =>
+          println("assistant: \{text}")
+        TurnCompleted(usage) =>
+          println("tokens in/out: \{usage.input_tokens}/\{usage.output_tokens}")
+        TurnFailed(error) => fail("codex turn failed: \{error.message}")
+        _ => ()
+      }
     }
-  }
+  })
 }
 ```
 
 ### Enforce structured responses
-The temporary-schema mechanism lets you demand JSON (or any schema-valid structure) without extra boilerplate:
+
+The temporary-schema mechanism lets you demand JSON (or any schema-valid
+structure) without extra boilerplate:
 
 ```mbt check
 ///|
@@ -165,4 +210,5 @@ async test {
 }
 ```
 
-These primitives compose cleanly with your own orchestration layers, since everything in the SDK is expressed as plain MoonBit structs and async functions.
+These primitives compose cleanly with your own orchestration layers, since
+everything in the SDK is expressed as plain MoonBit structs and async functions.

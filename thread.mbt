@@ -77,73 +77,75 @@ fn Thread::new(
 /// # Arguments
 /// * `input` - The user input/prompt to send to the agent
 /// * `turn_options` - Options for configuring this turn
+/// * `taskgroup` - The TaskGroup to run the streaming generator in
 ///
 /// # Returns
 /// A StreamedTurn containing an async iterator of events
-pub async fn Thread::run_streamed(
+pub async fn[G] Thread::run_streamed(
   self : Thread,
   input : String,
   turn_options? : TurnOptions = TurnOptions::{ output_schema: None },
+  taskgroup : @async.TaskGroup[G],
 ) -> StreamedTurn {
-  { events: self.run_streamed_internal(input, turn_options) }
+  { events: self.run_streamed_internal(input, turn_options, taskgroup) }
 }
 
 ///|
 /// Internal implementation of run_streamed that returns the event iterator directly.
-async fn Thread::run_streamed_internal(
+async fn[G] Thread::run_streamed_internal(
   self : Thread,
   input : String,
   turn_options : TurnOptions,
+  taskgroup : @async.TaskGroup[G],
 ) -> @generator.AsyncGenerator[Event] {
-  let schema_file = if turn_options.output_schema is Some(schema) &&
+  let output_schema_file = if turn_options.output_schema is Some(schema) &&
     !(schema is Null) {
-    Some(create_output_schema_file(schema))
+    let file = create_output_schema_file(schema)
+    taskgroup.add_defer(() => (file.cleanup)())
+    Some(file.schema_path)
   } else {
     None
   }
   let options = self.thread_options
-  let generator = self.exec.run({
-    input,
-    base_url: self.options.base_url,
-    api_key: self.options.api_key,
-    thread_id: self.id,
-    model: options.model,
-    sandbox_mode: options.sandbox_mode,
-    working_directory: options.working_directory,
-    skip_git_repo_check: options.skip_git_repo_check,
-    output_schema_file: if schema_file is Some(sf) {
-      Some(sf.schema_path)
-    } else {
-      None
+  let generator = self.exec.run(
+    {
+      input,
+      base_url: self.options.base_url,
+      api_key: self.options.api_key,
+      thread_id: self.id,
+      model: options.model,
+      sandbox_mode: options.sandbox_mode,
+      working_directory: options.working_directory,
+      skip_git_repo_check: options.skip_git_repo_check,
+      output_schema_file,
     },
-  }) catch {
+    taskgroup,
+  ) catch {
     e => @error.reraise(e)
   }
-  @generator.AsyncGenerator::new(async fn(yield_) {
-    try {
-      while generator.next() is Some(item) {
-        let event = @json.from_json(@json.parse(item)) catch {
-          error => @error.fail("Failed to parse item: \{item}, error: \{error}")
+  @generator.AsyncGenerator::new(
+    async fn(yield_) {
+      try {
+        while generator.next() is Some(item) {
+          let event = @json.from_json(@json.parse(item)) catch {
+            error =>
+              @error.fail("Failed to parse item: \{item}, error: \{error}")
+          }
+          if event is ThreadStarted(thread_id~) {
+            self.id = Some(thread_id)
+          }
+          yield_(event)
         }
-        if event is ThreadStarted(thread_id~) {
-          self.id = Some(thread_id)
-        }
-        yield_(event)
-      }
-    } catch {
-      e => {
-        if schema_file is Some(sf) {
-          (sf.cleanup)()
-        }
-        while generator.returns() is Some(_) {
-          // Drain remaining items to avoid unhandled promise rejection
-        }
-        if !(e is @generator.Return) {
+      } catch {
+        @generator.Return => ignore(generator.returns())
+        e => {
+          ignore(generator.returns())
           @error.reraise(e)
         }
       }
-    }
-  })
+    },
+    taskgroup,
+  )
 }
 
 ///|
@@ -160,33 +162,26 @@ pub async fn Thread::run(
   input : String,
   turn_options? : TurnOptions = TurnOptions::{ output_schema: None },
 ) -> Turn raise Error {
-  let generator = self.run_streamed_internal(input, turn_options)
-  let items : Array[ThreadItem] = []
-  let mut final_response = ""
-  let mut usage : Usage? = None
-  while generator.next() is Some(event) {
-    match event {
-      ItemCompleted(item) => {
-        if item is AgentMessageItem(text~, ..) {
-          final_response = text
+  @async.with_task_group(taskgroup => {
+    let generator = self.run_streamed_internal(input, turn_options, taskgroup)
+    let items : Array[ThreadItem] = []
+    let mut final_response = ""
+    let mut usage : Usage? = None
+    while generator.next() is Some(event) {
+      match event {
+        ItemCompleted(item) => {
+          if item is AgentMessageItem(text~, ..) {
+            final_response = text
+          }
+          items.push(item)
         }
-        items.push(item)
+        TurnCompleted(u) => usage = Some(u)
+        TurnFailed(error) => @error.fail(error.message)
+        ThreadErrorEvent(e) => @error.fail(e)
+        _ => ()
       }
-      TurnCompleted(u) => usage = Some(u)
-      TurnFailed(error) => {
-        while generator.returns() is Some(_) {
-          // Drain remaining items to avoid unhandled promise rejection
-        }
-        @error.fail(error.message)
-      }
-      ThreadErrorEvent(e) => {
-        while generator.returns() is Some(_) {
-          // Drain remaining items to avoid unhandled promise rejection
-        }
-        @error.fail(e)
-      }
-      _ => ()
     }
-  }
-  { items, final_response, usage }
+    ignore(generator.returns())
+    { items, final_response, usage }
+  })
 }

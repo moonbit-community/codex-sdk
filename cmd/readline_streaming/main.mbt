@@ -29,8 +29,8 @@ async fn main {
         continue
       }
       @stdio.stdout.write(b"\x1b]133;C\x07")
-      let turn = thread.run_streamed(line)
-      try {
+      @async.with_task_group(tg => {
+        let turn = thread.run_streamed(line, tg)
         while turn.events.next() is Some(event) {
           match event {
             TurnStarted => @stdio.stdout.write("info:: Turn started\n")
@@ -79,14 +79,7 @@ async fn main {
             ItemUpdated(_) => ()
           }
         }
-      } catch {
-        e => {
-          while turn.events.returns() is Some(_) {
-            // drain remaining events
-          }
-          raise e
-        }
-      }
+      })
       @stdio.stdout.write(b"\x1b]133;D;0\x07")
     } catch {
       @io.ReaderClosed => {

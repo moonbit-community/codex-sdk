@@ -29,7 +29,9 @@ pub async fn is_available() -> Bool {
 /// Ensure GitHub CLI is available, raise error if not
 pub async fn ensure_available() -> Unit raise Error {
   if !is_available() {
-    raise Failure("GitHub CLI (gh) is not available. Please install gh.")
+    raise Failure::Failure(
+      "GitHub CLI (gh) is not available. Please install gh.",
+    )
   }
 }
 
@@ -68,11 +70,11 @@ pub async fn create_pr(
     stderr=process_err,
     cwd=repo_path,
   ) catch {
-    e => raise Failure("Failed to run gh pr create: \{e}")
+    e => raise Failure::Failure("Failed to run gh pr create: \{e}")
   }
   if status != 0 {
     let error_output = err_pipe.read_all().text().to_string()
-    raise Failure("gh pr create failed: \{error_output}")
+    raise Failure::Failure("gh pr create failed: \{error_output}")
   }
   pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
 }
@@ -160,10 +162,10 @@ pub async fn get_pr_comments(
     ["pr", "view", pr_number.to_string(), "--comments"],
     cwd=repo_path,
   ) catch {
-    e => raise Failure("Failed to fetch PR comments: \{e}")
+    e => raise Failure::Failure("Failed to fetch PR comments: \{e}")
   }
   if status != 0 {
-    raise Failure(
+    raise Failure::Failure(
       "Failed to fetch PR comments: \{stdout.text()}\{stderr.text()}",
     )
   }

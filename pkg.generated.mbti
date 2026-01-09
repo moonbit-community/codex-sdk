@@ -2,6 +2,7 @@
 package "peter-jerry-ye/codex"
 
 import(
+  "moonbitlang/async"
   "moonbitlang/core/json"
   "peter-jerry-ye/codex/generator"
 )
@@ -105,7 +106,7 @@ pub struct StreamedTurn {
 type Thread
 pub fn Thread::id(Self) -> String?
 pub async fn Thread::run(Self, String, turn_options? : TurnOptions) -> Turn
-pub async fn Thread::run_streamed(Self, String, turn_options? : TurnOptions) -> StreamedTurn
+pub async fn[G] Thread::run_streamed(Self, String, turn_options? : TurnOptions, @async.TaskGroup[G]) -> StreamedTurn
 
 pub struct ThreadError {
   message : String
