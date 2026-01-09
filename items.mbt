@@ -38,6 +38,7 @@ pub enum ThreadItem {
     server~ : String,
     tool~ : String,
     status~ : McpToolCallStatus
+    // TODO : add other fields of MCP tool call item
   )
   /// Captures a web search request. Completes when results are returned to the agent.
   WebSearchItem(id~ : String, query~ : String)

@@ -37,7 +37,13 @@ pub struct StreamedTurn {
 
 ///|
 /// An input to send to the agent.
-pub type Input = String
+pub type Input = Array[UserInput]
+
+///|
+pub(all) enum UserInput {
+  Text(String)
+  LocalImage(path~ : String)
+}
 
 ///|
 /// Represent a thread of conversation with the agent. One thread can have multiple consecutive turns.
@@ -83,41 +89,36 @@ fn Thread::new(
 /// A StreamedTurn containing an async iterator of events
 pub async fn[G] Thread::run_streamed(
   self : Thread,
-  input : String,
+  prompt : String,
+  extra_input? : Input = [],
   turn_options? : TurnOptions = TurnOptions::{ output_schema: None },
   taskgroup : @async.TaskGroup[G],
 ) -> StreamedTurn {
-  { events: self.run_streamed_internal(input, turn_options, taskgroup) }
+  {
+    events: self.run_streamed_internal(
+      prompt, extra_input, turn_options, taskgroup,
+    ),
+  }
 }
 
 ///|
 /// Internal implementation of run_streamed that returns the event iterator directly.
 async fn[G] Thread::run_streamed_internal(
   self : Thread,
-  input : String,
+  prompt : String,
+  input : Input,
   turn_options : TurnOptions,
   taskgroup : @async.TaskGroup[G],
 ) -> @generator.AsyncGenerator[Event] {
-  let output_schema_file = if turn_options.output_schema is Some(schema) &&
-    !(schema is Null) {
-    let file = create_output_schema_file(schema)
-    taskgroup.add_defer(() => (file.cleanup)())
-    Some(file.schema_path)
-  } else {
-    None
-  }
-  let options = self.thread_options
+  let input = normalize_input(prompt, input)
   let generator = self.exec.run(
     {
-      input,
-      base_url: self.options.base_url,
-      api_key: self.options.api_key,
+      input: input.0,
+      images: input.1,
       thread_id: self.id,
-      model: options.model,
-      sandbox_mode: options.sandbox_mode,
-      working_directory: options.working_directory,
-      skip_git_repo_check: options.skip_git_repo_check,
-      output_schema_file,
+      codex_options: self.options,
+      thread_options: self.thread_options,
+      turn_options,
     },
     taskgroup,
   ) catch {
@@ -159,11 +160,14 @@ async fn[G] Thread::run_streamed_internal(
 /// A Turn containing all items, the final response, and usage information
 pub async fn Thread::run(
   self : Thread,
-  input : String,
+  prompt : String,
+  extra_input? : Input = [],
   turn_options? : TurnOptions = TurnOptions::{ output_schema: None },
 ) -> Turn raise Error {
   @async.with_task_group(taskgroup => {
-    let generator = self.run_streamed_internal(input, turn_options, taskgroup)
+    let generator = self.run_streamed_internal(
+      prompt, extra_input, turn_options, taskgroup,
+    )
     let items : Array[ThreadItem] = []
     let mut final_response = ""
     let mut usage : Usage? = None
@@ -184,4 +188,17 @@ pub async fn Thread::run(
     ignore(generator.returns())
     { items, final_response, usage }
   })
+}
+
+///|
+fn normalize_input(prompt : String, input : Input) -> (String, Array[String]) {
+  let parts : Array[String] = [prompt]
+  let images : Array[String] = []
+  for part in input {
+    match part {
+      UserInput::Text(text) => parts.push(text)
+      UserInput::LocalImage(path~) => images.push(path)
+    }
+  }
+  (parts.join("\n\n"), images)
 }

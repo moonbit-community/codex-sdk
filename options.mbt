@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// codexOptions.ts
+// #region codexOptions.ts
 
 ///|
 /// Options for configuring the Codex client.
@@ -23,21 +23,23 @@ struct CodexOptions {
   base_url : String?
   /// API key for authentication
   api_key : String?
-} derive (
-  ToJson(rename_fields="camelCase"),
-  @json.FromJson(rename_fields="camelCase"),
-)
+  /// Environment variables passed to the Codex CLI process. When provided, the SDK will not inherit variables.
+  env : Map[String, String]?
+} derive(Default)
 
 ///|
 pub fn CodexOptions::new(
   codex_path_override? : String,
   base_url? : String,
   api_key? : String,
+  env? : Map[String, String],
 ) -> CodexOptions {
-  CodexOptions::{ codex_path_override, base_url, api_key }
+  CodexOptions::{ codex_path_override, base_url, api_key, env }
 }
 
-// threadOptions.ts
+// #endregion
+
+// #region threadOptions.ts
 
 ///|
 /// Approval mode for actions that require user consent.
@@ -53,26 +55,12 @@ pub(all) enum ApprovalMode {
 }
 
 ///|
-pub impl ToJson for ApprovalMode with to_json(mode) {
-  match mode {
-    Never => "never"
-    OnRequest => "on-request"
-    OnFailure => "on-failure"
-    Untrusted => "untrusted"
-  }
-}
-
-///|
-pub impl @json.FromJson for ApprovalMode with from_json(value, path) {
-  match value {
-    String("never") => Never
-    String("on-request") => OnRequest
-    String("on-failure") => OnFailure
-    String("untrusted") => Untrusted
-    _ =>
-      raise @json.JsonDecodeError(
-        (path, "expected approval mode string, got \{value}"),
-      )
+pub impl Show for ApprovalMode with output(self, logger) {
+  match self {
+    Never => logger.write_string("never")
+    OnRequest => logger.write_string("on-request")
+    OnFailure => logger.write_string("on-failure")
+    Untrusted => logger.write_string("untrusted")
   }
 }
 
@@ -88,24 +76,30 @@ pub(all) enum SandboxMode {
 }
 
 ///|
-pub impl ToJson for SandboxMode with to_json(mode) {
-  match mode {
-    ReadOnly => "read-only"
-    WorkspaceWrite => "workspace-write"
-    DangerFullAccess => "danger-full-access"
+/// Convert SandboxMode to its string representation for CLI arguments.
+pub impl Show for SandboxMode with output(self : SandboxMode, logger) {
+  match self {
+    ReadOnly => logger.write_string("read-only")
+    WorkspaceWrite => logger.write_string("workspace-write")
+    DangerFullAccess => logger.write_string("danger-full-access")
   }
 }
 
 ///|
-pub impl @json.FromJson for SandboxMode with from_json(value, path) {
-  match value {
-    String("read-only") => ReadOnly
-    String("workspace-write") => WorkspaceWrite
-    String("danger-full-access") => DangerFullAccess
-    _ =>
-      raise @json.JsonDecodeError(
-        (path, "expected sandbox mode string, got \{value}"),
-      )
+pub(all) enum ModelReasoningEffort {
+  Minimal
+  Low
+  High
+  Xhigh
+}
+
+///|
+pub impl Show for ModelReasoningEffort with output(self, logger) {
+  match self {
+    Minimal => logger.write_string("minimal")
+    Low => logger.write_string("low")
+    High => logger.write_string("high")
+    Xhigh => logger.write_string("xhigh")
   }
 }
 
@@ -120,10 +114,17 @@ struct ThreadOptions {
   working_directory : String?
   /// Whether to skip git repository check
   skip_git_repo_check : Bool?
-} derive (
-  ToJson(rename_fields="camelCase"),
-  @json.FromJson(rename_fields="camelCase"),
-)
+  /// The reasoning effort level for the model
+  model_reasoning_effort : ModelReasoningEffort?
+  /// Whether network access is enabled
+  network_access_enabled : Bool?
+  /// Whether web search is enabled
+  web_search_enabled : Bool?
+  /// Approval policy for actions that require user consent
+  approval_policy : ApprovalMode?
+  /// Additional directories to mount into the agent's sandbox
+  additional_directories : Array[String]?
+} derive(Default)
 
 ///|
 pub fn ThreadOptions::new(
@@ -131,23 +132,43 @@ pub fn ThreadOptions::new(
   sandbox_mode? : SandboxMode,
   working_directory? : String,
   skip_git_repo_check? : Bool,
+  model_reasoning_effort? : ModelReasoningEffort,
+  network_access_enabled? : Bool,
+  web_search_enabled? : Bool,
+  approval_policy? : ApprovalMode,
+  additional_directories? : Array[String],
 ) -> ThreadOptions {
-  ThreadOptions::{ model, sandbox_mode, working_directory, skip_git_repo_check }
+  ThreadOptions::{
+    model,
+    sandbox_mode,
+    working_directory,
+    skip_git_repo_check,
+    model_reasoning_effort,
+    network_access_enabled,
+    web_search_enabled,
+    approval_policy,
+    additional_directories,
+  }
 }
 
-// turnOptions.ts
+// #endregion
+
+// #region turnOptions.ts
+
+// Note : we don't need abort signal due to the structural currency nature of MoonBit Async
 
 ///|
 /// Options for configuring a turn.
 struct TurnOptions {
   /// JSON schema describing the expected agent output
   output_schema : Json?
-} derive (
-  ToJson(rename_fields="camelCase"),
-  @json.FromJson(rename_fields="camelCase"),
-)
+} derive(Default)
 
 ///|
+/// Params:
+/// - `output_schema` - JSON schema describing the expected agent output
 pub fn TurnOptions::new(output_schema? : Json) -> TurnOptions {
   TurnOptions::{ output_schema, }
 }
+
+// #endregion

@@ -22,6 +22,7 @@ priv struct OutputSchemaFile {
 extern "C" fn random() -> UInt = "arc4random"
 
 ///|
+/// TODO: support windows
 async fn create_output_schema_file(schema : Json) -> OutputSchemaFile {
   let dir = "/tmp/codex-output-schema-\{random()}"
   let path = "\{dir}/schema.json"

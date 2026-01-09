@@ -143,7 +143,7 @@ async fn solve_task(
       @error.fail("No task provided")
     }
     let mode = if sandbox_mode is Some(mode) {
-      mode.to_json()
+      mode.to_string()
     } else {
       "Unknown"
     }
@@ -345,7 +345,7 @@ async fn run_interactive_mode(arguments : Arguments) -> Unit {
     // Build the system context once
     let system_context = build_system_context()
     let mode = if arguments.sandbox_mode is Some(mode) {
-      mode.to_json()
+      mode.to_string()
     } else {
       "Unknown"
     }

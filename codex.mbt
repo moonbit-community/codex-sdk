@@ -29,13 +29,7 @@ struct Codex {
 ///
 /// # Returns
 /// A new Codex instance
-pub fn Codex::new(
-  options? : CodexOptions = CodexOptions::{
-    codex_path_override: None,
-    base_url: None,
-    api_key: None,
-  },
-) -> Codex {
+pub fn Codex::new(options? : CodexOptions = CodexOptions::default()) -> Codex {
   let exec = CodexExec::new(executable_path?=options.codex_path_override)
   { exec, options }
 }
@@ -50,12 +44,7 @@ pub fn Codex::new(
 /// A new thread instance
 pub fn Codex::start_thread(
   self : Codex,
-  options? : ThreadOptions = ThreadOptions::{
-    model: None,
-    sandbox_mode: None,
-    working_directory: None,
-    skip_git_repo_check: None,
-  },
+  options? : ThreadOptions = ThreadOptions::default(),
 ) -> Thread {
   Thread::new(self.exec, self.options, options)
 }
@@ -73,12 +62,7 @@ pub fn Codex::start_thread(
 pub fn Codex::resume_thread(
   self : Codex,
   id : String,
-  options? : ThreadOptions = ThreadOptions::{
-    model: None,
-    sandbox_mode: None,
-    working_directory: None,
-    skip_git_repo_check: None,
-  },
+  options? : ThreadOptions = ThreadOptions::default(),
 ) -> Thread {
   Thread::new(self.exec, self.options, options, id~)
 }

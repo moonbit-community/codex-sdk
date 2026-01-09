@@ -18,21 +18,16 @@ pub(all) enum ApprovalMode {
   OnFailure
   Untrusted
 }
-pub impl ToJson for ApprovalMode
-pub impl @json.FromJson for ApprovalMode
+pub impl Show for ApprovalMode
 
 type Codex
 pub fn Codex::new(options? : CodexOptions) -> Self
 pub fn Codex::resume_thread(Self, String, options? : ThreadOptions) -> Thread
 pub fn Codex::start_thread(Self, options? : ThreadOptions) -> Thread
 
-type CodexExecArgs
-pub fn CodexExecArgs::new(String, base_url? : String, api_key? : String, thread_id? : String, model? : String, sandbox_mode? : SandboxMode, working_directory? : String, skip_git_repo_check? : Bool, output_schema_file? : String) -> Self
-
 type CodexOptions
-pub fn CodexOptions::new(codex_path_override? : String, base_url? : String, api_key? : String) -> Self
-pub impl ToJson for CodexOptions
-pub impl @json.FromJson for CodexOptions
+pub fn CodexOptions::new(codex_path_override? : String, base_url? : String, api_key? : String, env? : Map[String, String]) -> Self
+pub impl Default for CodexOptions
 
 pub enum CommandExecutionStatus {
   InProgress
@@ -73,6 +68,14 @@ pub impl Show for McpToolCallStatus
 pub impl ToJson for McpToolCallStatus
 pub impl @json.FromJson for McpToolCallStatus
 
+pub(all) enum ModelReasoningEffort {
+  Minimal
+  Low
+  High
+  Xhigh
+}
+pub impl Show for ModelReasoningEffort
+
 pub enum PatchApplyStatus {
   Completed
   Failed
@@ -95,8 +98,7 @@ pub(all) enum SandboxMode {
   WorkspaceWrite
   DangerFullAccess
 }
-pub impl ToJson for SandboxMode
-pub impl @json.FromJson for SandboxMode
+pub impl Show for SandboxMode
 
 #alias(RunStreamedResult)
 pub struct StreamedTurn {
@@ -105,8 +107,8 @@ pub struct StreamedTurn {
 
 type Thread
 pub fn Thread::id(Self) -> String?
-pub async fn Thread::run(Self, String, turn_options? : TurnOptions) -> Turn
-pub async fn[G] Thread::run_streamed(Self, String, turn_options? : TurnOptions, @async.TaskGroup[G]) -> StreamedTurn
+pub async fn Thread::run(Self, String, extra_input? : Array[UserInput], turn_options? : TurnOptions) -> Turn
+pub async fn[G] Thread::run_streamed(Self, String, extra_input? : Array[UserInput], turn_options? : TurnOptions, @async.TaskGroup[G]) -> StreamedTurn
 
 pub struct ThreadError {
   message : String
@@ -128,9 +130,8 @@ pub impl ToJson for ThreadItem
 pub impl @json.FromJson for ThreadItem
 
 type ThreadOptions
-pub fn ThreadOptions::new(model? : String, sandbox_mode? : SandboxMode, working_directory? : String, skip_git_repo_check? : Bool) -> Self
-pub impl ToJson for ThreadOptions
-pub impl @json.FromJson for ThreadOptions
+pub fn ThreadOptions::new(model? : String, sandbox_mode? : SandboxMode, working_directory? : String, skip_git_repo_check? : Bool, model_reasoning_effort? : ModelReasoningEffort, network_access_enabled? : Bool, web_search_enabled? : Bool, approval_policy? : ApprovalMode, additional_directories? : Array[String]) -> Self
+pub impl Default for ThreadOptions
 
 pub struct TodoItem {
   text : String
@@ -149,8 +150,7 @@ pub struct Turn {
 
 type TurnOptions
 pub fn TurnOptions::new(output_schema? : Json) -> Self
-pub impl ToJson for TurnOptions
-pub impl @json.FromJson for TurnOptions
+pub impl Default for TurnOptions
 
 pub struct Usage {
   input_tokens : Int
@@ -160,8 +160,13 @@ pub struct Usage {
 pub impl ToJson for Usage
 pub impl @json.FromJson for Usage
 
+pub(all) enum UserInput {
+  Text(String)
+  LocalImage(path~ : String)
+}
+
 // Type aliases
-pub type Input = String
+pub type Input = Array[UserInput]
 
 // Traits
 

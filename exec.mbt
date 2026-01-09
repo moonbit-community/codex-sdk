@@ -14,50 +14,16 @@
 
 ///|
 /// Arguments for executing a Codex command.
-struct CodexExecArgs {
+priv struct CodexExecArgs {
   /// The input prompt/message to send to Codex
   input : String
-  /// Base URL for the API
-  base_url : String?
-  /// API key for authentication
-  api_key : String?
+  // Images to send to Codex
+  images : Array[String]
   /// Thread ID to resume, or None for a new thread
   thread_id : String?
-  /// Model to use (e.g., "gpt-4")
-  model : String?
-  /// Sandbox mode that controls access level
-  sandbox_mode : SandboxMode?
-  /// Working directory to run commands in
-  working_directory : String?
-  /// Whether to skip git repository check
-  skip_git_repo_check : Bool?
-  /// Output schema file path
-  output_schema_file : String?
-}
-
-///|
-pub fn CodexExecArgs::new(
-  input : String,
-  base_url? : String,
-  api_key? : String,
-  thread_id? : String,
-  model? : String,
-  sandbox_mode? : SandboxMode,
-  working_directory? : String,
-  skip_git_repo_check? : Bool,
-  output_schema_file? : String,
-) -> CodexExecArgs {
-  {
-    input,
-    base_url,
-    api_key,
-    thread_id,
-    model,
-    sandbox_mode,
-    working_directory,
-    skip_git_repo_check,
-    output_schema_file,
-  }
+  codex_options : CodexOptions
+  thread_options : ThreadOptions
+  turn_options : TurnOptions
 }
 
 // Constants for environment variable names
@@ -96,33 +62,61 @@ fn CodexExec::new(executable_path? : String = "codex") -> CodexExec {
 ///
 /// # Returns
 /// An iterator that yields String lines from the Codex output
-fn[T] CodexExec::run(
+async fn[T] CodexExec::run(
   self : Self,
   args : CodexExecArgs,
   taskgroup : @async.TaskGroup[T],
-) -> @generator.AsyncGenerator[String] raise {
+) -> @generator.AsyncGenerator[String] {
   // Build command arguments
   let command_args : Array[String] = ["exec", "--experimental-json"]
 
   // Add optional arguments
-  if args.model is Some(model) {
+  if args.thread_options.model is Some(model) {
     command_args.push("--model")
     command_args.push(model)
   }
-  if args.sandbox_mode is Some(sandbox_mode) {
+  if args.thread_options.sandbox_mode is Some(sandbox_mode) {
     command_args.push("--sandbox")
     command_args.push(sandbox_mode.to_string())
   }
-  if args.working_directory is Some(working_directory) {
+  if args.thread_options.working_directory is Some(working_directory) {
     command_args.push("--cd")
     command_args.push(working_directory)
   }
-  if args.skip_git_repo_check is Some(true) {
+  if args.thread_options.additional_directories is Some(additional_directories) {
+    for dir in additional_directories {
+      command_args.push("--add-dir")
+      command_args.push(dir)
+    }
+  }
+  if args.thread_options.skip_git_repo_check is Some(true) {
     command_args.push("--skip-git-repo-check")
   }
-  if args.output_schema_file is Some(output_schema_file) {
+  if args.turn_options.output_schema is Some(schema) {
+    let file = create_output_schema_file(schema)
+    taskgroup.add_defer(() => (file.cleanup)())
     command_args.push("--output-schema")
-    command_args.push(output_schema_file)
+    command_args.push(file.schema_path)
+  }
+  if args.thread_options.model_reasoning_effort is Some(effort) {
+    command_args.push("--config")
+    command_args.push("model_reasoning_effort=\{effort}")
+  }
+  if args.thread_options.network_access_enabled is Some(option) {
+    command_args.push("--config")
+    command_args.push("sandbox_workspace_network_access=\{option}")
+  }
+  if args.thread_options.web_search_enabled is Some(option) {
+    command_args.push("--config")
+    command_args.push("features.web_search_request=\{option}")
+  }
+  if args.thread_options.approval_policy is Some(approval_policy) {
+    command_args.push("--config")
+    command_args.push("approval_policy=\{approval_policy}")
+  }
+  for image in args.images {
+    command_args.push("--image")
+    command_args.push(image)
   }
   if args.thread_id is Some(thread_id) {
     command_args.push("resume")
@@ -131,24 +125,26 @@ fn[T] CodexExec::run(
 
   // Add env
   let env = @sys.get_env_vars()
-  let extra_env = {}
+  let extra_env = args.codex_options.env.unwrap_or({})
   if env.get(INTERNAL_ORIGINATOR_ENV) is None {
     extra_env.set(INTERNAL_ORIGINATOR_ENV, MOONBIT_SDK_ORIGINATOR)
   }
-  if args.base_url is Some(base_url) {
+  if args.codex_options.base_url is Some(base_url) {
     extra_env.set("OPENAI_BASE_URL", base_url)
   }
-  if args.api_key is Some(api_key) {
+  if args.codex_options.api_key is Some(api_key) {
     extra_env.set("CODEX_API_KEY", api_key)
-  }
-  let stdin = @process.write_to_process() catch { e => raise @error.reraise(e) }
-  let stdout = @process.read_from_process() catch {
-    e => raise @error.reraise(e)
   }
 
   // CodexExec
   @generator.AsyncGenerator::new(
     fn(yield_) {
+      let stdin = @process.write_to_process() catch {
+        e => raise @error.reraise(e)
+      }
+      let stdout = @process.read_from_process() catch {
+        e => raise @error.reraise(e)
+      }
       @async.with_task_group(taskgroup => {
         taskgroup.spawn_bg(() => {
           let (exit_code, stderr) = @process.collect_stderr(
@@ -156,6 +152,7 @@ fn[T] CodexExec::run(
             command_args,
             stdin=stdin.0,
             stdout=stdout.1,
+            inherit_env=args.codex_options.env is None,
             extra_env~,
           )
           if exit_code != 0 {
@@ -169,23 +166,13 @@ fn[T] CodexExec::run(
         let reader = stdout.0
         defer reader.close()
         while reader.read_until("\n") is Some(text) {
-          yield_(text)
+          yield_(text) catch {
+            @generator.Return => return
+            e => raise @error.reraise(e)
+          }
         }
-      }) catch {
-        @generator.Return => ()
-        e => raise @error.reraise(e)
-      }
+      })
     },
     taskgroup,
   )
-}
-
-///|
-/// Convert SandboxMode to its string representation for CLI arguments.
-fn SandboxMode::to_string(self : SandboxMode) -> String {
-  match self {
-    ReadOnly => "read-only"
-    WorkspaceWrite => "workspace-write"
-    DangerFullAccess => "danger-full-access"
-  }
 }
