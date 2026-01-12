@@ -2,7 +2,10 @@
   "is-main": true,
   "import": [
     "peter-jerry-ye/codex",
+    "peter-jerry-ye/codex/x/sqlite",
+    "peter-jerry-ye/codex/x/error",
     "moonbitlang/async",
+    "moonbitlang/async/fs",
     "moonbitlang/async/stdio",
     "moonbitlang/async/process",
     "moonbitlang/x/sys"

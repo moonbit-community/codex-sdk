@@ -1,44 +1,31 @@
 ---
 name: evolving-workflow
-description: Write auditable, trackable, and repeatable workflows as MoonBit code using the MoonBit Codex SDK. Use when Agent should turn a planning process into a runnable program (plan-as-code), enforce user-defined verifications, and choose explicit sandbox/approval settings per phase.
+description: Write auditable, trackable, and repeatable workflows as MoonBit code using the MoonBit Codex SDK. Turn plans into runnable programs that can be reviewed, committed, and improved over time.
 ---
 
 # Evolving Workflow (Plan-as-Code)
 
-Use MoonBit + the MoonBit Codex SDK to encode “plans” as runnable workflow programs that can be reviewed, committed, rerun, and improved over time.
+Encode "plans" as runnable MoonBit programs using the Codex SDK. Replace plan text with plan code that humans can audit, version in git, and iterate on.
 
-## Why this skill exists
+## When to Use
 
-- Replace "plan text" with "plan code" that humans can audit and version in git.
-- Make workflows repeatable (same inputs → same steps) and evolvable (iterate on the workflow itself).
-- Use explicit capability choices per phase (e.g. review is read-only; fixing is write-enabled).
-- Start small on a subset of inputs, then expand to full runs.
+- You need a repeatable workflow (same inputs → same steps)
+- You want explicit capability choices per phase (read-only review vs write-enabled fixes)
+- You need state persistence across runs (SQLite tracking)
+- You want to start small and expand (offset/limit batching)
 
-## Quick navigation
+## Templates
 
-| Need | Resource |
-|------|----------|
-| Find and explore the SDK API | [references/sdk-discovery.md](references/sdk-discovery.md) |
-| Copy-paste templates | [assets/workflow_review_fix](assets/workflow_review_fix) |
+| Template | Description |
+|----------|-------------|
+| [code_review_bot](assets/code_review_bot) | Review code in a repo, generate markdown reports, optionally setup worktrees for AI |
+| [pr_review_bot](assets/pr_review_bot) | Review GitHub PRs, post comments, track state in SQLite to avoid duplicates |
 
-## Templates (copy + run)
+## Creating Your Own
 
-| Template | What it demonstrates | Run |
-|----------|----------------------|-----|
-| [workflow_review_fix](assets/workflow_review_fix) | Review/fix phases, explicit sandbox/approval settings, maintenance (`moon fmt/info`), interface review, and verifications (`moon test/check`) | `moon run -C assets/workflow_review_fix assets/workflow_review_fix` |
-| [docs_parallel_update](assets/docs_parallel_update) | Parallel doc updates with bounded concurrency, then maintenance + verifications, with optional interface diff review | `moon run -C assets/docs_parallel_update assets/docs_parallel_update` |
+1. Copy a template
+2. Modify `tasks.mbt` to identify your target items
+3. Modify `process.mbt` to change the AI prompt and verification
+4. Adjust `config.mbt` for new settings
 
-## Usage pattern (recommended)
-
-1. Copy an `assets/` template into your repo (commit it early).
-2. Encode the workflow as MoonBit code: inputs, phases, verifications, outputs.
-3. Keep the early feedback loop tight: run with `--offset` and `--limit`.
-4. Expand to full runs once the workflow is stable.
-5. Iterate by code review: tune prompts, checks, and capability boundaries.
-
-## Best practices to keep
-
-- Use `TASK_OFFSET` / `TASK_LIMIT` for reentrant runs and safe rollout.
-- Separate phases by capability (review ≠ fix).
-- Fail closed: if a verification fails, stop or retry explicitly.
-- Emit machine-readable results (JSON) for CI and audit trails.
+See each template's README for details.

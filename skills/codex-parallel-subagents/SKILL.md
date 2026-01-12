@@ -1,9 +1,11 @@
 ---
 name: codex-parallel-subagents
-description: Run multiple AI agent threads in parallel with bounded concurrency. Use for parallel file processing, multi-package updates, batch codebase operations, or fan-out tasks. Uses the MoonBit Codex SDK for agent orchestration.
+description: "[DEPRECATED] Run multiple AI agent threads in parallel with bounded concurrency. Use evolving-workflow instead."
 ---
 
 # Codex Parallel Subagents
+
+> **DEPRECATED**: This skill is deprecated. Use [evolving-workflow](../evolving-workflow/SKILL.md) instead, which provides a declarative workflow API with built-in parallel execution support via `.concurrency(n)`.
 
 Run multiple AI agent threads concurrently with bounded parallelism and collect results safely.
 
