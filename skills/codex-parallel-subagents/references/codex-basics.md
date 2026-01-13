@@ -35,8 +35,8 @@ async fn main {
   "name": "your_project",
   "version": "0.1.0",
   "deps": {
-    "peter-jerry-ye/codex": "0.47.2",
-    "moonbitlang/async": "0.14.3",
+    "peter-jerry-ye/codex": "0.79.0",
+    "moonbitlang/async": "0.16.0",
     "moonbitlang/x": "0.4.38"
   },
   "preferred-target": "native"
@@ -49,8 +49,8 @@ async fn main {
 moon new my_project --name my_project --user your_user
 cd my_project
 moon add peter-jerry-ye/codex
-moon add moonbitlang/async@0.14.3
-moon add moonbitlang/x@0.4.38
+moon add moonbitlang/async
+moon add moonbitlang/x
 ```
 
 ## Configuration options

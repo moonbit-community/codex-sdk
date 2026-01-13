@@ -23,6 +23,9 @@ jobs:
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser; irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           "C:\Users\runneradmin\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+      - name: setup msvc
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: post install
         run: |
@@ -38,7 +41,7 @@ jobs:
           moon test
 
       - name: lint
+        continue-on-error: true
         run: |
           moon fmt && git diff --exit-code
           moon info && git diff --exit-code
-

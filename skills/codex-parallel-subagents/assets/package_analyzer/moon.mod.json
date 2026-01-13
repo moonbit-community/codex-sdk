@@ -2,8 +2,8 @@
   "name": "codex_directory_summaries",
   "version": "0.1.0",
   "deps": {
-    "peter-jerry-ye/codex": "0.47.2",
-    "moonbitlang/async": "0.14.3",
+    "peter-jerry-ye/codex": "0.79.0",
+    "moonbitlang/async": "0.16.0",
     "moonbitlang/x": "0.4.38"
   },
   "preferred-target": "native"
