@@ -13,7 +13,9 @@
 // limitations under the License.
 
 ///|
-priv suberror Reraise (String, Error?)
+priv suberror Reraise {
+  Reraise((String, Error?))
+}
 
 ///|
 #callsite(autofill(loc))
