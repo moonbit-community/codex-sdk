@@ -10,7 +10,11 @@ pub fn describe_dag(Dag) -> String
 
 pub async fn run_dag(Dag, @codex.Codex, RunOptions) -> Map[String, String]
 
-pub fn sample_dag() -> Dag
+pub fn sample_dag(String) -> Dag?
+
+pub fn sample_dags() -> Array[(String, Dag)]
+
+pub fn sample_names() -> Array[String]
 
 // Errors
 
