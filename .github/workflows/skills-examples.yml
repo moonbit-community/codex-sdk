@@ -21,5 +21,9 @@ jobs:
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
+      - name: post install
+        run: |
+          moon version --all
+          moon update
       - name: Validate skills examples
         run: python scripts/check_skills_examples.py
