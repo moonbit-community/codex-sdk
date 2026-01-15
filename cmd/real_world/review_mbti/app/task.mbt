@@ -1,5 +1,5 @@
 ///|
-pub fn output_dir(argument : Arguments) -> String {
+fn output_dir(argument : Arguments) -> String {
   let project_root = argument.path
   if argument.output.has_prefix("/") {
     argument.output
@@ -9,7 +9,7 @@ pub fn output_dir(argument : Arguments) -> String {
 }
 
 ///|
-pub async fn resolve_files_to_review(argument : Arguments) -> Array[String] {
+async fn resolve_files_to_review(argument : Arguments) -> Array[String] {
   let project_root = argument.path
   let files_to_review : Array[String] = if argument.files.length() > 0 {
     @stdio.stdout.write(
@@ -35,7 +35,7 @@ pub async fn resolve_files_to_review(argument : Arguments) -> Array[String] {
 }
 
 ///|
-pub fn summary_output_dir(output_dir : String, project_root : String) -> String {
+fn summary_output_dir(output_dir : String, project_root : String) -> String {
   if output_dir.has_prefix(project_root) {
     try! output_dir[project_root.length() + 1:].to_string()
   } else {
@@ -44,6 +44,6 @@ pub fn summary_output_dir(output_dir : String, project_root : String) -> String 
 }
 
 ///|
-pub fn error_result(file : String, error : String) -> ReviewResult {
+fn error_result(file : String, error : String) -> ReviewResult {
   ReviewResult::{ file, pkg_name: "unknown", review: "", success: false, error }
 }
