@@ -30,7 +30,7 @@ fn help_message() -> String {
 fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
   let args = @args.parse(
     cli_args,
-    flags=["all", "changed", "verbose", "help"],
+    flags=["changed", "verbose", "help"],
     options=["files", "concurrency", "output"],
     aliases={ "h": "help", "v": "verbose", "o": "output", "c": "concurrency" },
   )

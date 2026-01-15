@@ -1,6 +1,6 @@
 ///|
 async fn main {
-  let config = @app.initalize() catch {
+  let config = @app.initialize() catch {
     @app.AppErrors::NeedHelp(message) => {
       @stdio.stdout.write(message)
       return
@@ -11,52 +11,53 @@ async fn main {
   let results = for_all_tasks(
     config.tasks,
     async fn(idx, _) {
+      let handle = config.task_start(idx)
       try {
-        config.task_start(idx)
-        let input = config.task_input(idx)
+        let input = handle.input()
         let thread = codex.start_thread(
           options=@codex.ThreadOptions::new(
             working_directory=config.project_root,
             sandbox_mode=DangerFullAccess,
           ),
         )
-        let response = thread.run(input.prompt)
-        config.task_return(idx, response.final_response)
+        // Retry domain: thread.run -> validate -> finish
+        // Thread is shared so it can re-pickup the job on validation failure
+        @async.retry(
+          @async.RetryMethod::Immediate,
+          fn() {
+            let response = thread.run(input.prompt)
+            handle.validate(response.final_response)
+            handle.finish()
+          },
+          max_retry=3,
+        )
       } catch {
-        e => config.task_error(idx, e)
+        e => handle.error(e)
       }
     },
-    retry_attempts=3,
     parallelism=config.concurrency,
   )
   config.summarize(results)
 }
 
 ///|
+/// Runs tasks in parallel with bounded concurrency.
 async fn[A, B] for_all_tasks(
-  task : Array[A],
+  tasks : Array[A],
   fn_handle : async (Int, A) -> B,
   parallelism? : Int = 4,
-  retry_strategy? : @async.RetryMethod = @async.RetryMethod::Immediate,
-  retry_attempts? : Int = 1,
-  fatal_error? : (Error) -> Bool,
 ) -> Array[B] {
-  let output = Array::make(task.length(), None)
+  let output : Array[B?] = Array::make(tasks.length(), None)
   @async.with_task_group(fn(task_group) {
     let semaphore = @async.Semaphore::new(parallelism)
-    for i, item in task {
+    for i, item in tasks {
+      semaphore.acquire()
       task_group.spawn_bg(allow_failure=true, fn() {
-        semaphore.acquire()
         defer semaphore.release()
-        let result = @async.retry(
-          retry_strategy,
-          () => fn_handle(i, item),
-          max_retry=retry_attempts,
-          fatal_error?,
-        )
+        let result = fn_handle(i, item)
         output[i] = Some(result)
       })
     }
   })
-  output.map(result => result.unwrap())
+  output.map(fn(result) { result.unwrap() })
 }

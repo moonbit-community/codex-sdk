@@ -11,6 +11,23 @@ pub struct ReviewTask {
 }
 
 ///|
+pub enum TaskStatus {
+  Running
+  Validated
+  ValidationFailed(String)
+  Completed
+} derive(Show)
+
+///|
+pub struct TaskHandle {
+  task : ReviewTask
+  config : Job
+  idx : Int
+  mut status : TaskStatus
+  mut response : String
+}
+
+///|
 pub struct Job {
   project_root : String
   output_dir : String
@@ -20,7 +37,7 @@ pub struct Job {
 }
 
 ///|
-pub async fn initalize() -> Job {
+pub async fn initialize() -> Job {
   let arguments_opt = parse_cli_args(@sys.get_cli_args()[1:])
   let arguments = match arguments_opt {
     None => raise AppErrors::NeedHelp(help_message())
@@ -49,18 +66,22 @@ pub async fn initalize() -> Job {
 }
 
 ///|
-pub async fn Job::task_start(config : Job, idx : Int) -> Unit {
+/// Creates a TaskHandle for the given task index and logs the start.
+/// The handle tracks status through the retry domain.
+pub async fn Job::task_start(config : Job, idx : Int) -> TaskHandle {
   let task = config.tasks[idx]
   let total = config.tasks.length()
   @stdio.stdout.write(
     "info [\{idx + 1}/\{total}] - Reviewing \{task.relative_path}\n",
   )
+  TaskHandle::{ task, config, idx, status: TaskStatus::Running, response: "" }
 }
 
 ///|
-pub async fn Job::task_input(config : Job, idx : Int) -> ReviewInput {
-  let task = config.tasks[idx]
-  if config.verbose {
+/// Prepares the review input for this task.
+pub async fn TaskHandle::input(self : TaskHandle) -> ReviewInput {
+  let task = self.task
+  if self.config.verbose {
     @stdio.stdout.write("Reviewing: \{task.relative_path}\n")
   }
   let content = @fs.read_file(task.file_path).text() catch {
@@ -88,19 +109,60 @@ pub async fn Job::task_input(config : Job, idx : Int) -> ReviewInput {
 }
 
 ///|
-pub async fn Job::task_return(
-  config : Job,
-  idx : Int,
-  final_response : String,
-) -> ReviewResult {
-  let task = config.tasks[idx]
-  let result = ReviewResult::{
-    file: task.relative_path,
-    pkg_name: task.pkg_name,
-    review: final_response,
-    success: true,
-    error: "",
+pub suberror ValidationError {
+  EmptyResponse
+} derive(Show)
+
+///|
+/// Validates the response from the model.
+/// Raises ValidationError on failure so retry can catch it.
+/// Updates internal status to Validated on success.
+pub fn TaskHandle::validate(
+  self : TaskHandle,
+  response : String,
+) -> Unit raise ValidationError {
+  self.response = response
+  // Basic validation: check if response is non-empty
+  if response.trim(char_set=" \t\n\r").is_empty() {
+    self.status = TaskStatus::ValidationFailed("Empty response from model")
+    raise ValidationError::EmptyResponse
   }
+  self.status = TaskStatus::Validated
+}
+
+///|
+/// Finalizes the task based on validation status.
+/// Should be called after validate(). Returns the final ReviewResult.
+pub async fn TaskHandle::finish(self : TaskHandle) -> ReviewResult {
+  let task = self.task
+  let config = self.config
+  let result = match self.status {
+    TaskStatus::Validated =>
+      ReviewResult::{
+        file: task.relative_path,
+        pkg_name: task.pkg_name,
+        review: self.response,
+        success: true,
+        error: "",
+      }
+    TaskStatus::ValidationFailed(err) =>
+      ReviewResult::{
+        file: task.relative_path,
+        pkg_name: task.pkg_name,
+        review: "",
+        success: false,
+        error: err,
+      }
+    status =>
+      ReviewResult::{
+        file: task.relative_path,
+        pkg_name: task.pkg_name,
+        review: "",
+        success: false,
+        error: "Unexpected status: \{status}",
+      }
+  }
+  self.status = TaskStatus::Completed
   let output_path = if result.success {
     save_review_to_file(result, config.output_dir) catch {
       e => {
@@ -111,7 +173,7 @@ pub async fn Job::task_return(
   } else {
     None
   }
-  let status = if result.success { "✓" } else { "✗" }
+  let status_icon = if result.success { "✓" } else { "✗" }
   let saved_msg = match output_path {
     Some(path) => {
       let rel_path = if path.has_prefix(config.project_root) {
@@ -123,14 +185,14 @@ pub async fn Job::task_return(
     }
     None => ""
   }
-  @stdio.stdout.write("\{status} \{result.file}\{saved_msg}\n")
+  @stdio.stdout.write("\{status_icon} \{result.file}\{saved_msg}\n")
   result
 }
 
 ///|
-pub fn Job::task_error(config : Job, idx : Int, error : Error) -> ReviewResult {
-  let task = config.tasks[idx]
-  error_result(task.relative_path, error.to_string())
+/// Creates an error result for a task that failed before validation.
+pub fn TaskHandle::error(self : TaskHandle, error : Error) -> ReviewResult {
+  error_result(self.task.relative_path, error.to_string())
 }
 
 ///|
