@@ -50,22 +50,6 @@ async fn get_changed_mbti_files(project_root : String) -> Array[String] {
 }
 
 ///|
-/// Extract package name from mbti file content
-fn extract_package_name(content : String) -> String {
-  let lines = content.split("\n")
-  for line in lines {
-    let trimmed = line.trim(char_set=" \t\n\r").to_string()
-    if trimmed.has_prefix("package") {
-      let parts = trimmed.split("\"").collect()
-      if parts.length() >= 2 {
-        return parts[1].to_string()
-      }
-    }
-  }
-  "unknown"
-}
-
-///|
 /// Helper to create directory path recursively
 async fn mkdir_recursive(path : String) -> Unit {
   if @fs.exists(path) {
@@ -93,7 +77,7 @@ async fn mkdir_recursive(path : String) -> Unit {
 
 ///|
 /// Save review result to file
-pub async fn save_review_to_file(
+async fn save_review_to_file(
   result : ReviewResult,
   output_dir : String,
 ) -> String? {

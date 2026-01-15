@@ -1,7 +1,6 @@
 ///|
 /// CLI arguments structure and parsing
-pub struct Arguments {
-  mut all : Bool
+priv struct Arguments {
   mut changed : Bool
   mut files : Array[String]
   mut concurrency : Int
@@ -11,13 +10,12 @@ pub struct Arguments {
 } derive(Default)
 
 ///|
-pub fn help_message() -> String {
+fn help_message() -> String {
   let message =
     #|Usage: moon run real_world/review_mbti -- [OPTIONS] <path>
     #|Review MoonBit interface files (pkg.generated.mbti) using Codex.
     #|
     #|Options:
-    #|  --all                     Review all mbti files (default)
     #|  --changed                 Only review changed files in git
     #|  --files <files>           Specific files to review (comma-separated)
     #|  -c, --concurrency <num>   Number of concurrent reviews (default: 5)
@@ -29,7 +27,7 @@ pub fn help_message() -> String {
 }
 
 ///|
-pub fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
+fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
   let args = @args.parse(
     cli_args,
     flags=["all", "changed", "verbose", "help"],
@@ -40,9 +38,6 @@ pub fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
     return None
   }
   let arguments = Arguments::default()
-  if args.flags.get("all") is Some(true) {
-    arguments.all = true
-  }
   if args.flags.get("changed") is Some(true) {
     arguments.changed = true
   }

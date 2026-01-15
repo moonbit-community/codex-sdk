@@ -1,6 +1,6 @@
 ///|
 /// Result of reviewing a single mbti file
-pub struct ReviewResult {
+struct ReviewResult {
   file : String
   pkg_name : String
   review : String
