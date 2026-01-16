@@ -10,6 +10,7 @@ pub struct Job {
   concurrency : Int
   verbose : Bool
   files : Array[String] // mbti file paths
+  custom_prompt : String // optional custom focus for review
 }
 
 ///|
@@ -26,6 +27,7 @@ pub async fn initialize() -> Job {
     concurrency: arguments.concurrency,
     verbose: arguments.verbose,
     files: files_to_review,
+    custom_prompt: arguments.prompt,
   }
 }
 
@@ -325,13 +327,18 @@ pub fn ReviewHandle::prompt(self : ReviewHandle) -> String {
   let current = self.attempt
   self.attempt += 1
   if current == 0 {
+    let custom_focus = if self.config.custom_prompt.is_empty() {
+      ""
+    } else {
+      "\n**Custom Focus:** \{self.config.custom_prompt}\n"
+    }
     let prompt =
       $|Review this group of related MoonBit packages together.
       $|
       $|**Group:** \{self.group.name}
       $|**Rationale:** \{self.group.rationale}
       $|**Packages:** \{self.group.packages.join(", ")}
-      $|
+      $|\{custom_focus}
       $|## Package Interfaces
       $|\{self.content_sections}
       $|
@@ -566,14 +573,8 @@ fn apply_env_overrides(arguments : Arguments) -> Arguments {
   if env.get("REVIEW_MBTI_VERBOSE") is Some(value) {
     arguments.verbose = parse_env_bool(value).unwrap_or(arguments.verbose)
   }
-  if env.get("REVIEW_MBTI_CHANGED") is Some(value) {
-    arguments.changed = parse_env_bool(value).unwrap_or(arguments.changed)
-  }
-  if env.get("REVIEW_MBTI_FILES") is Some(value) && arguments.files.is_empty() {
-    arguments.files = value
-      .split(",")
-      .map(fn(s) { s.trim(char_set=" \\t\\n\\r").to_string() })
-      .collect()
+  if env.get("REVIEW_MBTI_PROMPT") is Some(value) && arguments.prompt.is_empty() {
+    arguments.prompt = value
   }
   arguments
 }

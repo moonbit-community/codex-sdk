@@ -9,13 +9,23 @@ priv struct Arguments {
 ///|
 fn help_message() -> String {
   let message =
-    #|Usage: moon run real_world/add_docs -- [OPTIONS] <path>
+    #|Usage: moon run cmd/real_world/add_docs -- [OPTIONS] <path>
     #|
-    #|<path>    Path to the root directory containing packages
+    #|Generate documentation for MoonBit packages using parallel Codex agents.
+    #|Each package is processed in an isolated git worktree with its own branch.
+    #|
+    #|Arguments:
+    #|  <path>                         Path to a MoonBit project (must be a git repo)
     #|
     #|Options:
-    #|  --parallelism <parallelism>    Number of parallel tasks (default: 4)
-    #|  --help                         Print this help message
+    #|  -p, --parallelism <num>        Number of parallel agents (default: 4)
+    #|  -h, --help                     Print this help message
+    #|
+    #|Environment:
+    #|  CODEX_API_KEY                  API key for Codex (required)
+    #|
+    #|Example:
+    #|  moon run cmd/real_world/add_docs -- --parallelism 2 /path/to/moonbit-project
     #|
   message
 }
@@ -27,7 +37,7 @@ fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
     cli_args,
     flags=["help"],
     options=["parallelism", "path"],
-    aliases={ "h": "help" },
+    aliases={ "h": "help", "p": "parallelism" },
   )
   if args.flags.get("help") is Some(true) {
     return None
