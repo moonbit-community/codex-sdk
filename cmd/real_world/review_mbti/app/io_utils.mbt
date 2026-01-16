@@ -21,35 +21,6 @@ async fn find_mbti_files(dir : String, results : Array[String]) -> Unit {
 }
 
 ///|
-/// Get changed mbti files from git
-async fn get_changed_mbti_files(project_root : String) -> Array[String] {
-  let (pipe, process_read) = @process.read_from_process()
-  let status = @process.run(
-    "git",
-    ["diff", "--name-only", "HEAD"],
-    stdout=process_read,
-    cwd=project_root,
-  ) catch {
-    e => @error.reraise(e)
-  }
-  if status != 0 {
-    @error.fail("Git diff failed with status \{status}")
-  }
-  let output = pipe.read_all().text()
-  let changed = []
-  for line in output.split("\n") {
-    let trimmed = line.trim(char_set=" \t\n\r").to_string()
-    if trimmed.has_suffix("pkg.generated.mbti") {
-      changed.push("\{project_root}/\{trimmed}")
-    }
-  }
-  if changed.is_empty() {
-    @stdio.stdout.write("No changed pkg.generated.mbti files found\n")
-  }
-  changed
-}
-
-///|
 /// Helper to create directory path recursively
 async fn mkdir_recursive(path : String) -> Unit {
   if @fs.exists(path) {

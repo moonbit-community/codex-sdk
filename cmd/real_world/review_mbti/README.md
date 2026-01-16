@@ -1,165 +1,200 @@
 # Review MBT Interface Files
 
-A MoonBit tool to batch review MoonBit package interface files (`pkg.generated.mbti`) using the Codex SDK. This tool automatically generates API design feedback and saves results as Markdown files.
+Review MoonBit package interface files (`pkg.generated.mbti`) using the Codex SDK with intelligent grouping.
 
-## Features
+## Overview
 
-- **Flexible Target Selection**: Review all files, only changed files, or specific files
-- **Concurrent Execution**: Control parallel processing with configurable concurrency
-- **Robust Error Handling**: Individual failures don't affect the overall process
-- **Structured Output**: One Markdown file per package with standardized naming
-- **Progress Tracking**: Real-time status updates and completion indicators
+This example demonstrates a **fan-out → sequential → fan-out** workflow pattern:
+
+1. **Phase 1 (Fan-out)**: Parallel agents summarize each package
+2. **Phase 2 (Sequential)**: Single planner groups related packages
+3. **Phase 3 (Fan-out)**: Parallel agents review each group
+
+## Workflow Pattern
+
+```
+Phase 1: Summarize (parallel)
+┌──────────┐
+│ pkg/a    │──▶ Summary A ──┐
+│ pkg/b    │──▶ Summary B ──┼──▶ Phase 2: Plan (sequential)
+│ pkg/c    │──▶ Summary C ──┤         │
+│ pkg/d    │──▶ Summary D ──┘         ▼
+└──────────┘              ┌─────────────────┐
+                          │ Planner groups  │
+                          │ related packages│
+                          └────────┬────────┘
+                                   │
+              ┌────────────────────┼────────────────────┐
+              ▼                    ▼                    ▼
+Phase 3: Review (parallel)
+       ┌─────────┐          ┌─────────┐          ┌─────────┐
+       │ Group 1 │          │ Group 2 │          │ Group 3 │
+       │ map,    │          │ array,  │          │ string, │
+       │ hashmap │          │ vector  │          │ bytes   │
+       └─────────┘          └─────────┘          └─────────┘
+```
+
+This pattern ensures related packages (like `map`, `sortedmap`, `hashmap`) are reviewed together for API consistency.
 
 ## Usage
 
 ```bash
-moon run cmd/real_world/review_mbti -- [OPTIONS] <PROJECT_PATH>
+moon run cmd/real_world/review_mbti -- [OPTIONS] <path>
 ```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `<path>` | Path to the MoonBit module root |
 
 ### Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--all` | Review all `pkg.generated.mbti` files | Implicit when no other filter is specified |
-| `--changed` | Only review files changed relative to `HEAD` | Off |
-| `--files=<list>` | Review specific comma-separated file paths | None |
-| `--concurrency=<N>` | Maximum number of concurrent reviews | 5 |
-| `--verbose` | Show detailed progress for each file | Off |
+| `-c, --concurrency <num>` | Number of parallel agents | 5 |
+| `-v, --verbose` | Show detailed progress | Off |
+| `-o, --output <dir>` | Output directory for reviews | `mbti-reviews` |
+| `-p, --prompt <text>` | Custom focus for the review | None |
+| `-h, --help` | Print help message | |
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `REVIEW_MBTI_CONCURRENCY` | Override `--concurrency` |
+| `REVIEW_MBTI_OUTPUT` | Override `--output` |
+| `REVIEW_MBTI_VERBOSE` | Override `--verbose` (1/true/yes/on) |
+| `REVIEW_MBTI_PROMPT` | Override `--prompt` |
 
 ### Examples
 
-#### Review all files in the current directory
 ```bash
+# Review all packages in current directory
 moon run cmd/real_world/review_mbti -- .
-```
 
-#### Review only changed files
-```bash
-moon run cmd/real_world/review_mbti -- --changed --concurrency=3 .
-```
+# Review with custom focus
+moon run cmd/real_world/review_mbti -- -p "Focus on error handling patterns" .
 
-#### Review specific files
-```bash
-moon run cmd/real_world/review_mbti -- --files=bytes/pkg.generated.mbti,string/pkg.generated.mbti .
-```
-
-#### Full-scale review with higher concurrency
-```bash
-moon run cmd/real_world/review_mbti -- --all --concurrency=8 --verbose /path/to/project
+# Higher concurrency with verbose output
+moon run cmd/real_world/review_mbti -- -c 8 -v /path/to/moonbit-core
 ```
 
 ## How It Works
 
-1. **File Discovery**: Scans the project directory recursively to find all `pkg.generated.mbti` files (skipping `node_modules`, `target`, and hidden directories)
-2. **Filtering**: Applies selection criteria based on `--files`, `--changed`, or `--all`
-3. **Concurrent Processing**: Uses a semaphore to limit concurrent Codex API calls
-4. **Review Generation**: For each file:
-   - Reads the interface content
-   - Extracts the package name
-   - Sends a review prompt to Codex
-   - Receives structured feedback
-5. **Output Persistence**: Saves each review as a Markdown file in `scripts/output/`
-6. **Summary Report**: Displays overall statistics including successes, failures, and timing
+### Phase 1: Summarize
+
+Each package is summarized by an independent agent:
+
+```moonbit
+let summaries = @shared.for_all_tasks(
+  config.files,
+  async fn(idx, _) {
+    let handle = config.summarize_start(idx)
+    // ... retry with handle.prompt(), validate, finish
+  },
+  parallelism=config.concurrency,
+)
+```
+
+The `SummarizeHandle` caches file content at setup to avoid re-reading on retry.
+
+### Phase 2: Plan
+
+A single planner agent receives all summaries and groups related packages:
+
+```moonbit
+let plan_handle = config.plan_start(summaries)
+let groups = try {
+  let thread = codex.start_thread(...)
+  @async.retry(fn() {
+    let prompt = plan_handle.prompt()
+    let response = thread.run(prompt)
+    plan_handle.validate(response.final_response)  // Parses JSON, validates coverage
+  }, max_retry=3)
+} catch { ... }
+```
+
+The planner:
+- Groups related packages (map variants, array variants, etc.)
+- Aims for 3-5 packages per group
+- May place a package in multiple groups if it fits multiple categories
+- Must cover all packages (validation enforces this)
+
+### Phase 3: Review
+
+Each group is reviewed by an independent agent:
+
+```moonbit
+let reviews = @shared.for_all_tasks(
+  groups,
+  async fn(idx, group) {
+    let handle = config.review_start(idx, group)
+    // ... retry with handle.prompt(), validate, finish
+  },
+  parallelism=config.concurrency,
+)
+```
+
+Reviews focus on API consistency across related packages. If a custom prompt is provided via `-p`, it's included in the review context.
 
 ## Output Format
 
-### File Naming
-Reviews are saved with a standardized naming convention:
-- `bytes/pkg.generated.mbti` → `bytes.review.md`
-- `immut/array/pkg.generated.mbti` → `immut_array.review.md`
-
-### Markdown Template
-```markdown
-# Review: <package_name>
-
-**File:** `<relative_path>`  
-**Status:** ✓ Success | ✗ Failed
-
----
-<review_content_or_error>
-```
-
-## Review Prompt
-
-The tool uses the following prompt template for each review:
+Reviews are saved as Markdown files in the output directory:
 
 ```
-Review this MoonBit package interface file (<relative_path>):
-
-```moonbit
-<file_content>
+mbti-reviews/
+├── map_variants.review.md
+├── array_collections.review.md
+└── string_utilities.review.md
 ```
 
-Please provide:
-1. A brief assessment of the API design
-2. Any potential issues or inconsistencies
-3. Suggestions for improvement (if any)
+Each file contains:
+- Group name and packages
+- API consistency assessment
+- Issues and inconsistencies
+- Suggestions for improvement
 
-Keep the review concise and focused on the public API surface.
+## Project Structure
+
+```
+review_mbti/
+├── main.mbt           # Entry point, 3-phase orchestration
+├── app/
+│   ├── job.mbt        # Handle types for all 3 phases
+│   ├── types.mbt      # PackageSummary, PackageGroup, GroupReview
+│   ├── args.mbt       # CLI argument parsing
+│   ├── task.mbt       # File resolution helpers
+│   └── io_utils.mbt   # File discovery, mkdir
 ```
 
-## Implementation Details
+## Handle Types
 
-### Core Functions
+Each phase has its own handle type with consistent lifecycle:
 
-| Function | Purpose |
-|----------|---------|
-| `find_mbti_files` | Recursively discovers all interface files |
-| `get_changed_mbti_files` | Filters files based on git diff |
-| `review_mbti_file` | Performs a single file review |
-| `save_review_to_file` | Persists review results as Markdown |
-| `process_concurrently` | Manages concurrent execution with semaphore |
-| `main` | Orchestrates the entire workflow |
+| Handle | Phase | Key Methods |
+|--------|-------|-------------|
+| `SummarizeHandle` | 1 | `prompt()`, `validate()`, `finish()`, `error()` |
+| `PlanHandle` | 2 | `prompt()`, `validate()`, `finish()`, `error()` |
+| `ReviewHandle` | 3 | `prompt()`, `validate()`, `finish()`, `error()` |
 
-### Concurrency Control
-
-Uses a "sliding window" approach with `@async.with_task_group` and `@semaphore.Semaphore`:
-- Spawns background tasks for each file
-- Semaphore ensures at most `N` concurrent reviews
-- Tasks automatically release resources upon completion
-
-### Error Handling
-
-- Failed reviews still generate output files for easy identification
-- Individual file errors don't halt the entire process
-- Progress indicators use ✓/✗ symbols for quick status overview
+All handles:
+- Track attempt count for retry-aware prompts
+- Store `last_error` for error context in retries
+- Cache content at setup (not on each prompt)
 
 ## Dependencies
 
-- `@codex` - Codex SDK for AI-powered reviews
-- `@async` - Asynchronous task execution
+- `@codex` - Codex SDK for AI agents
+- `@async` - Task groups, retry, semaphore
 - `@fs` - File system operations
-- `@process` - Git command execution
-- `@clap` - CLI argument parsing
-- `@semaphore` - Concurrency control
+- `@args` - CLI argument parsing
+- `@json` - JSON parsing for planner output
 
-## Tips
+## Key Concepts for SDK Users
 
-- **Small changes**: Use `--changed --concurrency=3` for PRs
-- **Single package iteration**: Use `--files=pkg/path/pkg.generated.mbti`
-- **Full quality audit**: Use `--all --concurrency=5`
-- **Find issues**: After running, search output with `grep -r "issue" scripts/output/`
-
-## Limitations
-
-- Output quality depends on the Codex model
-- High concurrency (>10) may trigger API rate limits
-- Fixed prompt template (no customization yet)
-- No automatic retry mechanism for failed reviews
-
-## Comparison with JavaScript Version
-
-This MoonBit implementation provides:
-- Native integration with MoonBit tooling
-- Type-safe concurrent execution
-- Structured error handling with MoonBit's error system
-- Direct access to file system APIs without Node.js overhead
-
-## Future Enhancements
-
-- [ ] Add `--retry-failed` flag for automatic retries
-- [ ] Generate JSON summary with `--summary-json`
-- [ ] Support `--mode=quick|deep` for different prompt strategies
-- [ ] Implement rate limiting with token bucket algorithm
-- [ ] Add timeout handling for long-running reviews
-- [ ] Integrate with GitHub PRs for automatic comment generation
+1. **Dynamic fan-out**: Phase 3 task count depends on Phase 2 output
+2. **Retry with error context**: Failed attempts inform retry prompts
+3. **Validation with structured output**: Parse AI responses as JSON
+4. **Content caching**: Read files once at setup, not on each retry
+5. **Custom prompts**: User-provided focus passed to review agents
