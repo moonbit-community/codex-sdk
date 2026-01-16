@@ -10,53 +10,95 @@ pub suberror AppErrors {
 }
 pub impl Show for AppErrors
 
-pub suberror ValidationError {
+pub suberror PlanError {
+  InvalidJson(String)
+  MissingPackages(Array[String])
+}
+pub impl Show for PlanError
+
+pub suberror ReviewError {
   EmptyResponse
 }
-pub impl Show for ValidationError
+pub impl Show for ReviewError
+
+pub suberror SummarizeError {
+  EmptyResponse
+}
+pub impl Show for SummarizeError
 
 // Types and methods
+pub struct GroupReview {
+  group_name : String
+  packages : Array[String]
+  review : String
+  success : Bool
+  error : String
+}
+pub impl Show for GroupReview
+
 pub struct Job {
   project_root : String
   output_dir : String
   concurrency : Int
   verbose : Bool
-  tasks : Array[String]
+  files : Array[String]
 }
-pub async fn Job::summarize(Self, Array[ReviewResult]) -> Unit
-pub async fn Job::task_start(Self, Int) -> TaskHandle
+pub async fn Job::plan_start(Self, Array[PackageSummary]) -> PlanHandle
+pub async fn Job::review_start(Self, Int, PackageGroup) -> ReviewHandle
+pub async fn Job::summarize_results(Self, Array[GroupReview]) -> Unit
+pub async fn Job::summarize_start(Self, Int) -> SummarizeHandle
 
-pub struct ReviewInput {
-  file : String
-  relative_path : String
-  pkg_name : String
-  prompt : String
+pub struct PackageGroup {
+  name : String
+  packages : Array[String]
+  rationale : String
 }
+pub impl Show for PackageGroup
 
-type ReviewResult
-pub impl Show for ReviewResult
-
-pub struct TaskHandle {
+pub struct PackageSummary {
+  pkg_path : String
   file_path : String
-  relative_path : String
-  pkg_name : String
+  summary : String
+}
+pub impl Show for PackageSummary
+
+pub struct PlanHandle {
+  summaries : Array[PackageSummary]
+  config : Job
+  mut attempt : Int
+  mut last_error : String
+}
+pub async fn PlanHandle::error(Self, Error) -> Array[PackageGroup]
+pub async fn PlanHandle::finish(Self, Array[PackageGroup]) -> Array[PackageGroup]
+pub fn PlanHandle::prompt(Self) -> String
+pub fn PlanHandle::validate(Self, String) -> Array[PackageGroup] raise PlanError
+
+pub struct ReviewHandle {
+  group : PackageGroup
   config : Job
   idx : Int
-  mut status : TaskStatus
-  mut response : String
+  mut attempt : Int
+  content_sections : String
+  mut last_error : String
 }
-pub fn TaskHandle::error(Self, Error) -> ReviewResult
-pub async fn TaskHandle::finish(Self) -> ReviewResult
-pub async fn TaskHandle::input(Self) -> ReviewInput
-pub fn TaskHandle::validate(Self, String) -> Unit raise ValidationError
+pub async fn ReviewHandle::error(Self, Error) -> GroupReview
+pub async fn ReviewHandle::finish(Self, String) -> GroupReview
+pub fn ReviewHandle::prompt(Self) -> String
+pub fn ReviewHandle::validate(Self, String) -> String raise ReviewError
 
-pub enum TaskStatus {
-  Running
-  Validated
-  ValidationFailed(String)
-  Completed
+pub struct SummarizeHandle {
+  file_path : String
+  pkg_path : String
+  config : Job
+  idx : Int
+  mut attempt : Int
+  content : String
+  mut last_error : String
 }
-pub impl Show for TaskStatus
+pub async fn SummarizeHandle::error(Self, Error) -> PackageSummary
+pub fn SummarizeHandle::finish(Self, String) -> PackageSummary
+pub fn SummarizeHandle::prompt(Self) -> String
+pub fn SummarizeHandle::validate(Self, String) -> String raise SummarizeError
 
 // Type aliases
 

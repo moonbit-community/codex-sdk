@@ -74,37 +74,3 @@ async fn mkdir_recursive(path : String) -> Unit {
     }
   }
 }
-
-///|
-/// Save review result to file
-async fn save_review_to_file(
-  result : ReviewResult,
-  output_dir : String,
-) -> String? {
-  if !result.success {
-    return None
-  }
-  mkdir_recursive(output_dir) catch {
-    e => @error.fail_with("Failed to create output directory \{output_dir}", e)
-  }
-  let file_name = result.file
-    .replace_all(old="/pkg.generated.mbti", new="")
-    .replace_all(old="/", new="_") +
-    ".review.md"
-  let output_path = "\{output_dir}/\{file_name}"
-  let status_icon = "✓ Success"
-  let content_text =
-    $|# Review: \{result.pkg_name}
-    $|
-    $|**File:** `\{result.file}`  
-    $|**Status:** \{status_icon}
-    $|
-    $|---
-    $|
-    $|\{result.review}
-    $|
-  @fs.write_file(output_path, @encoding/utf8.encode(content_text), create=0o700) catch {
-    e => @error.fail_with("Failed to write review file to \{output_path}", e)
-  }
-  Some(output_path)
-}
