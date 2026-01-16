@@ -42,8 +42,3 @@ fn summary_output_dir(output_dir : String, project_root : String) -> String {
     output_dir
   }
 }
-
-///|
-fn error_result(file : String, error : String) -> ReviewResult {
-  ReviewResult::{ file, pkg_name: "unknown", review: "", success: false, error }
-}
