@@ -6,40 +6,38 @@ pub fn branch_name(Package) -> String
 
 pub fn completion_followup() -> String
 
-pub async fn create_worktree(Repo, Package) -> WorktreeInfo
-
 pub fn docs_prompt(String) -> String
 
-pub fn help_message() -> String
-
-pub async fn list_packages(Module) -> Array[Package]
-
-pub async fn open_module(String) -> Module
-
-pub async fn open_repo(String) -> Repo
-
-pub fn parse_cli_args(ArrayView[String]) -> Arguments? raise
-
-pub async fn remove_worktree(Repo, String, force? : Bool) -> Bool
-
-pub async fn verify_package(Package) -> Unit
+pub async fn initialize() -> Job
 
 pub fn worktree_path() -> String
 
 // Errors
+pub suberror AppErrors {
+  NeedHelp(String)
+}
+pub impl Show for AppErrors
+
+pub suberror ValidationError {
+  TaskNotCompleted
+}
+pub impl Show for ValidationError
 
 // Types and methods
-pub struct Arguments {
-  path : String
-  parallelism : Int
-}
-pub impl Default for Arguments
-
 pub struct ExecResult {
   stdout : String
   stderr : String
   status : Int
 }
+
+pub struct Job {
+  project_root : String
+  repo : Repo
+  packages : Array[Package]
+  parallelism : Int
+}
+pub async fn Job::summarize(Self, Array[TaskResult]) -> Unit
+pub async fn Job::task_start(Self, Int) -> TaskHandle
 
 pub struct Module {
   root : String
@@ -66,11 +64,44 @@ pub async fn Repo::create_work_tree_and_branch(Self, String, String) -> Bool
 pub async fn Repo::existing_branches(Self) -> Array[String]
 pub async fn Repo::remove_work_tree(Self, String, force? : Bool) -> Bool
 
+pub struct TaskHandle {
+  pkg : Package
+  config : Job
+  idx : Int
+  mut status : TaskStatus
+  mut worktree : WorktreeInfo?
+}
+pub async fn TaskHandle::error(Self, Error) -> TaskResult
+pub async fn TaskHandle::finish(Self, String?) -> TaskResult
+pub async fn TaskHandle::input(Self) -> TaskInput
+pub fn TaskHandle::validate(Self, String) -> Unit raise ValidationError
+
+pub struct TaskInput {
+  pkg : Package
+  worktree : WorktreeInfo
+  prompt : String
+}
+
+pub struct TaskResult {
+  pkg_path : String
+  success : Bool
+  error : String
+}
+pub impl Show for TaskResult
+
+pub enum TaskStatus {
+  Running
+  WorktreeCreated(WorktreeInfo)
+  Completed
+}
+pub impl Show for TaskStatus
+
 pub struct WorktreeInfo {
   tmp_path : String
   branch_name : String
   reused_branch : Bool
 }
+pub impl Show for WorktreeInfo
 
 // Type aliases
 

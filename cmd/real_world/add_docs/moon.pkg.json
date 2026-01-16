@@ -2,11 +2,8 @@
   "is-main": true,
   "import": [
     "moonbitlang/async",
-    "moonbitlang/async/semaphore",
     "moonbitlang/async/stdio",
-    "moonbitlang/x/sys",
     "peter-jerry-ye/codex",
-    "peter-jerry-ye/codex/x/error",
     "peter-jerry-ye/codex-example/real_world/add_docs/app"
   ],
   "link": {

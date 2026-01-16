@@ -1,8 +1,10 @@
 {
   "import": [
+    "moonbitlang/x/sys",
     "moonbitlang/async/fs",
     "moonbitlang/async/process",
     "moonbitlang/async/io",
+    "moonbitlang/async/stdio",
     "peter-jerry-ye/codex/x/args",
     "peter-jerry-ye/codex/x/error"
   ]
