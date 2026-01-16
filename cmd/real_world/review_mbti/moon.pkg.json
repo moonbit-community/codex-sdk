@@ -4,6 +4,7 @@
     "moonbitlang/async",
     "moonbitlang/async/stdio",
     "peter-jerry-ye/codex",
-    "peter-jerry-ye/codex-example/real_world/review_mbti/app"
+    "peter-jerry-ye/codex-example/real_world/review_mbti/app",
+    "peter-jerry-ye/codex-example/real_world/shared"
   ]
 }

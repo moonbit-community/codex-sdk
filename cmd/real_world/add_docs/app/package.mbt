@@ -1,41 +1,24 @@
 ///|
-pub struct Module {
-  root : String
-  name : String
-}
-
-///|
-pub struct Package {
-  mod : Module
-  path : String
-}
-
-///|
-pub async fn Module::at(path : String) -> Module? {
-  if @fs.exists("\{path}/moon.mod.json") {
-    let schema = @json.parse(@fs.read_file("\{path}/moon.mod.json").text())
-    guard schema is { "name": String(name), .. } else {
-      fail("Invalid moon.mod.json at \{path} with content \{schema}")
-    }
-    Some(Module::{ root: path, name })
-  } else {
-    None
+async fn ensure_module(path : String) -> Unit {
+  if not(@fs.exists("\{path}/moon.mod.json")) {
+    fail("No Moon module found at \{path}\n")
+  }
+  let schema = @json.parse(@fs.read_file("\{path}/moon.mod.json").text())
+  guard schema is { "name": String(_), .. } else {
+    fail("Invalid moon.mod.json at \{path} with content \{schema}")
   }
 }
 
 ///|
-pub async fn Module::packages(mod : Self) -> Array[Package] {
+async fn list_package_paths(root : String) -> Array[String] {
   let result = []
-  let root = mod.root
   async fn visit(path : String) {
     let entries = @fs.readdir("\{root}\{path}", include_hidden=false)
     if !path.is_empty() && entries.contains("moon.mod.json") {
-      // Found a submodule, skip
       return
     }
     if entries.contains("moon.pkg.json") {
-      // Found a package, add to result
-      result.push(Package::{ mod, path })
+      result.push(path)
     }
     for entry in entries {
       let subpath = "\{path}/\{entry}"
@@ -48,71 +31,4 @@ pub async fn Module::packages(mod : Self) -> Array[Package] {
 
   visit("")
   result
-}
-
-///|
-pub struct ExecResult {
-  stdout : String
-  stderr : String
-  status : Int
-}
-
-///|
-pub async fn Module::check(mod : Self) -> ExecResult {
-  let stdout = @process.read_from_process()
-  let stderr = @process.read_from_process()
-  let value = @process.run(
-    "moon",
-    ["check", "-C", mod.root],
-    stdout=stdout.1,
-    stderr=stderr.1,
-  )
-  let stdout = stdout.0.read_all().text()
-  let stderr = stderr.0.read_all().text()
-  { stdout, stderr, status: value }
-}
-
-///|
-pub async fn Module::test_(mod : Self) -> ExecResult {
-  let stdout = @process.read_from_process()
-  let stderr = @process.read_from_process()
-  let value = @process.run(
-    "moon",
-    ["test", "-C", mod.root],
-    stdout=stdout.1,
-    stderr=stderr.1,
-  )
-  let stdout = stdout.0.read_all().text()
-  let stderr = stderr.0.read_all().text()
-  { stdout, stderr, status: value }
-}
-
-///|
-pub async fn Module::format(mod : Self) -> ExecResult {
-  let stdout = @process.read_from_process()
-  let stderr = @process.read_from_process()
-  let value = @process.run(
-    "moon",
-    ["fmt", "-C", mod.root],
-    stdout=stdout.1,
-    stderr=stderr.1,
-  )
-  let stdout = stdout.0.read_all().text()
-  let stderr = stderr.0.read_all().text()
-  { stdout, stderr, status: value }
-}
-
-///|
-pub async fn Module::update_info(mod : Self) -> ExecResult {
-  let stdout = @process.read_from_process()
-  let stderr = @process.read_from_process()
-  let value = @process.run(
-    "moon",
-    ["update-info", "-C", mod.root],
-    stdout=stdout.1,
-    stderr=stderr.1,
-  )
-  let stdout = stdout.0.read_all().text()
-  let stderr = stderr.0.read_all().text()
-  { stdout, stderr, status: value }
 }

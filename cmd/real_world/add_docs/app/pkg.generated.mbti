@@ -2,15 +2,7 @@
 package "peter-jerry-ye/codex-example/real_world/add_docs/app"
 
 // Values
-pub fn branch_name(Package) -> String
-
-pub fn completion_followup() -> String
-
-pub fn docs_prompt(String) -> String
-
 pub async fn initialize() -> Job
-
-pub fn worktree_path() -> String
 
 // Errors
 pub suberror AppErrors {
@@ -24,63 +16,31 @@ pub suberror ValidationError {
 pub impl Show for ValidationError
 
 // Types and methods
-pub struct ExecResult {
-  stdout : String
-  stderr : String
-  status : Int
-}
-
 pub struct Job {
   project_root : String
-  repo : Repo
-  packages : Array[Package]
+  packages : Array[String]
   parallelism : Int
 }
 pub async fn Job::summarize(Self, Array[TaskResult]) -> Unit
 pub async fn Job::task_start(Self, Int) -> TaskHandle
 
-pub struct Module {
-  root : String
-  name : String
+pub struct TaskEnv {
+  worktree_path : String
 }
-pub async fn Module::at(String) -> Self?
-pub async fn Module::check(Self) -> ExecResult
-pub async fn Module::format(Self) -> ExecResult
-pub async fn Module::packages(Self) -> Array[Package]
-pub async fn Module::test_(Self) -> ExecResult
-pub async fn Module::update_info(Self) -> ExecResult
-
-pub struct Package {
-  mod : Module
-  path : String
-}
-
-pub struct Repo {
-  path : String
-}
-pub async fn Repo::at(String) -> Self?
-pub async fn Repo::create_work_tree(Self, String, String) -> Bool
-pub async fn Repo::create_work_tree_and_branch(Self, String, String) -> Bool
-pub async fn Repo::existing_branches(Self) -> Array[String]
-pub async fn Repo::remove_work_tree(Self, String, force? : Bool) -> Bool
 
 pub struct TaskHandle {
-  pkg : Package
+  pkg_path : String
   config : Job
   idx : Int
   mut status : TaskStatus
   mut worktree : WorktreeInfo?
+  mut attempt : Int
 }
 pub async fn TaskHandle::error(Self, Error) -> TaskResult
 pub async fn TaskHandle::finish(Self, String?) -> TaskResult
-pub async fn TaskHandle::input(Self) -> TaskInput
+pub fn TaskHandle::prompt(Self) -> String
+pub async fn TaskHandle::setup(Self) -> TaskEnv
 pub fn TaskHandle::validate(Self, String) -> Unit raise ValidationError
-
-pub struct TaskInput {
-  pkg : Package
-  worktree : WorktreeInfo
-  prompt : String
-}
 
 pub struct TaskResult {
   pkg_path : String

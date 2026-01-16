@@ -8,7 +8,7 @@ async fn main {
     e => raise e
   }
   let codex = @codex.Codex::new()
-  let results = for_all_tasks(
+  let results = @shared.for_all_tasks(
     config.tasks,
     async fn(idx, _) {
       let handle = config.task_start(idx)
@@ -38,26 +38,4 @@ async fn main {
     parallelism=config.concurrency,
   )
   config.summarize(results)
-}
-
-///|
-/// Runs tasks in parallel with bounded concurrency.
-async fn[A, B] for_all_tasks(
-  tasks : Array[A],
-  fn_handle : async (Int, A) -> B,
-  parallelism? : Int = 4,
-) -> Array[B] {
-  let output : Array[B?] = Array::make(tasks.length(), None)
-  @async.with_task_group(fn(task_group) {
-    let semaphore = @async.Semaphore::new(parallelism)
-    for i, item in tasks {
-      task_group.spawn_bg(allow_failure=true, fn() {
-        semaphore.acquire()
-        defer semaphore.release()
-        let result = fn_handle(i, item)
-        output[i] = Some(result)
-      })
-    }
-  })
-  output.map(fn(result) { result.unwrap() })
 }

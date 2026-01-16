@@ -1,6 +1,6 @@
 ///|
 /// Build the Codex prompt for generating documentation.
-pub fn docs_prompt(pkg_path : String) -> String {
+fn docs_prompt(pkg_path : String) -> String {
   let prompt =
     $|Generate documentation for the MoonBit package in the directory \{pkg_path} only.
     $|
@@ -31,6 +31,6 @@ pub fn docs_prompt(pkg_path : String) -> String {
 }
 
 ///|
-pub fn completion_followup() -> String {
+fn completion_followup() -> String {
   "If you have finished the task, please respond with 'TASK COMPLETED'. If not, please continue working on it."
 }

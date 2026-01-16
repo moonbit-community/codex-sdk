@@ -6,8 +6,7 @@ pub suberror AppErrors {
 ///|
 pub struct Job {
   project_root : String
-  repo : Repo
-  packages : Array[Package]
+  packages : Array[String]
   parallelism : Int
 }
 
@@ -20,11 +19,12 @@ pub enum TaskStatus {
 
 ///|
 pub struct TaskHandle {
-  pkg : Package
+  pkg_path : String
   config : Job
   idx : Int
   mut status : TaskStatus
   mut worktree : WorktreeInfo?
+  mut attempt : Int
 }
 
 ///|
@@ -34,16 +34,15 @@ pub async fn initialize() -> Job {
     None => raise AppErrors::NeedHelp(help_message())
     Some(arguments) => arguments
   }
-  let repo = open_repo(arguments.path) catch {
+  ensure_repo(arguments.path) catch {
     e => @error.fail_with("Failed to open git repository", e)
   }
-  let project = open_module(arguments.path) catch {
+  ensure_module(arguments.path) catch {
     e => @error.fail_with("Failed to read Moon module", e)
   }
-  let packages = list_packages(project)
+  let packages = list_package_paths(arguments.path)
   Job::{
     project_root: arguments.path,
-    repo,
     packages,
     parallelism: arguments.parallelism,
   }
@@ -51,42 +50,58 @@ pub async fn initialize() -> Job {
 
 ///|
 pub async fn Job::task_start(config : Job, idx : Int) -> TaskHandle {
-  let pkg = config.packages[idx]
+  let pkg_path = config.packages[idx]
   let total = config.packages.length()
   @stdio.stdout.write(
-    "info [\{idx + 1}/\{total}] - Starting documentation for \{pkg.path}\n",
+    "info [\{idx + 1}/\{total}] - Starting documentation for \{pkg_path}\n",
   )
-  TaskHandle::{ pkg, config, idx, status: TaskStatus::Running, worktree: None }
+  TaskHandle::{
+    pkg_path,
+    config,
+    idx,
+    status: TaskStatus::Running,
+    worktree: None,
+    attempt: 0,
+  }
 }
 
 ///|
-pub struct TaskInput {
-  pkg : Package
-  worktree : WorktreeInfo
-  prompt : String
+pub struct TaskEnv {
+  worktree_path : String
 }
 
 ///|
-pub async fn TaskHandle::input(self : TaskHandle) -> TaskInput {
-  let pkg = self.pkg
-  let worktree = create_worktree(self.config.repo, pkg) catch {
+pub async fn TaskHandle::setup(self : TaskHandle) -> TaskEnv {
+  let pkg_path = self.pkg_path
+  let worktree = create_worktree(self.config.project_root, pkg_path) catch {
     e => @error.reraise(e)
   }
   self.worktree = Some(worktree)
   self.status = TaskStatus::WorktreeCreated(worktree)
   if worktree.reused_branch {
     @stdio.stdout.write(
-      "info [\{pkg.path}] - Branch \{worktree.branch_name} already exists, creating worktree only...\n",
+      "info [\{pkg_path}] - Branch \{worktree.branch_name} already exists, creating worktree only...\n",
     )
   } else {
     @stdio.stdout.write(
-      "info [\{pkg.path}] - Creating worktree and branch \{worktree.branch_name}...\n",
+      "info [\{pkg_path}] - Creating worktree and branch \{worktree.branch_name}...\n",
     )
   }
   @stdio.stdout.write(
-    "info [\{pkg.path}] - Created git worktree at \{worktree.tmp_path}\n",
+    "info [\{pkg_path}] - Created git worktree at \{worktree.tmp_path}\n",
   )
-  TaskInput::{ pkg, worktree, prompt: docs_prompt(pkg.path) }
+  TaskEnv::{ worktree_path: worktree.tmp_path }
+}
+
+///|
+pub fn TaskHandle::prompt(self : TaskHandle) -> String {
+  let current = self.attempt
+  self.attempt += 1
+  if current == 0 {
+    docs_prompt(self.pkg_path)
+  } else {
+    completion_followup()
+  }
 }
 
 ///|
@@ -125,22 +140,22 @@ pub async fn TaskHandle::finish(
   self : TaskHandle,
   session_id : String?,
 ) -> TaskResult {
-  let pkg = self.pkg
+  let pkg_path = self.pkg_path
   match session_id {
     Some(id) =>
       @stdio.stdout.write(
-        "info [\{pkg.path}] - [\{id}] - AI declared fin for package at \{pkg.path}\n",
+        "info [\{pkg_path}] - [\{id}] - AI declared fin for package at \{pkg_path}\n",
       )
     None =>
       @stdio.stdout.write(
-        "info [\{pkg.path}] - AI declared fin for package at \{pkg.path}\n",
+        "info [\{pkg_path}] - AI declared fin for package at \{pkg_path}\n",
       )
   }
-  verify_package(pkg) catch {
+  verify_package(self.config.project_root, pkg_path) catch {
     e => {
       self.cleanup(force=true)
       return TaskResult::{
-        pkg_path: pkg.path,
+        pkg_path,
         success: false,
         error: "Verification failed: \{e}",
       }
@@ -148,24 +163,30 @@ pub async fn TaskHandle::finish(
   }
   self.cleanup(force=false)
   self.status = TaskStatus::Completed
-  @stdio.stdout.write("info [\{pkg.path}] - Task finished normally\n")
-  TaskResult::{ pkg_path: pkg.path, success: true, error: "" }
+  @stdio.stdout.write("info [\{pkg_path}] - Task finished normally\n")
+  TaskResult::{ pkg_path, success: true, error: "" }
 }
 
 ///|
 pub async fn TaskHandle::error(self : TaskHandle, error : Error) -> TaskResult {
-  @stdio.stderr.write("error [\{self.pkg.path}] - Exception: \{error}\n")
+  @stdio.stderr.write("error [\{self.pkg_path}] - Exception: \{error}\n")
   self.cleanup(force=true)
-  TaskResult::{ pkg_path: self.pkg.path, success: false, error: error.to_string() }
+  TaskResult::{
+    pkg_path: self.pkg_path,
+    success: false,
+    error: error.to_string(),
+  }
 }
 
 ///|
 async fn TaskHandle::cleanup(self : TaskHandle, force? : Bool) -> Unit {
   match self.worktree {
     Some(worktree) =>
-      if not(remove_worktree(self.config.repo, worktree.tmp_path, force?)) {
+      if not(
+          remove_worktree(self.config.project_root, worktree.tmp_path, force?),
+        ) {
         @stdio.stderr.write(
-          "warning [\{self.pkg.path}] - Failed to remove git worktree at \{worktree.tmp_path}\n",
+          "warning [\{self.pkg_path}] - Failed to remove git worktree at \{worktree.tmp_path}\n",
         )
       }
     None => ()
