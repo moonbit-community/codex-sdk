@@ -21,7 +21,7 @@ pub struct Job {
   output_dir : String
   concurrency : Int
   verbose : Bool
-  tasks : Array[ReviewTask]
+  tasks : Array[String]
 }
 pub async fn Job::summarize(Self, Array[ReviewResult]) -> Unit
 pub async fn Job::task_start(Self, Int) -> TaskHandle
@@ -36,14 +36,10 @@ pub struct ReviewInput {
 type ReviewResult
 pub impl Show for ReviewResult
 
-pub struct ReviewTask {
+pub struct TaskHandle {
   file_path : String
   relative_path : String
   pkg_name : String
-}
-
-pub struct TaskHandle {
-  task : ReviewTask
   config : Job
   idx : Int
   mut status : TaskStatus

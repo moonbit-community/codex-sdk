@@ -4,7 +4,8 @@
     "moonbitlang/async",
     "moonbitlang/async/stdio",
     "peter-jerry-ye/codex",
-    "peter-jerry-ye/codex-example/real_world/add_docs/app"
+    "peter-jerry-ye/codex-example/real_world/add_docs/app",
+    "peter-jerry-ye/codex-example/real_world/shared"
   ],
   "link": {
     "native": {

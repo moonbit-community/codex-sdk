@@ -4,13 +4,6 @@ pub suberror AppErrors {
 } derive(Show)
 
 ///|
-pub struct ReviewTask {
-  file_path : String
-  relative_path : String
-  pkg_name : String
-}
-
-///|
 pub enum TaskStatus {
   Running
   Validated
@@ -20,7 +13,9 @@ pub enum TaskStatus {
 
 ///|
 pub struct TaskHandle {
-  task : ReviewTask
+  file_path : String
+  relative_path : String
+  pkg_name : String
   config : Job
   idx : Int
   mut status : TaskStatus
@@ -33,7 +28,7 @@ pub struct Job {
   output_dir : String
   concurrency : Int
   verbose : Bool
-  tasks : Array[ReviewTask]
+  tasks : Array[String]
 }
 
 ///|
@@ -44,24 +39,12 @@ pub async fn initialize() -> Job {
     Some(arguments) => apply_env_overrides(arguments)
   }
   let files_to_review = resolve_files_to_review(arguments)
-  let tasks = []
-  for file_path in files_to_review {
-    let relative_path = if file_path.has_prefix(arguments.path) {
-      try! file_path[arguments.path.length() + 1:].to_string()
-    } else {
-      file_path
-    }
-    let pkg_name = extract_package_name_from_file(file_path) catch {
-      _ => "unknown"
-    }
-    tasks.push(ReviewTask::{ file_path, relative_path, pkg_name })
-  }
   Job::{
     project_root: arguments.path,
     output_dir: output_dir(arguments),
     concurrency: arguments.concurrency,
     verbose: arguments.verbose,
-    tasks,
+    tasks: files_to_review,
   }
 }
 
@@ -69,26 +52,37 @@ pub async fn initialize() -> Job {
 /// Creates a TaskHandle for the given task index and logs the start.
 /// The handle tracks status through the retry domain.
 pub async fn Job::task_start(config : Job, idx : Int) -> TaskHandle {
-  let task = config.tasks[idx]
+  let file_path = config.tasks[idx]
+  let relative_path = relative_path(file_path, config.project_root)
+  let pkg_name = extract_package_name_from_file(file_path) catch {
+    _ => "unknown"
+  }
   let total = config.tasks.length()
   @stdio.stdout.write(
-    "info [\{idx + 1}/\{total}] - Reviewing \{task.relative_path}\n",
+    "info [\{idx + 1}/\{total}] - Reviewing \{relative_path}\n",
   )
-  TaskHandle::{ task, config, idx, status: TaskStatus::Running, response: "" }
+  TaskHandle::{
+    file_path,
+    relative_path,
+    pkg_name,
+    config,
+    idx,
+    status: TaskStatus::Running,
+    response: "",
+  }
 }
 
 ///|
 /// Prepares the review input for this task.
 pub async fn TaskHandle::input(self : TaskHandle) -> ReviewInput {
-  let task = self.task
   if self.config.verbose {
-    @stdio.stdout.write("Reviewing: \{task.relative_path}\n")
+    @stdio.stdout.write("Reviewing: \{self.relative_path}\n")
   }
-  let content = @fs.read_file(task.file_path).text() catch {
+  let content = @fs.read_file(self.file_path).text() catch {
     e => @error.reraise(e)
   }
   let prompt =
-    $|Review this MoonBit package interface file (\{task.relative_path}):
+    $|Review this MoonBit package interface file (\{self.relative_path}):
     $|
     $|```moonbit
     $|\{content}
@@ -101,9 +95,9 @@ pub async fn TaskHandle::input(self : TaskHandle) -> ReviewInput {
     $|
     $|Keep the review concise and focused on the public API surface.
   ReviewInput::{
-    file: task.relative_path,
-    relative_path: task.relative_path,
-    pkg_name: task.pkg_name,
+    file: self.relative_path,
+    relative_path: self.relative_path,
+    pkg_name: self.pkg_name,
     prompt,
   }
 }
@@ -134,29 +128,28 @@ pub fn TaskHandle::validate(
 /// Finalizes the task based on validation status.
 /// Should be called after validate(). Returns the final ReviewResult.
 pub async fn TaskHandle::finish(self : TaskHandle) -> ReviewResult {
-  let task = self.task
   let config = self.config
   let result = match self.status {
     TaskStatus::Validated =>
       ReviewResult::{
-        file: task.relative_path,
-        pkg_name: task.pkg_name,
+        file: self.relative_path,
+        pkg_name: self.pkg_name,
         review: self.response,
         success: true,
         error: "",
       }
     TaskStatus::ValidationFailed(err) =>
       ReviewResult::{
-        file: task.relative_path,
-        pkg_name: task.pkg_name,
+        file: self.relative_path,
+        pkg_name: self.pkg_name,
         review: "",
         success: false,
         error: err,
       }
     status =>
       ReviewResult::{
-        file: task.relative_path,
-        pkg_name: task.pkg_name,
+        file: self.relative_path,
+        pkg_name: self.pkg_name,
         review: "",
         success: false,
         error: "Unexpected status: \{status}",
@@ -192,7 +185,7 @@ pub async fn TaskHandle::finish(self : TaskHandle) -> ReviewResult {
 ///|
 /// Creates an error result for a task that failed before validation.
 pub fn TaskHandle::error(self : TaskHandle, error : Error) -> ReviewResult {
-  error_result(self.task.relative_path, error.to_string())
+  error_result(self.relative_path, error.to_string())
 }
 
 ///|
@@ -231,6 +224,15 @@ pub async fn Job::summarize(
     }
   }
   @stdio.stdout.write("\n💾 Reviews saved to: \{config.output_dir}\n")
+}
+
+///|
+fn relative_path(file_path : String, project_root : String) -> String {
+  if file_path.has_prefix(project_root) {
+    try! file_path[project_root.length() + 1:].to_string()
+  } else {
+    file_path
+  }
 }
 
 ///|

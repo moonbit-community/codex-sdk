@@ -1,28 +1,16 @@
 ///|
-pub struct Repo {
-  path : String
+async fn repo_exists(path : String) -> Bool {
+  @process.run("git", ["rev-parse", "--is-inside-work-tree"], cwd=path) == 0
 }
 
 ///|
-pub async fn Repo::at(path : String) -> Self? {
-  // Verify that the path is a git repository
-  let status = @process.run(
-    "git",
-    ["rev-parse", "--is-inside-work-tree"],
-    cwd=path,
-  )
-  guard status is 0 else { return None }
-  Some(Repo::{ path, })
-}
-
-///|
-pub async fn Repo::existing_branches(repo : Self) -> Array[String] {
+async fn git_list_branches(repo_path : String) -> Array[String] {
   let (pipe, process_read) = @process.read_from_process()
   let status = @process.run(
     "git",
     ["branch", "--list", "--no-color"],
     stdout=process_read,
-    cwd=repo.path,
+    cwd=repo_path,
   ) catch {
     e => raise e
   }
@@ -39,27 +27,27 @@ pub async fn Repo::existing_branches(repo : Self) -> Array[String] {
 }
 
 ///|
-pub async fn Repo::create_work_tree(
-  repo : Self,
+async fn git_create_worktree(
+  repo_path : String,
   branch : String,
   path : String,
 ) -> Bool {
-  @process.run("git", ["worktree", "add", path, branch], cwd=repo.path) == 0
+  @process.run("git", ["worktree", "add", path, branch], cwd=repo_path) == 0
 }
 
 ///|
-pub async fn Repo::create_work_tree_and_branch(
-  repo : Self,
+async fn git_create_worktree_and_branch(
+  repo_path : String,
   branch : String,
   path : String,
 ) -> Bool {
-  @process.run("git", ["worktree", "add", "-b", branch, path], cwd=repo.path) ==
+  @process.run("git", ["worktree", "add", "-b", branch, path], cwd=repo_path) ==
   0
 }
 
 ///|
-pub async fn Repo::remove_work_tree(
-  repo : Self,
+async fn git_remove_worktree(
+  repo_path : String,
   path : String,
   force? : Bool,
 ) -> Bool {
@@ -67,5 +55,5 @@ pub async fn Repo::remove_work_tree(
   if force is Some(true) {
     args.push("--force")
   }
-  @process.run("git", args, cwd=repo.path) == 0
+  @process.run("git", args, cwd=repo_path) == 0
 }

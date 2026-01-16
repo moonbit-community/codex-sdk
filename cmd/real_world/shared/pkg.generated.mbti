@@ -1,0 +1,14 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "peter-jerry-ye/codex-example/real_world/shared"
+
+// Values
+pub async fn[A, B] for_all_tasks(Array[A], async (Int, A) -> B, parallelism? : Int) -> Array[B]
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

@@ -48,26 +48,10 @@ fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
 }
 
 ///|
-async fn open_repo(path : String) -> Repo {
-  if Repo::at(path) is Some(repo) {
-    repo
-  } else {
+async fn ensure_repo(path : String) -> Unit {
+  if not(repo_exists(path)) {
     fail("No git repository found at \{path}\n")
   }
-}
-
-///|
-async fn open_module(path : String) -> Module {
-  if Module::at(path) is Some(project) {
-    project
-  } else {
-    fail("No Moon module found at \{path}\n")
-  }
-}
-
-///|
-async fn list_packages(project : Module) -> Array[Package] {
-  project.packages()
 }
 
 ///|
@@ -81,49 +65,53 @@ pub struct WorktreeInfo {
 extern "C" fn random() -> UInt = "arc4random"
 
 ///|
-pub fn worktree_path() -> String {
+fn worktree_path() -> String {
   "/tmp/moon_add_docs_\{random()}/"
 }
 
 ///|
-pub fn branch_name(pkg : Package) -> String {
-  "code-review-" + pkg.path.replace_all(old="/", new="-")
+fn branch_name(pkg_path : String) -> String {
+  "code-review-" + pkg_path.replace_all(old="/", new="-")
 }
 
 ///|
-async fn create_worktree(repo : Repo, pkg : Package) -> WorktreeInfo {
+async fn create_worktree(repo_path : String, pkg_path : String) -> WorktreeInfo {
   let tmp_path = worktree_path()
-  let branch = branch_name(pkg)
-  let branches = repo.existing_branches()
+  let branch = branch_name(pkg_path)
+  let branches = git_list_branches(repo_path)
   let reused_branch = branches.contains(branch)
   let ok = if reused_branch {
-    repo.create_work_tree(branch, tmp_path)
+    git_create_worktree(repo_path, branch, tmp_path)
   } else {
-    repo.create_work_tree_and_branch(branch, tmp_path)
+    git_create_worktree_and_branch(repo_path, branch, tmp_path)
   }
   if !ok {
-    fail("error [\{pkg.path}] - Failed to create git worktree at \{tmp_path}\n")
+    fail("error [\{pkg_path}] - Failed to create git worktree at \{tmp_path}\n")
   }
   WorktreeInfo::{ tmp_path, branch_name: branch, reused_branch }
 }
 
 ///|
-async fn verify_package(pkg : Package) -> Unit {
-  if pkg.mod.check().status != 0 || pkg.mod.test_().status != 0 {
-    fail("error [\{pkg.path}] - moon check or test failed after adding docs\n")
+async fn verify_package(project_root : String, pkg_path : String) -> Unit {
+  let check_status = @process.run("moon", ["check", "-C", project_root])
+  let test_status = @process.run("moon", ["test", "-C", project_root])
+  if check_status != 0 || test_status != 0 {
+    fail("error [\{pkg_path}] - moon check or test failed after adding docs\n")
   }
-  if pkg.mod.format().status != 0 || pkg.mod.update_info().status != 0 {
+  let fmt_status = @process.run("moon", ["fmt", "-C", project_root])
+  let info_status = @process.run("moon", ["update-info", "-C", project_root])
+  if fmt_status != 0 || info_status != 0 {
     fail(
-      "error [\{pkg.path}] - moon format or update_info modified files after adding docs\n",
+      "error [\{pkg_path}] - moon format or update_info modified files after adding docs\n",
     )
   }
 }
 
 ///|
 async fn remove_worktree(
-  repo : Repo,
+  repo_path : String,
   tmp_path : String,
   force? : Bool,
 ) -> Bool {
-  repo.remove_work_tree(tmp_path, force?)
+  git_remove_worktree(repo_path, tmp_path, force?)
 }
