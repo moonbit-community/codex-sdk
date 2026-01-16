@@ -2,13 +2,18 @@
 package "peter-jerry-ye/codex-example/real_world/review_mbti/app"
 
 // Values
-pub async fn initalize() -> Job
+pub async fn initialize() -> Job
 
 // Errors
 pub suberror AppErrors {
   NeedHelp(String)
 }
 pub impl Show for AppErrors
+
+pub suberror ValidationError {
+  EmptyResponse
+}
+pub impl Show for ValidationError
 
 // Types and methods
 pub struct Job {
@@ -19,10 +24,7 @@ pub struct Job {
   tasks : Array[ReviewTask]
 }
 pub async fn Job::summarize(Self, Array[ReviewResult]) -> Unit
-pub fn Job::task_error(Self, Int, Error) -> ReviewResult
-pub async fn Job::task_input(Self, Int) -> ReviewInput
-pub async fn Job::task_return(Self, Int, String) -> ReviewResult
-pub async fn Job::task_start(Self, Int) -> Unit
+pub async fn Job::task_start(Self, Int) -> TaskHandle
 
 pub struct ReviewInput {
   file : String
@@ -39,6 +41,26 @@ pub struct ReviewTask {
   relative_path : String
   pkg_name : String
 }
+
+pub struct TaskHandle {
+  task : ReviewTask
+  config : Job
+  idx : Int
+  mut status : TaskStatus
+  mut response : String
+}
+pub fn TaskHandle::error(Self, Error) -> ReviewResult
+pub async fn TaskHandle::finish(Self) -> ReviewResult
+pub async fn TaskHandle::input(Self) -> ReviewInput
+pub fn TaskHandle::validate(Self, String) -> Unit raise ValidationError
+
+pub enum TaskStatus {
+  Running
+  Validated
+  ValidationFailed(String)
+  Completed
+}
+pub impl Show for TaskStatus
 
 // Type aliases
 
