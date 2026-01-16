@@ -51,8 +51,8 @@ async fn[A, B] for_all_tasks(
   @async.with_task_group(fn(task_group) {
     let semaphore = @async.Semaphore::new(parallelism)
     for i, item in tasks {
-      semaphore.acquire()
       task_group.spawn_bg(allow_failure=true, fn() {
+        semaphore.acquire()
         defer semaphore.release()
         let result = fn_handle(i, item)
         output[i] = Some(result)
