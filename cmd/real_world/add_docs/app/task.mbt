@@ -1,13 +1,13 @@
 ///|
-pub struct Arguments {
+priv struct Arguments {
   /// Path to the root directory containing packages
   path : String
   /// Number of parallel tasks
   parallelism : Int
-} derive(Default)
+}
 
 ///|
-pub fn help_message() -> String {
+fn help_message() -> String {
   let message =
     #|Usage: moon run real_world/add_docs -- [OPTIONS] <path>
     #|
@@ -21,7 +21,7 @@ pub fn help_message() -> String {
 }
 
 ///|
-pub fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
+fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
   let help_message = help_message()
   let args = @args.parse(
     cli_args,
@@ -48,7 +48,7 @@ pub fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
 }
 
 ///|
-pub async fn open_repo(path : String) -> Repo {
+async fn open_repo(path : String) -> Repo {
   if Repo::at(path) is Some(repo) {
     repo
   } else {
@@ -57,7 +57,7 @@ pub async fn open_repo(path : String) -> Repo {
 }
 
 ///|
-pub async fn open_module(path : String) -> Module {
+async fn open_module(path : String) -> Module {
   if Module::at(path) is Some(project) {
     project
   } else {
@@ -66,7 +66,7 @@ pub async fn open_module(path : String) -> Module {
 }
 
 ///|
-pub async fn list_packages(project : Module) -> Array[Package] {
+async fn list_packages(project : Module) -> Array[Package] {
   project.packages()
 }
 
@@ -75,7 +75,7 @@ pub struct WorktreeInfo {
   tmp_path : String
   branch_name : String
   reused_branch : Bool
-}
+} derive(Show)
 
 ///|
 extern "C" fn random() -> UInt = "arc4random"
@@ -91,7 +91,7 @@ pub fn branch_name(pkg : Package) -> String {
 }
 
 ///|
-pub async fn create_worktree(repo : Repo, pkg : Package) -> WorktreeInfo {
+async fn create_worktree(repo : Repo, pkg : Package) -> WorktreeInfo {
   let tmp_path = worktree_path()
   let branch = branch_name(pkg)
   let branches = repo.existing_branches()
@@ -108,7 +108,7 @@ pub async fn create_worktree(repo : Repo, pkg : Package) -> WorktreeInfo {
 }
 
 ///|
-pub async fn verify_package(pkg : Package) -> Unit {
+async fn verify_package(pkg : Package) -> Unit {
   if pkg.mod.check().status != 0 || pkg.mod.test_().status != 0 {
     fail("error [\{pkg.path}] - moon check or test failed after adding docs\n")
   }
@@ -120,7 +120,7 @@ pub async fn verify_package(pkg : Package) -> Unit {
 }
 
 ///|
-pub async fn remove_worktree(
+async fn remove_worktree(
   repo : Repo,
   tmp_path : String,
   force? : Bool,
