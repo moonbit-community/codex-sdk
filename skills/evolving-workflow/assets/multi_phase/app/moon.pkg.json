@@ -1,11 +1,10 @@
 {
-  "is-main": true,
   "import": [
-    "peter-jerry-ye/codex",
     "moonbitlang/async",
+    "moonbitlang/x/sys",
     "moonbitlang/async/fs",
     "moonbitlang/async/stdio",
-    "moonbitlang/async/process",
-    "moonbitlang/x/sys"
+    "peter-jerry-ye/codex/x/args",
+    "peter-jerry-ye/codex/x/error"
   ]
 }

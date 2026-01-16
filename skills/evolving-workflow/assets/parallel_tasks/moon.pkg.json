@@ -1,0 +1,9 @@
+{
+  "is-main": true,
+  "import": [
+    "moonbitlang/async",
+    "moonbitlang/async/stdio",
+    "peter-jerry-ye/codex",
+    "parallel_tasks/app"
+  ]
+}
