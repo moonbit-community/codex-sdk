@@ -4,6 +4,8 @@
     "moonbitlang/async/fs",
     "moonbitlang/async/process",
     "moonbitlang/async/io",
-    "peter-jerry-ye/codex/x/error"
+    "peter-jerry-ye/codex/x/error",
+    "moonbitlang/core/strconv",
+    "moonbitlang/core/json"
   ]
 }

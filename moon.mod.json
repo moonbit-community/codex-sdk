@@ -1,6 +1,6 @@
 {
   "name": "peter-jerry-ye/codex",
-  "version": "0.79.0",
+  "version": "0.79.1",
   "deps": {
     "moonbitlang/async": "0.16.0",
     "moonbitlang/x": "0.4.38"

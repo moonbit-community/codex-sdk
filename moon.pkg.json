@@ -6,6 +6,7 @@
     "moonbitlang/async/io",
     "moonbitlang/x/sys",
     "moonbitlang/async/process",
-    "peter-jerry-ye/codex/x/error"
+    "peter-jerry-ye/codex/x/error",
+    "moonbitlang/core/json"
   ]
 }
