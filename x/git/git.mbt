@@ -98,10 +98,10 @@ pub async fn GitRepo::clone(url : String, destination : String) -> GitRepo {
     )
     if status == 0 {
       default_branch = Some(
-        {
+        ({
           let full = output.text().trim().to_string()
           full.strip_prefix("origin/").unwrap_or(full)
-        }.to_string(),
+        }).to_string(),
       )
     }
   } catch {
@@ -149,10 +149,10 @@ pub async fn GitRepo::discover(path : String) -> GitRepo {
     )
     if status == 0 {
       default_branch = Some(
-        {
+        ({
           let full = output.text().trim().to_string()
           full.strip_prefix("origin/").unwrap_or(full)
-        }.to_string(),
+        }).to_string(),
       )
     }
   } catch {

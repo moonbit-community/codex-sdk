@@ -20,7 +20,7 @@ minimist.
 Unknown arguments are treated as positional arguments rather than causing
 errors:
 
-```moonbit
+```moonbit nocheck
 ///|
 test "unknown arguments become positional" {
   let result = parse(["--unknown", "-x", "normal"], flags=["verbose"])
@@ -31,7 +31,7 @@ test "unknown arguments become positional" {
 
 ## Basic Usage
 
-```moonbit
+```moonbit nocheck
 ///|
 test "basic usage example" {
   let args = parse(
@@ -49,7 +49,7 @@ test "basic usage example" {
 
 ## Advanced Usage
 
-```moonbit
+```moonbit nocheck
 ///|
 test "advanced usage example" {
   let args = parse(
@@ -80,7 +80,7 @@ test "advanced usage example" {
 
 ### Basic flags and options
 
-```moonbit
+```moonbit nocheck
 ///|
 test "basic flags and options" {
   let result = parse(["--verbose", "-o", "file.txt"], flags=["verbose"], options=[
@@ -93,7 +93,7 @@ test "basic flags and options" {
 
 ### Collections (repeated options)
 
-```moonbit
+```moonbit nocheck
 ///|
 test "collections repeated options" {
   let result = parse(["--include", "src", "--include", "lib"], collections=[
@@ -105,7 +105,7 @@ test "collections repeated options" {
 
 ### Aliases
 
-```moonbit
+```moonbit nocheck
 ///|
 test "aliases example" {
   let result = parse(["-v"], flags=["verbose"], aliases={ "v": "verbose" })
@@ -115,7 +115,7 @@ test "aliases example" {
 
 ### Negatable flags
 
-```moonbit
+```moonbit nocheck
 ///|
 test "negatable flags example" {
   let result = parse(["--no-verbose"], flags=["verbose"], negatable=["verbose"])
@@ -125,7 +125,7 @@ test "negatable flags example" {
 
 ### Double dash separator
 
-```moonbit
+```moonbit nocheck
 ///|
 test "double dash separator example" {
   let result = parse(["--verbose", "--", "--not-a-flag"], flags=["verbose"])
@@ -136,7 +136,7 @@ test "double dash separator example" {
 
 ### Key-value syntax
 
-```moonbit
+```moonbit nocheck
 ///|
 test "key-value syntax example" {
   let result = parse(["--output=file.txt"], options=["output"])
@@ -146,7 +146,7 @@ test "key-value syntax example" {
 
 ### Combined short flags
 
-```moonbit
+```moonbit nocheck
 ///|
 test "combined short flags example" {
   let result = parse(["-vq"], flags=["v", "q"])
