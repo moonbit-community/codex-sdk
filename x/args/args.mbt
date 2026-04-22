@@ -59,8 +59,8 @@ pub fn parse(
       // Handle long options (--name or --name=value)
       // Extract name and value
       let eq = rest.find("=")
-      let name = if eq is Some(pos) { try! rest[:pos] } else { rest }
-      let value = if eq is Some(pos) { Some(try! rest[pos + 1:]) } else { None }
+      let name = if eq is Some(pos) { rest[:pos] } else { rest }
+      let value = if eq is Some(pos) { Some(rest[pos + 1:]) } else { None }
 
       // Handle --no- prefix for negatable flags
       if name is [.. "no-", .. base_name] {

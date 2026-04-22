@@ -33,7 +33,7 @@ pub fn extract_repo_name(url : String) -> String {
   }
   // Remove .git suffix if present
   if last.has_suffix(".git") {
-    try! last[0:last.length() - 4].to_string()
+    last[0:last.length() - 4].to_string()
   } else {
     last
   }
@@ -390,7 +390,7 @@ pub async fn GitRepo::get_default_branch(
   // Extract branch name from "origin/main" -> "main"
   let prefix = "\{remote}/"
   if default_branch_full.has_prefix(prefix) {
-    Some(try! default_branch_full[prefix.length():].to_string())
+    Some(default_branch_full[prefix.length():].to_string())
   } else {
     Some(default_branch_full)
   }
