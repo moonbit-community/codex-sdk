@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "peter-jerry-ye/codex"
 
-import(
-  "moonbitlang/async"
-  "moonbitlang/core/json"
-  "peter-jerry-ye/codex/generator"
-)
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/json",
+  "peter-jerry-ye/codex/generator",
+}
 
 // Values
 
@@ -25,9 +25,8 @@ pub fn Codex::new(options? : CodexOptions) -> Self
 pub fn Codex::resume_thread(Self, String, options? : ThreadOptions) -> Thread
 pub fn Codex::start_thread(Self, options? : ThreadOptions) -> Thread
 
-type CodexOptions
+type CodexOptions derive(Default)
 pub fn CodexOptions::new(codex_path_override? : String, base_url? : String, api_key? : String, env? : Map[String, String]) -> Self
-pub impl Default for CodexOptions
 
 pub enum CommandExecutionStatus {
   InProgress
@@ -54,10 +53,8 @@ pub impl @json.FromJson for Event
 pub struct FileUpdateChange {
   path : String
   kind : PatchChangeKind
-}
+} derive(ToJson, @json.FromJson)
 pub impl Show for FileUpdateChange
-pub impl ToJson for FileUpdateChange
-pub impl @json.FromJson for FileUpdateChange
 
 pub struct McpToolCallResult {
   content : Array[Json]
@@ -119,9 +116,7 @@ pub async fn[G] Thread::run_streamed(Self, String, extra_input? : Array[UserInpu
 
 pub struct ThreadError {
   message : String
-}
-pub impl ToJson for ThreadError
-pub impl @json.FromJson for ThreadError
+} derive(ToJson, @json.FromJson)
 
 pub enum ThreadItem {
   AgentMessageItem(id~ : String, text~ : String)
@@ -136,17 +131,14 @@ pub enum ThreadItem {
 pub impl ToJson for ThreadItem
 pub impl @json.FromJson for ThreadItem
 
-type ThreadOptions
+type ThreadOptions derive(Default)
 pub fn ThreadOptions::new(model? : String, sandbox_mode? : SandboxMode, working_directory? : String, skip_git_repo_check? : Bool, model_reasoning_effort? : ModelReasoningEffort, network_access_enabled? : Bool, web_search_enabled? : Bool, approval_policy? : ApprovalMode, additional_directories? : Array[String]) -> Self
-pub impl Default for ThreadOptions
 
 pub struct TodoItem {
   text : String
   completed : Bool
-}
+} derive(ToJson, @json.FromJson)
 pub impl Show for TodoItem
-pub impl ToJson for TodoItem
-pub impl @json.FromJson for TodoItem
 
 #alias(RunResult)
 pub struct Turn {
@@ -155,17 +147,14 @@ pub struct Turn {
   usage : Usage?
 }
 
-type TurnOptions
+type TurnOptions derive(Default)
 pub fn TurnOptions::new(output_schema? : Json) -> Self
-pub impl Default for TurnOptions
 
 pub struct Usage {
   input_tokens : Int
   cached_input_tokens : Int
   output_tokens : Int
-}
-pub impl ToJson for Usage
-pub impl @json.FromJson for Usage
+} derive(ToJson, @json.FromJson)
 
 pub(all) enum UserInput {
   Text(String)
