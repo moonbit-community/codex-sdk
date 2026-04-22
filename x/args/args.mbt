@@ -50,7 +50,7 @@ pub fn parse(
     }
 
     // Stop early if requested and we hit a non-option
-    if stop_early && not(arg.has_prefix("-")) {
+    if stop_early && !arg.has_prefix("-") {
       positional.push(arg)
       positional.push_iter(args.iter())
       break
