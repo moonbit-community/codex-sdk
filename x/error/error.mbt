@@ -31,21 +31,19 @@ pub fn[A] reraise(e : Error, loc~ : SourceLoc) -> A raise {
           cause,
         ),
       )
-    Failure::Failure(msg) =>
-      lexmatch msg {
-        (prefix, "FAILED", rest) =>
-          raise Reraise(
-            (
-              (
-                $|FAILED: \{rest}
-                $|  at \{prefix}
-                $|  at \{loc}
-              ),
-              None,
-            ),
-          )
-        _ => panic()
-      }
+    Failure::Failure(msg) => {
+      guard msg =~ (re"FAILED", before=prefix, after=rest)
+      raise Reraise(
+        (
+          (
+            $|FAILED: \{rest}
+            $|  at \{prefix}
+            $|  at \{loc}
+          ),
+          None,
+        ),
+      )
+    }
     e =>
       raise Reraise(
         (

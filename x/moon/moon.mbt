@@ -121,9 +121,9 @@ pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
       continue
     }
     let file = parts[0]
-    let line_num = @strconv.parse_int(parts[1]) catch { _ => continue }
+    let line_num = @string.parse_int(parts[1]) catch { _ => continue }
     let column : Int? = if parts.length() >= 3 {
-      Some(@strconv.parse_int(parts[2])) catch {
+      Some(@string.parse_int(parts[2])) catch {
         _ => None
       }
     } else {

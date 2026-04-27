@@ -35,7 +35,7 @@ def main() -> int:
     for project in sorted(projects):
         rel_path = project.relative_to(repo_root)
         result = subprocess.run(
-            ["moon", "check", "-C", str(project)],
+            ["moon", "-C", str(project), "check"],
             capture_output=True,
             text=True,
         )

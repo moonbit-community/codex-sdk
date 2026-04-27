@@ -234,14 +234,24 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
 pub struct FileUpdateChange {
   path : String
   kind : PatchChangeKind
-} derive(ToJson, @json.FromJson, Show)
+} derive(ToJson, @json.FromJson)
+
+///|
+pub impl Show for FileUpdateChange with output(self, logger) {
+  logger.write_string("{path: \"\{self.path}\", kind: \{self.kind}}")
+}
 
 ///|
 /// An item in the agent's to-do list.
 pub struct TodoItem {
   text : String
   completed : Bool
-} derive(ToJson, @json.FromJson, Show)
+} derive(ToJson, @json.FromJson)
+
+///|
+pub impl Show for TodoItem with output(self, logger) {
+  logger.write_string("{text: \"\{self.text}\", completed: \{self.completed}}")
+}
 
 ///|
 /// The status of a command execution.
@@ -249,7 +259,16 @@ pub enum CommandExecutionStatus {
   InProgress
   Completed
   Failed
-} derive(Show)
+}
+
+///|
+pub impl Show for CommandExecutionStatus with output(status, logger) {
+  match status {
+    InProgress => logger.write_string("InProgress")
+    Completed => logger.write_string("Completed")
+    Failed => logger.write_string("Failed")
+  }
+}
 
 ///|
 pub impl ToJson for CommandExecutionStatus with to_json(status) {
@@ -282,7 +301,16 @@ pub enum PatchChangeKind {
   Add
   Delete
   Update
-} derive(Show)
+}
+
+///|
+pub impl Show for PatchChangeKind with output(kind, logger) {
+  match kind {
+    Add => logger.write_string("Add")
+    Delete => logger.write_string("Delete")
+    Update => logger.write_string("Update")
+  }
+}
 
 ///|
 pub impl ToJson for PatchChangeKind with to_json(kind) {
@@ -314,7 +342,15 @@ pub impl @json.FromJson for PatchChangeKind with from_json(value, path) {
 pub enum PatchApplyStatus {
   Completed
   Failed
-} derive(Show)
+}
+
+///|
+pub impl Show for PatchApplyStatus with output(status, logger) {
+  match status {
+    Completed => logger.write_string("Completed")
+    Failed => logger.write_string("Failed")
+  }
+}
 
 ///|
 pub impl ToJson for PatchApplyStatus with to_json(status) {
@@ -345,7 +381,16 @@ pub enum McpToolCallStatus {
   InProgress
   Completed
   Failed
-} derive(Show)
+}
+
+///|
+pub impl Show for McpToolCallStatus with output(status, logger) {
+  match status {
+    InProgress => logger.write_string("InProgress")
+    Completed => logger.write_string("Completed")
+    Failed => logger.write_string("Failed")
+  }
+}
 
 ///|
 pub impl ToJson for McpToolCallStatus with to_json(status) {

@@ -2,7 +2,7 @@
   "name": "peter-jerry-ye/codex",
   "version": "0.79.2",
   "deps": {
-    "moonbitlang/async": "0.16.0",
+    "moonbitlang/async": "0.18.0",
     "moonbitlang/x": "0.4.38"
   },
   "readme": "README.mbt.md",

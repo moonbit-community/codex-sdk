@@ -138,7 +138,7 @@ async fn[T] CodexExec::run(
 
   // CodexExec
   @generator.AsyncGenerator::new(
-    fn(yield_) {
+    async fn(yield_) {
       let stdin = @process.write_to_process() catch {
         e => raise @error.reraise(e)
       }

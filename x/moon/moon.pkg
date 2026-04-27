@@ -2,6 +2,6 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/async/io",
   "moonbitlang/async/process",
-  "moonbitlang/core/strconv",
+  "moonbitlang/core/string",
   "moonbitlang/core/json",
 }

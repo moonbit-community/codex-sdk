@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "peter-jerry-ye/codex/x/tasks"
 
-import(
-  "peter-jerry-ye/codex"
-  "peter-jerry-ye/codex/x/moon"
-)
+import {
+  "peter-jerry-ye/codex",
+  "peter-jerry-ye/codex/x/moon",
+}
 
 // Values
 pub async fn for_each_package(String, async (@moon.Package) -> Unit) -> Unit

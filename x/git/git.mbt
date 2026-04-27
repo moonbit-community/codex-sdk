@@ -33,7 +33,7 @@ pub fn extract_repo_name(url : String) -> String {
   }
   // Remove .git suffix if present
   if last.has_suffix(".git") {
-    try! last[0:last.length() - 4].to_string()
+    last[0:last.length() - 4].to_string()
   } else {
     last
   }
@@ -98,10 +98,10 @@ pub async fn GitRepo::clone(url : String, destination : String) -> GitRepo {
     )
     if status == 0 {
       default_branch = Some(
-        {
+        ({
           let full = output.text().trim().to_string()
           full.strip_prefix("origin/").unwrap_or(full)
-        }.to_string(),
+        }).to_string(),
       )
     }
   } catch {
@@ -149,10 +149,10 @@ pub async fn GitRepo::discover(path : String) -> GitRepo {
     )
     if status == 0 {
       default_branch = Some(
-        {
+        ({
           let full = output.text().trim().to_string()
           full.strip_prefix("origin/").unwrap_or(full)
-        }.to_string(),
+        }).to_string(),
       )
     }
   } catch {
@@ -390,7 +390,7 @@ pub async fn GitRepo::get_default_branch(
   // Extract branch name from "origin/main" -> "main"
   let prefix = "\{remote}/"
   if default_branch_full.has_prefix(prefix) {
-    Some(try! default_branch_full[prefix.length():].to_string())
+    Some(default_branch_full[prefix.length():].to_string())
   } else {
     Some(default_branch_full)
   }

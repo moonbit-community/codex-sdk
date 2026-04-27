@@ -50,7 +50,7 @@ pub fn parse(
     }
 
     // Stop early if requested and we hit a non-option
-    if stop_early && not(arg.has_prefix("-")) {
+    if stop_early && !arg.has_prefix("-") {
       positional.push(arg)
       positional.push_iter(args.iter())
       break
@@ -59,8 +59,8 @@ pub fn parse(
       // Handle long options (--name or --name=value)
       // Extract name and value
       let eq = rest.find("=")
-      let name = if eq is Some(pos) { try! rest[:pos] } else { rest }
-      let value = if eq is Some(pos) { Some(try! rest[pos + 1:]) } else { None }
+      let name = if eq is Some(pos) { rest[:pos] } else { rest }
+      let value = if eq is Some(pos) { Some(rest[pos + 1:]) } else { None }
 
       // Handle --no- prefix for negatable flags
       if name is [.. "no-", .. base_name] {
@@ -109,10 +109,10 @@ pub fn parse(
       }
     } else if arg is [.. "-", .. rest] && rest.length() > 0 {
       // Handle short options
-      loop rest {
-        [] => ()
-        [ch] => {
-          let resolved = resolve_alias(ch.to_string())
+      let mut short_options = rest
+      while short_options is [ch, .. remaining] {
+        let resolved = resolve_alias(ch.to_string())
+        if remaining is [] {
           if flag_set.contains(resolved) {
             flags_map[resolved] = true
           } else if option_set.contains(resolved) {
@@ -137,23 +137,20 @@ pub fn parse(
             // Unknown flag - treat as positional
             positional.push(arg)
           }
-        }
-        [ch, .. rest] => {
-          let resolved = resolve_alias(ch.to_string())
-          if flag_set.contains(resolved) {
-            flags_map[resolved] = true
-            continue rest
-          } else if option_set.contains(resolved) {
-            // Option requires a value
-            fail("Option -\{ch} in combined short flags requires a value")
-          } else if collection_set.contains(resolved) {
-            // Collection requires a value
-            fail("Collection -\{ch} in combined short flags requires a value")
-          } else {
-            // Unknown flag - treat as positional
-            positional.push(arg)
-            break
-          }
+          break
+        } else if flag_set.contains(resolved) {
+          flags_map[resolved] = true
+          short_options = remaining
+        } else if option_set.contains(resolved) {
+          // Option requires a value
+          fail("Option -\{ch} in combined short flags requires a value")
+        } else if collection_set.contains(resolved) {
+          // Collection requires a value
+          fail("Collection -\{ch} in combined short flags requires a value")
+        } else {
+          // Unknown flag - treat as positional
+          positional.push(arg)
+          break
         }
       }
     } else {

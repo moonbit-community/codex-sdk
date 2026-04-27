@@ -17,7 +17,7 @@ async test {
   @async.with_task_group(tg => {
     // async iterator
     let iterator = AsyncGenerator::new(
-      fn(yield_) {
+      async fn(yield_) {
         for i = 0; ; i = i + 1 {
           yield_(i) catch {
             Failure::Failure(e) => {

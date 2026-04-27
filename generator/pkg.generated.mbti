@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "peter-jerry-ye/codex/generator"
 
-import(
-  "moonbitlang/async"
-)
+import {
+  "moonbitlang/async",
+}
 
 // Values
 
