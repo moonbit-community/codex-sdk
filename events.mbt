@@ -126,7 +126,9 @@ pub struct Usage {
   cached_input_tokens : Int
   /// The number of output tokens used during the turn
   output_tokens : Int
-} derive(ToJson, @json.FromJson)
+  /// The number of reasoning output tokens used during the turn
+  reasoning_output_tokens : Int
+} derive(ToJson, @json.FromJson, Debug)
 
 ///|
 pub struct ThreadError {

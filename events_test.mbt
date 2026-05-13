@@ -214,6 +214,35 @@ test "parse in-progress mcp tool call with null result and error" {
 }
 
 ///|
+test "parse turn completed usage with reasoning tokens" {
+  let event : Event = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "type": "turn.completed",
+        #|  "usage": {
+        #|    "input_tokens": 10,
+        #|    "cached_input_tokens": 3,
+        #|    "output_tokens": 7,
+        #|    "reasoning_output_tokens": 5
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  match event {
+    TurnCompleted(usage) =>
+      debug_inspect(
+        usage,
+        content=(
+          #|{input_tokens: 10, cached_input_tokens: 3, output_tokens: 7, reasoning_output_tokens: 5}
+        ),
+      )
+    _ => fail("expected turn completed event")
+  }
+}
+
+///|
 test "parse failed mcp tool call with null result" {
   let event : Event = @json.from_json(
     @json.parse(

@@ -197,7 +197,8 @@ pub struct Usage {
   input_tokens : Int
   cached_input_tokens : Int
   output_tokens : Int
-} derive(ToJson, @json.FromJson)
+  reasoning_output_tokens : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum UserInput {
   Text(String)
