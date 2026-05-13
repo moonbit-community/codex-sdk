@@ -607,6 +607,7 @@ pub impl @json.FromJson for PatchChangeKind with from_json(value, path) {
 ///|
 /// The status of a file change.
 pub enum PatchApplyStatus {
+  InProgress
   Completed
   Failed
 }
@@ -614,6 +615,7 @@ pub enum PatchApplyStatus {
 ///|
 pub impl Show for PatchApplyStatus with output(status, logger) {
   match status {
+    InProgress => logger.write_string("InProgress")
     Completed => logger.write_string("Completed")
     Failed => logger.write_string("Failed")
   }
@@ -622,6 +624,7 @@ pub impl Show for PatchApplyStatus with output(status, logger) {
 ///|
 pub impl ToJson for PatchApplyStatus with to_json(status) {
   match status {
+    InProgress => "in_progress"
     Completed => "completed"
     Failed => "failed"
   }
@@ -630,13 +633,14 @@ pub impl ToJson for PatchApplyStatus with to_json(status) {
 ///|
 pub impl @json.FromJson for PatchApplyStatus with from_json(value, path) {
   match value {
+    String("in_progress") => InProgress
     String("completed") => Completed
     String("failed") => Failed
     _ =>
       raise @json.JsonDecodeError(
         (
           path,
-          "expected string 'completed' or 'failed' for PatchApplyStatus. Got \{value}",
+          "expected string 'in_progress', 'completed', or 'failed' for PatchApplyStatus. Got \{value}",
         ),
       )
   }

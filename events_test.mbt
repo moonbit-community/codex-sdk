@@ -145,3 +145,38 @@ test "parse completed collab tool call" {
     _ => fail("expected completed collab tool call")
   }
 }
+
+///|
+test "parse in-progress file change" {
+  let event : Event = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "type": "item.started",
+        #|  "item": {
+        #|    "id": "patch-1",
+        #|    "type": "file_change",
+        #|    "changes": [
+        #|      { "path": "README.md", "kind": "update" }
+        #|    ],
+        #|    "status": "in_progress"
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  match event {
+    ItemStarted(FileChangeItem(status~, changes~, ..)) => {
+      guard status is InProgress else {
+        fail("expected in-progress file change")
+      }
+      debug_inspect(
+        changes.length(),
+        content=(
+          #|1
+        ),
+      )
+    }
+    _ => fail("expected started file change")
+  }
+}

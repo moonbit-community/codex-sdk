@@ -122,6 +122,7 @@ pub(all) enum ModelReasoningEffort {
 pub impl Show for ModelReasoningEffort
 
 pub enum PatchApplyStatus {
+  InProgress
   Completed
   Failed
 }
