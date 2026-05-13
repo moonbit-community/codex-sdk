@@ -92,10 +92,10 @@ The MoonBit SDK is a thin but strongly typed wrapper around `codex exec`:
    manipulate raw JSON.
 
 The native JSON event parser targets the `codex-cli 0.128.0` non-interactive
-event stream. In that stream, in-progress command events can arrive before
-terminal fields such as `aggregated_output` or `exit_code` are available, so the
-SDK accepts those fields as absent while keeping them present in its typed item
-model.
+event stream, checked against the upstream `openai/codex` schema at
+`2a67c46de498`. In that schema, command execution items always include
+`aggregated_output` as a string; in-progress commands use an empty string until
+terminal output is available.
 
 The `Codex`/`Thread`/`Turn` trio mirrors the CLI lifecycle: a `Codex` holds
 process-level configuration, a `Thread` models a Codex conversation, and a

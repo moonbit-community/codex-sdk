@@ -1,5 +1,5 @@
 ///|
-test "parse started command execution without output" {
+test "parse started command execution with empty output" {
   let event : Event = @json.from_json(
     @json.parse(
       (
@@ -9,6 +9,7 @@ test "parse started command execution without output" {
         #|    "id": "cmd-1",
         #|    "type": "command_execution",
         #|    "command": "pwd",
+        #|    "aggregated_output": "",
         #|    "status": "in_progress"
         #|  }
         #|}
