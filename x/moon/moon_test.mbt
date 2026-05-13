@@ -45,36 +45,73 @@ test "parse_diagnostics parses errors and warnings" {
     #|───╯
     #|Failed with 2 warnings, 2 errors.
   let diagnostics = parse_diagnostics(output)
-  inspect(diagnostics.length(), content="4")
+  debug_inspect(diagnostics.length(), content="4")
 
   // Check first error
   let d0 = diagnostics[0]
-  inspect(d0.file, content="/private/tmp/test_error.mbt")
-  inspect(d0.line, content="1")
-  inspect(d0.column, content="Some(3)")
-  inspect(d0.level, content="error")
-  inspect(
+  debug_inspect(
+    d0.file,
+    content=(
+      #|"/private/tmp/test_error.mbt"
+    ),
+  )
+  debug_inspect(d0.line, content="1")
+  debug_inspect(d0.column, content="Some(3)")
+  debug_inspect(
+    d0.level,
+    content=(
+      #|"error"
+    ),
+  )
+  debug_inspect(
     d0.message,
-    content="Parse error, unexpected token `test`, you may expect id (lowercase start), id (uppercase start) or package name.",
+    content=(
+      #|"Parse error, unexpected token `test`, you may expect id (lowercase start), id (uppercase start) or package name."
+    ),
   )
 
   // Check second error
   let d1 = diagnostics[1]
-  inspect(d1.level, content="error")
-  inspect(d1.message, content="Missing type annotation for the return value.")
+  debug_inspect(
+    d1.level,
+    content=(
+      #|"error"
+    ),
+  )
+  debug_inspect(
+    d1.message,
+    content=(
+      #|"Missing type annotation for the return value."
+    ),
+  )
 
   // Check first warning
   let d2 = diagnostics[2]
-  inspect(d2.level, content="warning")
-  inspect(d2.line, content="1")
-  inspect(d2.column, content="Some(4)")
+  debug_inspect(
+    d2.level,
+    content=(
+      #|"warning"
+    ),
+  )
+  debug_inspect(d2.line, content="1")
+  debug_inspect(d2.column, content="Some(4)")
 
   // Check second warning with different line number
   let d3 = diagnostics[3]
-  inspect(d3.level, content="warning")
-  inspect(d3.line, content="17")
-  inspect(d3.column, content="Some(8)")
-  inspect(d3.message, content="Warning: Unused variable 'x'")
+  debug_inspect(
+    d3.level,
+    content=(
+      #|"warning"
+    ),
+  )
+  debug_inspect(d3.line, content="17")
+  debug_inspect(d3.column, content="Some(8)")
+  debug_inspect(
+    d3.message,
+    content=(
+      #|"Warning: Unused variable 'x'"
+    ),
+  )
 }
 
 ///|
@@ -92,8 +129,13 @@ test "get_errors filters only errors" {
     #|───╯
   let diagnostics = parse_diagnostics(output)
   let errors = get_errors(diagnostics)
-  inspect(errors.length(), content="1")
-  inspect(errors[0].level, content="error")
+  debug_inspect(errors.length(), content="1")
+  debug_inspect(
+    errors[0].level,
+    content=(
+      #|"error"
+    ),
+  )
 }
 
 ///|
@@ -111,6 +153,11 @@ test "get_warnings filters only warnings" {
     #|───╯
   let diagnostics = parse_diagnostics(output)
   let warnings = get_warnings(diagnostics)
-  inspect(warnings.length(), content="1")
-  inspect(warnings[0].level, content="warning")
+  debug_inspect(warnings.length(), content="1")
+  debug_inspect(
+    warnings[0].level,
+    content=(
+      #|"warning"
+    ),
+  )
 }

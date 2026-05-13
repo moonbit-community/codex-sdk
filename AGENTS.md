@@ -41,7 +41,7 @@ This is a [MoonBit](https://docs.moonbitlang.com) project.
 
 - You can run `moon check` to check the code is linted correctly.
 
-- When writing tests, you are encouraged to use `inspect` and run
+- When writing tests, you are encouraged to use `debug_inspect` and run
   `moon test --update` to update the snapshots, only use assertions like
   `assert_eq` when you are in some loops where each snapshot may vary. You can
   use `moon coverage analyze > uncovered.log` to see which parts of your code
