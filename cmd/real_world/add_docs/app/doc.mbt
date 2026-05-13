@@ -176,13 +176,13 @@ let background =
   #|pub(all) struct Point {
   #|  x : Int
   #|  mut y : Int
-  #|} derive(Show, ToJson)
+  #|} derive(Show, Debug, ToJson)
   #|
   #|///|
   #|pub enum MyResult[T, E] {
   #|  MyOk(T) // semicolon `;` is optional when we have a newline
   #|  MyErr(E) // Enum variants must start uppercase
-  #|} derive(Show, Eq, ToJson)
+  #|} derive(Show, Debug, Eq, ToJson)
   #|// pub means it can only be pattern matched outside the package
   #|// but it can not be created outside the package, use `pub(all)` otherwise
   #|
@@ -197,9 +197,6 @@ let background =
   #|  let result = sum(1, 2)
   #|  debug_inspect(result, content="3")
   #|  // The `content` can be auto-corrected by running `moon test --update`  
-  #|  let point = Point::{ x: 10, y: 20 }
-  #|  // For complex structures, use @json.inspect for better readability:
-  #|  @json.inspect(point, content={ "x": 10, "y": 20 })
   #|}
   #|```
   #|
@@ -446,20 +443,21 @@ let background =
   #|Most types can automatically derive standard traits using the `derive(...)` syntax:
   #|
   #|- **`Show`** - Enables `to_string()` and string interpolation with `\{value}`
+  #|- **`Debug`** - Enables `debug_inspect()` for snapshot testing
   #|- **`Eq`** - Enables `==` and `!=` equality operators
   #|- **`Compare`** - Enables `<`, `>`, `<=`, `>=` comparison operators
-  #|- **`ToJson`** - Enables `@json.inspect()` for readable test output
+  #|- **`ToJson`** - Enables JSON serialization with `to_json()`
   #|- **`Hash`** - Enables use as Map keys
   #|
   #|```moonbit
   #|///|
-  #|struct Coordinate { x : Int; y : Int } derive(Show, Eq, ToJson)
+  #|struct Coordinate { x : Int; y : Int } derive(Show, Debug, Eq, ToJson)
   #|
   #|///|
-  #|enum Status { Active; Inactive } derive(Show, Eq, Compare)
+  #|enum Status { Active; Inactive } derive(Show, Debug, Eq, Compare)
   #|```
   #|
-  #|**Best practice**: Always derive `Show` and `Eq` for data types. Add `ToJson` if you plan to test them with `@json.inspect()`.
+  #|**Best practice**: Always derive `Debug` and `Eq` for data types you plan to test. Add `Show` for user-facing formatting and `ToJson` for JSON serialization.
   #|
   #|## Reference Semantics by Default
   #|
@@ -1219,10 +1217,9 @@ let background =
   #|
   #|- Black-box by default: Call only public APIs via `@package.fn`. Use white-box tests only when private members matter.
   #|- **Snapshots**: Prefer `debug_inspect(value, content="...")`. If unknown, write `debug_inspect(value)` and run `moon test --update` (or `moon test -u`).
-  #|  - Use regular `debug_inspect()` for simple values (uses `Debug` trait)
-  #|  - Use `@json.inspect()` for complex nested structures (uses `ToJson` trait, produces more readable output)
-  #|  - It is encouraged to `debug_inspect` or `@json.inspect` the whole return value of a function if 
-  #|  the whole return value is not huge, this makes test simple. You need `impl Debug for YourType` or `derive(Debug)` for `debug_inspect`, and `impl ToJson for YourType` or `derive(ToJson)` for `@json.inspect`.
+  #|  - `debug_inspect()` uses the `Debug` trait.
+  #|  - It is encouraged to `debug_inspect` the whole return value of a function if 
+  #|  the whole return value is not huge, this makes test simple. You need `impl Debug for YourType` or `derive(Debug)`.
   #|  - **Update workflow**: After changing code that affects output, run `moon test --update` to regenerate snapshots, then review the diffs in your test files (the `content=` parameter will be updated automatically).
   #|- Grouping: Combine related checks in one `test { ... }` block for speed and clarity.
   #|- Panics: Name test with prefix `test "panic ..." {...}`; if the call returns a value, wrap it with `ignore(...)` to silence warnings.
