@@ -175,11 +175,7 @@ async fn solve_task(
     }
 
     // Initialize Codex with appropriate sandbox mode
-    let codex = @codex.Codex::new(
-      options=@codex.CodexOptions::new(
-        codex_path_override="./alternative_codex.sh",
-      ),
-    )
+    let codex = @codex.Codex::new()
     let options = @codex.ThreadOptions::new(
       model?,
       sandbox_mode?,
@@ -324,11 +320,7 @@ async fn main {
 async fn run_interactive_mode(arguments : Arguments) -> Unit {
   try {
     // Initialize Codex with appropriate sandbox mode
-    let codex = @codex.Codex::new(
-      options=@codex.CodexOptions::new(
-        codex_path_override="./alternative_codex.sh",
-      ),
-    )
+    let codex = @codex.Codex::new()
     let options = @codex.ThreadOptions::new(
       model?=arguments.model,
       sandbox_mode?=arguments.sandbox_mode,

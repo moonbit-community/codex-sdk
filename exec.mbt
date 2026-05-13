@@ -68,7 +68,7 @@ async fn[T] CodexExec::run(
   taskgroup : @async.TaskGroup[T],
 ) -> @generator.AsyncGenerator[String] {
   // Build command arguments
-  let command_args : Array[String] = ["exec", "--experimental-json"]
+  let command_args : Array[String] = ["exec", "--json"]
 
   // Add optional arguments
   if args.thread_options.model is Some(model) {
