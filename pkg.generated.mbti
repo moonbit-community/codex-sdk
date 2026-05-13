@@ -28,10 +28,51 @@ pub fn Codex::start_thread(Self, options? : ThreadOptions) -> Thread
 type CodexOptions derive(Default)
 pub fn CodexOptions::new(codex_path_override? : String, base_url? : String, api_key? : String, env? : Map[String, String]) -> Self
 
+pub struct CollabAgentState {
+  status : CollabAgentStatus
+  message : String?
+}
+pub impl Show for CollabAgentState
+pub impl ToJson for CollabAgentState
+pub impl @json.FromJson for CollabAgentState
+
+pub enum CollabAgentStatus {
+  PendingInit
+  Running
+  Interrupted
+  Completed
+  Errored
+  Shutdown
+  NotFound
+}
+pub impl Show for CollabAgentStatus
+pub impl ToJson for CollabAgentStatus
+pub impl @json.FromJson for CollabAgentStatus
+
+pub enum CollabTool {
+  SpawnAgent
+  SendInput
+  Wait
+  CloseAgent
+}
+pub impl Show for CollabTool
+pub impl ToJson for CollabTool
+pub impl @json.FromJson for CollabTool
+
+pub enum CollabToolCallStatus {
+  InProgress
+  Completed
+  Failed
+}
+pub impl Show for CollabToolCallStatus
+pub impl ToJson for CollabToolCallStatus
+pub impl @json.FromJson for CollabToolCallStatus
+
 pub enum CommandExecutionStatus {
   InProgress
   Completed
   Failed
+  Declined
 }
 pub impl Show for CommandExecutionStatus
 pub impl ToJson for CommandExecutionStatus
@@ -124,6 +165,7 @@ pub enum ThreadItem {
   CommandExecutionItem(id~ : String, command~ : String, aggregated_output~ : String, exit_code~ : Int?, status~ : CommandExecutionStatus)
   FileChangeItem(id~ : String, changes~ : Array[FileUpdateChange], status~ : PatchApplyStatus)
   McpToolCallItem(id~ : String, server~ : String, tool~ : String, status~ : McpToolCallStatus, arguments~ : Json?, result~ : Result[McpToolCallResult, String]?)
+  CollabToolCallItem(id~ : String, tool~ : CollabTool, sender_thread_id~ : String, receiver_thread_ids~ : Array[String], prompt~ : String?, agents_states~ : Map[String, CollabAgentState], status~ : CollabToolCallStatus)
   WebSearchItem(id~ : String, query~ : String)
   TodoListItem(id~ : String, items~ : Array[TodoItem])
   ErrorItem(id~ : String, message~ : String)

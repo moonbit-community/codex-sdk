@@ -81,3 +81,67 @@ test "parse declined command execution" {
     _ => fail("expected completed command execution")
   }
 }
+
+///|
+test "parse completed collab tool call" {
+  let event : Event = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "type": "item.completed",
+        #|  "item": {
+        #|    "id": "collab-1",
+        #|    "type": "collab_tool_call",
+        #|    "tool": "spawn_agent",
+        #|    "sender_thread_id": "thread-parent",
+        #|    "receiver_thread_ids": ["thread-child"],
+        #|    "prompt": "draft a plan",
+        #|    "agents_states": {
+        #|      "thread-child": {
+        #|        "status": "running",
+        #|        "message": null
+        #|      }
+        #|    },
+        #|    "status": "completed"
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  match event {
+    ItemCompleted(
+      CollabToolCallItem(
+        tool~,
+        sender_thread_id~,
+        receiver_thread_ids~,
+        prompt~,
+        status~,
+        ..
+      )
+    ) => {
+      guard tool is SpawnAgent else { fail("expected spawn_agent collab tool") }
+      guard status is Completed else {
+        fail("expected completed collab tool call")
+      }
+      debug_inspect(
+        sender_thread_id,
+        content=(
+          #|"thread-parent"
+        ),
+      )
+      debug_inspect(
+        receiver_thread_ids,
+        content=(
+          #|["thread-child"]
+        ),
+      )
+      debug_inspect(
+        prompt,
+        content=(
+          #|Some("draft a plan")
+        ),
+      )
+    }
+    _ => fail("expected completed collab tool call")
+  }
+}
