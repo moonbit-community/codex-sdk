@@ -81,7 +81,7 @@ async test {
 
 The MoonBit SDK is a thin but strongly typed wrapper around `codex exec`:
 
-1. `@codex.CodexExec::run` spawns the CLI with `--experimental-json`,
+1. `@codex.CodexExec::run` spawns the CLI with `--json`,
    automatically wiring API endpoint overrides, API keys, sandbox flags, working
    directory overrides, and thread resumption arguments.
 2. The CLI's JSONL stream is fed through `@generator.AsyncGenerator` so the SDK
