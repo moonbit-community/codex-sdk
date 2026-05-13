@@ -235,7 +235,12 @@ test "parse turn completed usage with reasoning tokens" {
       debug_inspect(
         usage,
         content=(
-          #|{input_tokens: 10, cached_input_tokens: 3, output_tokens: 7, reasoning_output_tokens: 5}
+          #|{
+          #|  input_tokens: 10,
+          #|  cached_input_tokens: 3,
+          #|  output_tokens: 7,
+          #|  reasoning_output_tokens: 5,
+          #|}
         ),
       )
     _ => fail("expected turn completed event")
