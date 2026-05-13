@@ -12,9 +12,5 @@
     "AI"
   ],
   "description": "Codex SDK, with some useful tools for building AI applications.",
-  "exclude": [
-    "alternative_codex.sh",
-    "openhands-codex"
-  ],
   "preferred-target": "native"
 }
