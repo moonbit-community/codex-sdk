@@ -137,6 +137,8 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
       }
       let aggregated_output = match aggregated_output {
         Some(String(output)) => output
+        // codex-cli 0.128.0 native `exec --json` can emit in-progress
+        // command_execution items before terminal output fields exist.
         None => ""
         v =>
           raise @json.JsonDecodeError(

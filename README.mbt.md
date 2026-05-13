@@ -3,12 +3,12 @@
 This is the Codex SDK for MoonBit, ported from the TypeScript SDK.
 
 The SDK communicates with Codex by spawning it in non-interactive mode using
-`codex exec`. The target Codex version is 0.79.0.
+`codex exec`. The target Codex version is `codex-cli 0.128.0`.
 
 Codex must be installed and available on your PATH. If not, install with:
 
 ```bash
-pnpm install -g @openai/codex@0.79.0
+pnpm install -g @openai/codex@0.128.0
 ```
 
 ## Usage
@@ -90,6 +90,12 @@ The MoonBit SDK is a thin but strongly typed wrapper around `codex exec`:
 3. Each line is decoded into the rich `@codex.Event` / `@codex.ThreadItem`
    hierarchy (`events.mbt` and `items.mbt`), which means MoonBit callers never
    manipulate raw JSON.
+
+The native JSON event parser targets the `codex-cli 0.128.0` non-interactive
+event stream. In that stream, in-progress command events can arrive before
+terminal fields such as `aggregated_output` or `exit_code` are available, so the
+SDK accepts those fields as absent while keeping them present in its typed item
+model.
 
 The `Codex`/`Thread`/`Turn` trio mirrors the CLI lifecycle: a `Codex` holds
 process-level configuration, a `Thread` models a Codex conversation, and a
