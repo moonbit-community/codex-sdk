@@ -126,7 +126,7 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
         is {
           "id": String(id),
           "command": String(command),
-          "aggregated_output": String(aggregated_output),
+          "aggregated_output"? : aggregated_output,
           "status": String(_) as status,
           "exit_code"? : exit_code,
           ..
@@ -134,6 +134,17 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
         raise @json.JsonDecodeError(
           (path, "expected CommandExecutionItem, got \{obj}"),
         )
+      }
+      let aggregated_output = match aggregated_output {
+        Some(String(output)) => output
+        None => ""
+        v =>
+          raise @json.JsonDecodeError(
+            (
+              path.add_key("aggregated_output"),
+              "expected string for CommandExecutionItem.aggregated_output. Got: \{v}",
+            ),
+          )
       }
       let exit_code = match exit_code {
         Some(Number(n, ..)) => Some(n.to_int())
