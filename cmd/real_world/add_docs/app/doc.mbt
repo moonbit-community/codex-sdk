@@ -312,10 +312,8 @@ let background =
   #|  debug_inspect(
   #|    multi_line_string,
   #|    content=(
-  #|      #|Hello
-  #|      #|World
-  #|      #|
-  #|    ), // when multiple line string is passed as argument, `()` wrapper is required
+  #|      #|"Hello\nWorld\n"
+  #|    ), // Debug output includes quotes and escaped newlines.
   #|  )
   #|}
   #|```
