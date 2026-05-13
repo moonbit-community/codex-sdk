@@ -213,11 +213,11 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
         raise @json.JsonDecodeError((path, "expected McpToolCallItem"))
       }
       if error is Some(error) {
-        guard error is Object({ "message": String(_), .. }) else {
+        guard error is Null || error is Object({ "message": String(_), .. }) else {
           raise @json.JsonDecodeError(
             (
               path.add_key("error"),
-              "expected error object with message string, got \{error}",
+              "expected null or error object with message string, got \{error}",
             ),
           )
         }
@@ -228,7 +228,9 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
         tool~,
         status=@json.from_json(status, path=path.add_key("status")),
         arguments~,
-        result=if result is Some(res) {
+        result=if result is Some(Null) {
+          None
+        } else if result is Some(res) {
           Some(Ok(@json.from_json(res, path=path.add_key("result"))))
         } else if error is Some(Object({ "message": String(msg), .. })) {
           Some(Err(msg))

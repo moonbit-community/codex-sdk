@@ -180,3 +180,67 @@ test "parse in-progress file change" {
     _ => fail("expected started file change")
   }
 }
+
+///|
+test "parse in-progress mcp tool call with null result and error" {
+  let event : Event = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "type": "item.started",
+        #|  "item": {
+        #|    "id": "mcp-1",
+        #|    "type": "mcp_tool_call",
+        #|    "server": "docs",
+        #|    "tool": "search",
+        #|    "arguments": { "query": "codex" },
+        #|    "result": null,
+        #|    "error": null,
+        #|    "status": "in_progress"
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  match event {
+    ItemStarted(McpToolCallItem(result~, status~, ..)) => {
+      guard status is InProgress else {
+        fail("expected in-progress MCP tool call")
+      }
+      guard result is None else { fail("expected no MCP result") }
+    }
+    _ => fail("expected started MCP tool call")
+  }
+}
+
+///|
+test "parse failed mcp tool call with null result" {
+  let event : Event = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "type": "item.completed",
+        #|  "item": {
+        #|    "id": "mcp-1",
+        #|    "type": "mcp_tool_call",
+        #|    "server": "docs",
+        #|    "tool": "search",
+        #|    "arguments": { "query": "codex" },
+        #|    "result": null,
+        #|    "error": { "message": "permission denied" },
+        #|    "status": "failed"
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  match event {
+    ItemCompleted(McpToolCallItem(result~, status~, ..)) => {
+      guard status is Failed else { fail("expected failed MCP tool call") }
+      guard result is Some(Err("permission denied")) else {
+        fail("expected MCP error result")
+      }
+    }
+    _ => fail("expected completed MCP tool call")
+  }
+}
