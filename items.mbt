@@ -57,7 +57,7 @@ pub enum ThreadItem {
   TodoListItem(id~ : String, items~ : Array[TodoItem])
   /// Describes a non-fatal error surfaced as an item.
   ErrorItem(id~ : String, message~ : String)
-}
+} derive(Debug)
 
 ///|
 pub impl ToJson for ThreadItem with to_json(item) {
@@ -228,12 +228,12 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
         tool~,
         status=@json.from_json(status, path=path.add_key("status")),
         arguments~,
-        result=if result is Some(Null) {
+        result=if error is Some(Object({ "message": String(msg), .. })) {
+          Some(Err(msg))
+        } else if result is Some(Null) {
           None
         } else if result is Some(res) {
           Some(Ok(@json.from_json(res, path=path.add_key("result"))))
-        } else if error is Some(Object({ "message": String(msg), .. })) {
-          Some(Err(msg))
         } else {
           None
         },
@@ -310,7 +310,7 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
 pub struct FileUpdateChange {
   path : String
   kind : PatchChangeKind
-} derive(ToJson, @json.FromJson)
+} derive(ToJson, @json.FromJson, Debug)
 
 ///|
 pub impl Show for FileUpdateChange with output(self, logger) {
@@ -322,7 +322,7 @@ pub impl Show for FileUpdateChange with output(self, logger) {
 pub struct TodoItem {
   text : String
   completed : Bool
-} derive(ToJson, @json.FromJson)
+} derive(ToJson, @json.FromJson, Debug)
 
 ///|
 pub impl Show for TodoItem with output(self, logger) {
@@ -336,7 +336,7 @@ pub enum CommandExecutionStatus {
   Completed
   Failed
   Declined
-}
+} derive(Debug)
 
 ///|
 pub impl Show for CommandExecutionStatus with output(status, logger) {
@@ -381,7 +381,7 @@ pub enum CollabToolCallStatus {
   InProgress
   Completed
   Failed
-}
+} derive(Debug)
 
 ///|
 pub impl Show for CollabToolCallStatus with output(status, logger) {
@@ -424,7 +424,7 @@ pub enum CollabTool {
   SendInput
   Wait
   CloseAgent
-}
+} derive(Debug)
 
 ///|
 pub impl Show for CollabTool with output(tool, logger) {
@@ -473,7 +473,7 @@ pub enum CollabAgentStatus {
   Errored
   Shutdown
   NotFound
-}
+} derive(Debug)
 
 ///|
 pub impl Show for CollabAgentStatus with output(status, logger) {
@@ -526,12 +526,7 @@ pub impl @json.FromJson for CollabAgentStatus with from_json(value, path) {
 pub struct CollabAgentState {
   status : CollabAgentStatus
   message : String?
-}
-
-///|
-pub impl Show for CollabAgentState with output(state, logger) {
-  logger.write_string("{status: \{state.status}, message: \{state.message}}")
-}
+} derive(Debug)
 
 ///|
 pub impl ToJson for CollabAgentState with to_json(state) {
@@ -570,7 +565,7 @@ pub enum PatchChangeKind {
   Add
   Delete
   Update
-}
+} derive(Debug)
 
 ///|
 pub impl Show for PatchChangeKind with output(kind, logger) {
@@ -612,7 +607,7 @@ pub enum PatchApplyStatus {
   InProgress
   Completed
   Failed
-}
+} derive(Debug)
 
 ///|
 pub impl Show for PatchApplyStatus with output(status, logger) {
@@ -654,7 +649,7 @@ pub enum McpToolCallStatus {
   InProgress
   Completed
   Failed
-}
+} derive(Debug)
 
 ///|
 pub impl Show for McpToolCallStatus with output(status, logger) {
@@ -694,7 +689,7 @@ pub impl @json.FromJson for McpToolCallStatus with from_json(value, path) {
 pub struct McpToolCallResult {
   content : Array[Json]
   structured_content : Json
-}
+} derive(Debug)
 
 ///|
 pub impl ToJson for McpToolCallResult with to_json(result) {
