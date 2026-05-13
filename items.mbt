@@ -259,6 +259,7 @@ pub enum CommandExecutionStatus {
   InProgress
   Completed
   Failed
+  Declined
 }
 
 ///|
@@ -276,6 +277,7 @@ pub impl ToJson for CommandExecutionStatus with to_json(status) {
     Completed => "completed"
     InProgress => "in_progress"
     Failed => "failed"
+    Declined => "declined"
   }
 }
 
@@ -285,11 +287,12 @@ pub impl @json.FromJson for CommandExecutionStatus with from_json(value, path) {
     String("completed") => Completed
     String("in_progress") => InProgress
     String("failed") => Failed
+    String("declined") => Declined
     _ =>
       raise @json.JsonDecodeError(
         (
           path,
-          "expected string 'completed', 'in_progress', or 'failed' for CommandExecutionStatus. Got \{value}",
+          "expected string 'completed', 'in_progress', 'failed', or 'declined' for CommandExecutionStatus. Got \{value}",
         ),
       )
   }

@@ -52,3 +52,32 @@ test "parse started command execution with empty output" {
     _ => fail("expected started command execution")
   }
 }
+
+///|
+test "parse declined command execution" {
+  let event : Event = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "type": "item.completed",
+        #|  "item": {
+        #|    "id": "cmd-1",
+        #|    "type": "command_execution",
+        #|    "command": "pwd",
+        #|    "aggregated_output": "",
+        #|    "status": "declined"
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  match event {
+    ItemCompleted(CommandExecutionItem(status~, exit_code~, ..)) => {
+      guard status is Declined else {
+        fail("expected declined command execution")
+      }
+      debug_inspect(exit_code, content="None")
+    }
+    _ => fail("expected completed command execution")
+  }
+}
