@@ -116,7 +116,7 @@ let background =
   #|  let msg : String = if n > 0 { "pos" } else { "non-pos" }
   #|  let res = match opt {
   #|    MySome(x) => {
-  #|      inspect(x, content="2")
+  #|      debug_inspect(x, content="2")
   #|      1
   #|    }
   #|    MyNone => 0
@@ -193,9 +193,9 @@ let background =
   #|}
   #|
   #|///|
-  #|test "inspect test" {
+  #|test "debug inspect test" {
   #|  let result = sum(1, 2)
-  #|  inspect(result, content="3")
+  #|  debug_inspect(result, content="3")
   #|  // The `content` can be auto-corrected by running `moon test --update`  
   #|  let point = Point::{ x: 10, y: 20 }
   #|  // For complex structures, use @json.inspect for better readability:
@@ -312,7 +312,7 @@ let background =
   #|    #|Hello
   #|    #|World
   #|    #|
-  #|  inspect(
+  #|  debug_inspect(
   #|    multi_line_string,
   #|    content=(
   #|      #|Hello
@@ -593,7 +593,7 @@ let background =
   #|      break sum // Final value when loop completes normally
   #|    }
   #|  }
-  #|  inspect(sum_result, content="55")
+  #|  debug_inspect(sum_result, content="55")
   #|
   #|  // special form with condition and state update in the `for` header
   #|  let sum_result2 : Int = for i = 0, sum = 0; i <= 10; i = i + 1, sum = sum + i {
@@ -601,7 +601,7 @@ let background =
   #|  } else {
   #|    sum
   #|  }
-  #|  inspect(sum_result2, content="55")
+  #|  debug_inspect(sum_result2, content="55")
   #|}
   #|```
   #|
@@ -677,8 +677,8 @@ let background =
   #|}
   #|
   #|///|
-  #|test "inspect raise function" {
-  #|  inspect(
+  #|test "debug inspect raise function" {
+  #|  debug_inspect(
   #|    try? div(1, 0),
   #|    content=(
   #|      #|Err(Failure("Division by zero"))
@@ -1139,7 +1139,7 @@ let background =
   #|///
   #|/// # Example
   #|/// ```moonbit
-  #|/// inspect(sum_array([1,2,3,4,5,6]), content="21")
+  #|/// debug_inspect(sum_array([1,2,3,4,5,6]), content="21")
   #|/// ```
   #|///
   #|/// # Panics
@@ -1215,18 +1215,18 @@ let background =
   #|
   #|## MoonBit Testing Guide
   #|
-  #|Practical testing guidance for MoonBit. Keep tests black-box by default and rely on snapshot `inspect(...)`.
+  #|Practical testing guidance for MoonBit. Keep tests black-box by default and rely on snapshot `debug_inspect(...)`.
   #|
   #|- Black-box by default: Call only public APIs via `@package.fn`. Use white-box tests only when private members matter.
-  #|- **Snapshots**: Prefer `inspect(value, content="...")`. If unknown, write `inspect(value)` and run `moon test --update` (or `moon test -u`).
-  #|  - Use regular `inspect()` for simple values (uses `Show` trait)
+  #|- **Snapshots**: Prefer `debug_inspect(value, content="...")`. If unknown, write `debug_inspect(value)` and run `moon test --update` (or `moon test -u`).
+  #|  - Use regular `debug_inspect()` for simple values (uses `Show` trait)
   #|  - Use `@json.inspect()` for complex nested structures (uses `ToJson` trait, produces more readable output)
-  #|  - It is encouraged to `inspect` or `@json.inspect` the whole return value of a function if 
+  #|  - It is encouraged to `debug_inspect` or `@json.inspect` the whole return value of a function if 
   #|  the whole return value is not huge, this makes test simple. You need `impl (Show|ToJson) for YourType` or `derive (Show, ToJson)`.
   #|  - **Update workflow**: After changing code that affects output, run `moon test --update` to regenerate snapshots, then review the diffs in your test files (the `content=` parameter will be updated automatically).
   #|- Grouping: Combine related checks in one `test { ... }` block for speed and clarity.
   #|- Panics: Name test with prefix `test "panic ..." {...}`; if the call returns a value, wrap it with `ignore(...)` to silence warnings.
-  #|- Errors: Use `try? f()` to get `Result[...]` and `inspect` it when a function may raise.
+  #|- Errors: Use `try? f()` to get `Result[...]` and `debug_inspect` it when a function may raise.
   #|- Verify: Run `moon test` (or `-u` to update snapshots) and `moon fmt` afterwards.
   #|
   #|## Code Navigation with `moon ide`
