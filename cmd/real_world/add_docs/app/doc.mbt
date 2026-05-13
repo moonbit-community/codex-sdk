@@ -1219,10 +1219,10 @@ let background =
   #|
   #|- Black-box by default: Call only public APIs via `@package.fn`. Use white-box tests only when private members matter.
   #|- **Snapshots**: Prefer `debug_inspect(value, content="...")`. If unknown, write `debug_inspect(value)` and run `moon test --update` (or `moon test -u`).
-  #|  - Use regular `debug_inspect()` for simple values (uses `Show` trait)
+  #|  - Use regular `debug_inspect()` for simple values (uses `Debug` trait)
   #|  - Use `@json.inspect()` for complex nested structures (uses `ToJson` trait, produces more readable output)
   #|  - It is encouraged to `debug_inspect` or `@json.inspect` the whole return value of a function if 
-  #|  the whole return value is not huge, this makes test simple. You need `impl (Show|ToJson) for YourType` or `derive (Show, ToJson)`.
+  #|  the whole return value is not huge, this makes test simple. You need `impl Debug for YourType` or `derive(Debug)` for `debug_inspect`, and `impl ToJson for YourType` or `derive(ToJson)` for `@json.inspect`.
   #|  - **Update workflow**: After changing code that affects output, run `moon test --update` to regenerate snapshots, then review the diffs in your test files (the `content=` parameter will be updated automatically).
   #|- Grouping: Combine related checks in one `test { ... }` block for speed and clarity.
   #|- Panics: Name test with prefix `test "panic ..." {...}`; if the call returns a value, wrap it with `ignore(...)` to silence warnings.
