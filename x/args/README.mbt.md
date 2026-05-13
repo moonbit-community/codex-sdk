@@ -20,18 +20,21 @@ minimist.
 Unknown arguments are treated as positional arguments rather than causing
 errors:
 
-```moonbit
+```moonbit check
 ///|
 test "unknown arguments become positional" {
   let result = parse(["--unknown", "-x", "normal"], flags=["verbose"])
-  inspect(result.positional, content="[\"--unknown\", \"-x\", \"normal\"]")
-  inspect(result.flags.get("verbose"), content="None")
+  debug_inspect(
+    result.positional,
+    content="[\"--unknown\", \"-x\", \"normal\"]",
+  )
+  debug_inspect(result.flags.get("verbose"), content="None")
 }
 ```
 
 ## Basic Usage
 
-```moonbit
+```moonbit check
 ///|
 test "basic usage example" {
   let args = parse(
@@ -41,15 +44,15 @@ test "basic usage example" {
   )
 
   // Access parsed results
-  inspect(args.flags.get("verbose"), content="Some(true)")
-  inspect(args.options.get("o"), content="Some(\"output.txt\")")
-  inspect(args.positional, content="[\"input.txt\"]")
+  debug_inspect(args.flags.get("verbose"), content="Some(true)")
+  debug_inspect(args.options.get("o"), content="Some(\"output.txt\")")
+  debug_inspect(args.positional, content="[\"input.txt\"]")
 }
 ```
 
 ## Advanced Usage
 
-```moonbit
+```moonbit check
 ///|
 test "advanced usage example" {
   let args = parse(
@@ -59,9 +62,12 @@ test "advanced usage example" {
     collections=["include"],
     aliases={ "v": "verbose" },
   )
-  inspect(args.flags.get("verbose"), content="Some(true)")
-  inspect(args.options.get("output"), content="Some(\"file.txt\")")
-  inspect(args.collections.get("include"), content="Some([\"src\", \"lib\"])")
+  debug_inspect(args.flags.get("verbose"), content="Some(true)")
+  debug_inspect(args.options.get("output"), content="Some(\"file.txt\")")
+  debug_inspect(
+    args.collections.get("include"),
+    content="Some([\"src\", \"lib\"])",
+  )
 }
 ```
 
@@ -80,77 +86,80 @@ test "advanced usage example" {
 
 ### Basic flags and options
 
-```moonbit
+```moonbit check
 ///|
 test "basic flags and options" {
   let result = parse(["--verbose", "-o", "file.txt"], flags=["verbose"], options=[
     "o",
   ])
-  inspect(result.flags.get("verbose"), content="Some(true)")
-  inspect(result.options.get("o"), content="Some(\"file.txt\")")
+  debug_inspect(result.flags.get("verbose"), content="Some(true)")
+  debug_inspect(result.options.get("o"), content="Some(\"file.txt\")")
 }
 ```
 
 ### Collections (repeated options)
 
-```moonbit
+```moonbit check
 ///|
 test "collections repeated options" {
   let result = parse(["--include", "src", "--include", "lib"], collections=[
     "include",
   ])
-  inspect(result.collections.get("include"), content="Some([\"src\", \"lib\"])")
+  debug_inspect(
+    result.collections.get("include"),
+    content="Some([\"src\", \"lib\"])",
+  )
 }
 ```
 
 ### Aliases
 
-```moonbit
+```moonbit check
 ///|
 test "aliases example" {
   let result = parse(["-v"], flags=["verbose"], aliases={ "v": "verbose" })
-  inspect(result.flags.get("verbose"), content="Some(true)")
+  debug_inspect(result.flags.get("verbose"), content="Some(true)")
 }
 ```
 
 ### Negatable flags
 
-```moonbit
+```moonbit check
 ///|
 test "negatable flags example" {
   let result = parse(["--no-verbose"], flags=["verbose"], negatable=["verbose"])
-  inspect(result.flags.get("verbose"), content="Some(false)")
+  debug_inspect(result.flags.get("verbose"), content="Some(false)")
 }
 ```
 
 ### Double dash separator
 
-```moonbit
+```moonbit check
 ///|
 test "double dash separator example" {
   let result = parse(["--verbose", "--", "--not-a-flag"], flags=["verbose"])
-  inspect(result.flags.get("verbose"), content="Some(true)")
-  inspect(result.positional, content="[\"--not-a-flag\"]")
+  debug_inspect(result.flags.get("verbose"), content="Some(true)")
+  debug_inspect(result.positional, content="[\"--not-a-flag\"]")
 }
 ```
 
 ### Key-value syntax
 
-```moonbit
+```moonbit check
 ///|
 test "key-value syntax example" {
   let result = parse(["--output=file.txt"], options=["output"])
-  inspect(result.options.get("output"), content="Some(\"file.txt\")")
+  debug_inspect(result.options.get("output"), content="Some(\"file.txt\")")
 }
 ```
 
 ### Combined short flags
 
-```moonbit
+```moonbit check
 ///|
 test "combined short flags example" {
   let result = parse(["-vq"], flags=["v", "q"])
-  inspect(result.flags.get("v"), content="Some(true)")
-  inspect(result.flags.get("q"), content="Some(true)")
+  debug_inspect(result.flags.get("v"), content="Some(true)")
+  debug_inspect(result.flags.get("q"), content="Some(true)")
 }
 ```

@@ -21,7 +21,7 @@ pub fn task_prompt(repo : RepositoryRecord, pr_comments : String?) -> String {
     #|- Use `moon info` to update .mbti interface files
     #|- Use `moon test` to run tests (use `moon test --update` for snapshots)
     #|- Use `moon check` for linting
-    #|- Use `inspect` in tests for snapshot testing, `assert_eq` only in loops
+    #|- Use `debug_inspect` in tests for snapshot testing, `assert_eq` only in loops
     #|- Run `moon coverage analyze` to check test coverage
     #|
     #|### Important Rules

@@ -116,7 +116,7 @@ let background =
   #|  let msg : String = if n > 0 { "pos" } else { "non-pos" }
   #|  let res = match opt {
   #|    MySome(x) => {
-  #|      inspect(x, content="2")
+  #|      debug_inspect(x, content="2")
   #|      1
   #|    }
   #|    MyNone => 0
@@ -176,13 +176,13 @@ let background =
   #|pub(all) struct Point {
   #|  x : Int
   #|  mut y : Int
-  #|} derive(Show, ToJson)
+  #|} derive(Show, Debug, ToJson)
   #|
   #|///|
   #|pub enum MyResult[T, E] {
   #|  MyOk(T) // semicolon `;` is optional when we have a newline
   #|  MyErr(E) // Enum variants must start uppercase
-  #|} derive(Show, Eq, ToJson)
+  #|} derive(Show, Debug, Eq, ToJson)
   #|// pub means it can only be pattern matched outside the package
   #|// but it can not be created outside the package, use `pub(all)` otherwise
   #|
@@ -193,13 +193,10 @@ let background =
   #|}
   #|
   #|///|
-  #|test "inspect test" {
+  #|test "debug inspect test" {
   #|  let result = sum(1, 2)
-  #|  inspect(result, content="3")
+  #|  debug_inspect(result, content="3")
   #|  // The `content` can be auto-corrected by running `moon test --update`  
-  #|  let point = Point::{ x: 10, y: 20 }
-  #|  // For complex structures, use @json.inspect for better readability:
-  #|  @json.inspect(point, content={ "x": 10, "y": 20 })
   #|}
   #|```
   #|
@@ -312,13 +309,11 @@ let background =
   #|    #|Hello
   #|    #|World
   #|    #|
-  #|  inspect(
+  #|  debug_inspect(
   #|    multi_line_string,
   #|    content=(
-  #|      #|Hello
-  #|      #|World
-  #|      #|
-  #|    ), // when multiple line string is passed as argument, `()` wrapper is required
+  #|      #|"Hello\nWorld\n"
+  #|    ), // Debug output includes quotes and escaped newlines.
   #|  )
   #|}
   #|```
@@ -446,20 +441,21 @@ let background =
   #|Most types can automatically derive standard traits using the `derive(...)` syntax:
   #|
   #|- **`Show`** - Enables `to_string()` and string interpolation with `\{value}`
+  #|- **`Debug`** - Enables `debug_inspect()` for snapshot testing
   #|- **`Eq`** - Enables `==` and `!=` equality operators
   #|- **`Compare`** - Enables `<`, `>`, `<=`, `>=` comparison operators
-  #|- **`ToJson`** - Enables `@json.inspect()` for readable test output
+  #|- **`ToJson`** - Enables JSON serialization with `to_json()`
   #|- **`Hash`** - Enables use as Map keys
   #|
   #|```moonbit
   #|///|
-  #|struct Coordinate { x : Int; y : Int } derive(Show, Eq, ToJson)
+  #|struct Coordinate { x : Int; y : Int } derive(Show, Debug, Eq, ToJson)
   #|
   #|///|
-  #|enum Status { Active; Inactive } derive(Show, Eq, Compare)
+  #|enum Status { Active; Inactive } derive(Show, Debug, Eq, Compare)
   #|```
   #|
-  #|**Best practice**: Always derive `Show` and `Eq` for data types. Add `ToJson` if you plan to test them with `@json.inspect()`.
+  #|**Best practice**: Always derive `Debug` and `Eq` for data types you plan to test. Add `Show` for user-facing formatting and `ToJson` for JSON serialization.
   #|
   #|## Reference Semantics by Default
   #|
@@ -593,7 +589,7 @@ let background =
   #|      break sum // Final value when loop completes normally
   #|    }
   #|  }
-  #|  inspect(sum_result, content="55")
+  #|  debug_inspect(sum_result, content="55")
   #|
   #|  // special form with condition and state update in the `for` header
   #|  let sum_result2 : Int = for i = 0, sum = 0; i <= 10; i = i + 1, sum = sum + i {
@@ -601,7 +597,7 @@ let background =
   #|  } else {
   #|    sum
   #|  }
-  #|  inspect(sum_result2, content="55")
+  #|  debug_inspect(sum_result2, content="55")
   #|}
   #|```
   #|
@@ -677,8 +673,8 @@ let background =
   #|}
   #|
   #|///|
-  #|test "inspect raise function" {
-  #|  inspect(
+  #|test "debug inspect raise function" {
+  #|  debug_inspect(
   #|    try? div(1, 0),
   #|    content=(
   #|      #|Err(Failure("Division by zero"))
@@ -1139,7 +1135,7 @@ let background =
   #|///
   #|/// # Example
   #|/// ```moonbit
-  #|/// inspect(sum_array([1,2,3,4,5,6]), content="21")
+  #|/// debug_inspect(sum_array([1,2,3,4,5,6]), content="21")
   #|/// ```
   #|///
   #|/// # Panics
@@ -1215,18 +1211,17 @@ let background =
   #|
   #|## MoonBit Testing Guide
   #|
-  #|Practical testing guidance for MoonBit. Keep tests black-box by default and rely on snapshot `inspect(...)`.
+  #|Practical testing guidance for MoonBit. Keep tests black-box by default and rely on snapshot `debug_inspect(...)`.
   #|
   #|- Black-box by default: Call only public APIs via `@package.fn`. Use white-box tests only when private members matter.
-  #|- **Snapshots**: Prefer `inspect(value, content="...")`. If unknown, write `inspect(value)` and run `moon test --update` (or `moon test -u`).
-  #|  - Use regular `inspect()` for simple values (uses `Show` trait)
-  #|  - Use `@json.inspect()` for complex nested structures (uses `ToJson` trait, produces more readable output)
-  #|  - It is encouraged to `inspect` or `@json.inspect` the whole return value of a function if 
-  #|  the whole return value is not huge, this makes test simple. You need `impl (Show|ToJson) for YourType` or `derive (Show, ToJson)`.
+  #|- **Snapshots**: Prefer `debug_inspect(value, content="...")`. If unknown, write `debug_inspect(value)` and run `moon test --update` (or `moon test -u`).
+  #|  - `debug_inspect()` uses the `Debug` trait.
+  #|  - It is encouraged to `debug_inspect` the whole return value of a function if 
+  #|  the whole return value is not huge, this makes test simple. You need `impl Debug for YourType` or `derive(Debug)`.
   #|  - **Update workflow**: After changing code that affects output, run `moon test --update` to regenerate snapshots, then review the diffs in your test files (the `content=` parameter will be updated automatically).
   #|- Grouping: Combine related checks in one `test { ... }` block for speed and clarity.
   #|- Panics: Name test with prefix `test "panic ..." {...}`; if the call returns a value, wrap it with `ignore(...)` to silence warnings.
-  #|- Errors: Use `try? f()` to get `Result[...]` and `inspect` it when a function may raise.
+  #|- Errors: Use `try? f()` to get `Result[...]` and `debug_inspect` it when a function may raise.
   #|- Verify: Run `moon test` (or `-u` to update snapshots) and `moon fmt` afterwards.
   #|
   #|## Code Navigation with `moon ide`

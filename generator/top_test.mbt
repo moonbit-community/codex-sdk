@@ -29,9 +29,9 @@ async test {
       },
       tg,
     )
-    inspect(iterator.next(), content="Some(0)")
-    inspect(iterator.throws(Failure::Failure("error")), content="Some(1)")
-    inspect(iterator.returns(), content="None")
-    inspect(iterator.next(), content="None")
+    debug_inspect(iterator.next(), content="Some(0)")
+    debug_inspect(iterator.throws(Failure::Failure("error")), content="Some(1)")
+    debug_inspect(iterator.returns(), content="None")
+    debug_inspect(iterator.next(), content="None")
   })
 }
