@@ -94,9 +94,8 @@ pub impl @json.FromJson for Event
 pub struct FileUpdateChange {
   path : String
   kind : PatchChangeKind
-} derive(ToJson, @debug.Debug)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub impl Show for FileUpdateChange
-pub impl @json.FromJson for FileUpdateChange
 
 pub struct McpToolCallResult {
   content : Array[Json]
@@ -159,8 +158,7 @@ pub async fn[G] Thread::run_streamed(Self, String, extra_input? : Array[UserInpu
 
 pub struct ThreadError {
   message : String
-} derive(ToJson)
-pub impl @json.FromJson for ThreadError
+} derive(ToJson, @json.FromJson)
 
 pub enum ThreadItem {
   AgentMessageItem(id~ : String, text~ : String)
@@ -182,9 +180,8 @@ pub fn ThreadOptions::new(model? : String, sandbox_mode? : SandboxMode, working_
 pub struct TodoItem {
   text : String
   completed : Bool
-} derive(ToJson, @debug.Debug)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub impl Show for TodoItem
-pub impl @json.FromJson for TodoItem
 
 #alias(RunResult)
 pub struct Turn {
@@ -201,8 +198,7 @@ pub struct Usage {
   cached_input_tokens : Int
   output_tokens : Int
   reasoning_output_tokens : Int
-} derive(ToJson, @debug.Debug)
-pub impl @json.FromJson for Usage
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum UserInput {
   Text(String)

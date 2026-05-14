@@ -130,41 +130,9 @@ pub struct Usage {
   output_tokens : Int
   /// The number of reasoning output tokens used during the turn
   reasoning_output_tokens : Int
-} derive(ToJson, Debug)
-
-///|
-pub impl FromJson for Usage with from_json(value, path) {
-  guard value
-    is {
-      "input_tokens": Number(input_tokens, ..),
-      "cached_input_tokens": Number(cached_input_tokens, ..),
-      "output_tokens": Number(output_tokens, ..),
-      "reasoning_output_tokens": Number(reasoning_output_tokens, ..),
-      ..
-    } else {
-    raise JsonDecodeError(
-      (path, "expected Usage object, got \{@debug.to_repr(value)}"),
-    )
-  }
-  {
-    input_tokens: input_tokens.to_int(),
-    cached_input_tokens: cached_input_tokens.to_int(),
-    output_tokens: output_tokens.to_int(),
-    reasoning_output_tokens: reasoning_output_tokens.to_int(),
-  }
-}
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct ThreadError {
   message : String
-} derive(ToJson)
-
-///|
-pub impl FromJson for ThreadError with from_json(value, path) {
-  guard value is { "message": String(message), .. } else {
-    raise JsonDecodeError(
-      (path, "expected ThreadError object, got \{@debug.to_repr(value)}"),
-    )
-  }
-  { message, }
-}
+} derive(ToJson, FromJson)
