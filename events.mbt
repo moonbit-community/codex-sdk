@@ -52,15 +52,18 @@ pub impl ToJson for Event with to_json(event) {
 ///|
 pub impl @json.FromJson for Event with from_json(value, path) {
   guard value is Object({ "type": String(ty), .. } as obj) else {
-    raise @json.JsonDecodeError(
-      (path, "expected object containing 'type' field for Event, got \{value}"),
+    raise JsonDecodeError(
+      (
+        path,
+        "expected object containing 'type' field for Event, got \{@debug.to_repr(value)}",
+      ),
     )
   }
   match ty {
     "thread.started" => {
       guard obj is { "thread_id": String(thread_id), .. } else {
-        raise @json.JsonDecodeError(
-          (path, "expected ThreadStarted event, got \{obj}"),
+        raise JsonDecodeError(
+          (path, "expected ThreadStarted event, got \{@debug.to_repr(obj)}"),
         )
       }
       ThreadStarted(thread_id~)
@@ -68,52 +71,51 @@ pub impl @json.FromJson for Event with from_json(value, path) {
     "turn.started" => TurnStarted
     "turn.completed" => {
       guard obj is { "usage": usage_json, .. } else {
-        raise @json.JsonDecodeError(
-          (path, "expected TurnCompleted event, got \{obj}"),
+        raise JsonDecodeError(
+          (path, "expected TurnCompleted event, got \{@debug.to_repr(obj)}"),
         )
       }
       let usage = @json.FromJson::from_json(usage_json, path.add_key("usage")) catch {
-        error =>
-          raise @json.JsonDecodeError((path, "error parsing usage: \{error}"))
+        error => raise JsonDecodeError((path, "error parsing usage: \{error}"))
       }
       TurnCompleted(usage)
     }
     "turn.failed" => {
       guard obj is { "error": error_json, .. } else {
-        raise @json.JsonDecodeError(
-          (path, "expected TurnFailed event, got \{obj}"),
+        raise JsonDecodeError(
+          (path, "expected TurnFailed event, got \{@debug.to_repr(obj)}"),
         )
       }
       let error = @json.FromJson::from_json(error_json, path.add_key("error")) catch {
-        error =>
-          raise @json.JsonDecodeError((path, "error parsing error: \{error}"))
+        error => raise JsonDecodeError((path, "error parsing error: \{error}"))
       }
       TurnFailed(error)
     }
     "item.started" | "item.updated" | "item.completed" => {
       guard obj is { "item": item_json, .. } else {
-        raise @json.JsonDecodeError((path, "expected Item event, got \{obj}"))
+        raise JsonDecodeError(
+          (path, "expected Item event, got \{@debug.to_repr(obj)}"),
+        )
       }
       let item = @json.FromJson::from_json(item_json, path.add_key("item")) catch {
-        error =>
-          raise @json.JsonDecodeError((path, "error parsing item: \{error}"))
+        error => raise JsonDecodeError((path, "error parsing item: \{error}"))
       }
       match ty {
         "item.started" => ItemStarted(item)
         "item.updated" => ItemUpdated(item)
         "item.completed" => ItemCompleted(item)
-        _ => raise @json.JsonDecodeError((path, "unreachable"))
+        _ => raise JsonDecodeError((path, "unreachable"))
       }
     }
     "error" => {
       guard obj is { "message": String(message), .. } else {
-        raise @json.JsonDecodeError(
-          (path, "expected ThreadErrorEvent, got \{obj}"),
+        raise JsonDecodeError(
+          (path, "expected ThreadErrorEvent, got \{@debug.to_repr(obj)}"),
         )
       }
       ThreadErrorEvent(message)
     }
-    _ => raise @json.JsonDecodeError((path, "expected Event"))
+    _ => raise JsonDecodeError((path, "expected Event"))
   }
 }
 
@@ -128,9 +130,41 @@ pub struct Usage {
   output_tokens : Int
   /// The number of reasoning output tokens used during the turn
   reasoning_output_tokens : Int
-} derive(ToJson, @json.FromJson, Debug)
+} derive(ToJson, Debug)
+
+///|
+pub impl FromJson for Usage with from_json(value, path) {
+  guard value
+    is {
+      "input_tokens": Number(input_tokens, ..),
+      "cached_input_tokens": Number(cached_input_tokens, ..),
+      "output_tokens": Number(output_tokens, ..),
+      "reasoning_output_tokens": Number(reasoning_output_tokens, ..),
+      ..
+    } else {
+    raise JsonDecodeError(
+      (path, "expected Usage object, got \{@debug.to_repr(value)}"),
+    )
+  }
+  {
+    input_tokens: input_tokens.to_int(),
+    cached_input_tokens: cached_input_tokens.to_int(),
+    output_tokens: output_tokens.to_int(),
+    reasoning_output_tokens: reasoning_output_tokens.to_int(),
+  }
+}
 
 ///|
 pub struct ThreadError {
   message : String
-} derive(ToJson, @json.FromJson)
+} derive(ToJson)
+
+///|
+pub impl FromJson for ThreadError with from_json(value, path) {
+  guard value is { "message": String(message), .. } else {
+    raise JsonDecodeError(
+      (path, "expected ThreadError object, got \{@debug.to_repr(value)}"),
+    )
+  }
+  { message, }
+}

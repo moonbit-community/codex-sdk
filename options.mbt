@@ -34,7 +34,7 @@ pub fn CodexOptions::new(
   api_key? : String,
   env? : Map[String, String],
 ) -> CodexOptions {
-  CodexOptions::{ codex_path_override, base_url, api_key, env }
+  { codex_path_override, base_url, api_key, env }
 }
 
 // #endregion
@@ -138,7 +138,7 @@ pub fn ThreadOptions::new(
   approval_policy? : ApprovalMode,
   additional_directories? : Array[String],
 ) -> ThreadOptions {
-  ThreadOptions::{
+  {
     model,
     sandbox_mode,
     working_directory,
@@ -168,7 +168,7 @@ struct TurnOptions {
 /// Params:
 /// - `output_schema` - JSON schema describing the expected agent output
 pub fn TurnOptions::new(output_schema? : Json) -> TurnOptions {
-  TurnOptions::{ output_schema, }
+  { output_schema, }
 }
 
 // #endregion

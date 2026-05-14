@@ -27,13 +27,13 @@ pub fn extract_repo_name(url : String) -> String {
   // - git@github.com:user/repo.git
   let parts = url.split("/").collect()
   let last = if parts.length() > 0 {
-    parts[parts.length() - 1].to_string()
+    parts[parts.length() - 1].to_owned()
   } else {
     url
   }
   // Remove .git suffix if present
   if last.has_suffix(".git") {
-    last[0:last.length() - 4].to_string()
+    last[0:last.length() - 4].to_owned()
   } else {
     last
   }
@@ -99,20 +99,15 @@ pub async fn GitRepo::clone(url : String, destination : String) -> GitRepo {
     if status == 0 {
       default_branch = Some(
         ({
-          let full = output.text().trim().to_string()
+          let full = output.text().trim().to_owned()
           full.strip_prefix("origin/").unwrap_or(full)
-        }).to_string(),
+        }).to_owned(),
       )
     }
   } catch {
     _ => ()
   }
-  GitRepo::{
-    path: destination,
-    url: Some(url),
-    name: Some(repo_name),
-    default_branch,
-  }
+  { path: destination, url: Some(url), name: Some(repo_name), default_branch }
 }
 
 ///|
@@ -150,15 +145,15 @@ pub async fn GitRepo::discover(path : String) -> GitRepo {
     if status == 0 {
       default_branch = Some(
         ({
-          let full = output.text().trim().to_string()
+          let full = output.text().trim().to_owned()
           full.strip_prefix("origin/").unwrap_or(full)
-        }).to_string(),
+        }).to_owned(),
       )
     }
   } catch {
     _ => ()
   }
-  GitRepo::{ path, url: None, name: None, default_branch }
+  { path, url: None, name: None, default_branch }
 }
 
 ///|
@@ -181,9 +176,9 @@ pub async fn GitRepo::existing_branches(self : GitRepo) -> Array[String] {
     if !line.is_empty() {
       // Remove leading "* " or "  "
       let cleaned = if line.length() > 2 {
-        line[2:].to_string()
+        line[2:].to_owned()
       } else {
-        line.to_string()
+        line.to_owned()
       }
       result.push(cleaned)
     }
@@ -356,7 +351,7 @@ pub async fn GitRepo::current_branch(self : GitRepo) -> String? {
   if status != 0 {
     return None
   }
-  let output = pipe.read_all().text().trim().to_string()
+  let output = pipe.read_all().text().trim().to_owned()
   if output.is_empty() {
     None
   } else {
@@ -386,11 +381,11 @@ pub async fn GitRepo::get_default_branch(
   if status != 0 {
     return None
   }
-  let default_branch_full = pipe.read_all().text().trim().to_string()
+  let default_branch_full = pipe.read_all().text().trim().to_owned()
   // Extract branch name from "origin/main" -> "main"
   let prefix = "\{remote}/"
   if default_branch_full.has_prefix(prefix) {
-    Some(default_branch_full[prefix.length():].to_string())
+    Some(default_branch_full[prefix.length():].to_owned())
   } else {
     Some(default_branch_full)
   }
@@ -512,7 +507,7 @@ pub async fn GitRepo::create_workspace(
   if status != 0 {
     return None
   }
-  Some(IsolatedWorkspace::{ path, branch, repo: self })
+  Some({ path, branch, repo: self })
 }
 
 ///|

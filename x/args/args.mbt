@@ -36,7 +36,7 @@ pub fn parse(
 
   // Helper to resolve aliases
   fn resolve_alias(name : StringView) -> String {
-    aliases.get_from_string(name).unwrap_or(name.to_string())
+    aliases.get_from_string(name).unwrap_or(name.to_owned())
   }
 
   let mut args = args[:]
@@ -86,7 +86,7 @@ pub fn parse(
             next_arg
           }
         }
-        options_map[resolved] = value.to_string()
+        options_map[resolved] = value.to_owned()
       } else if collection_set.contains(resolved) {
         // if it's a collection
         let value = match value {
@@ -100,8 +100,8 @@ pub fn parse(
           }
         }
         match collections_map.get_from_string(resolved) {
-          Some(arr) => arr.push(value.to_string())
-          None => collections_map[resolved] = [value.to_string()]
+          Some(arr) => arr.push(value.to_owned())
+          None => collections_map[resolved] = [value.to_owned()]
         }
       } else {
         // Unknown option - treat as positional

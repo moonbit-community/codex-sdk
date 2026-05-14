@@ -91,7 +91,7 @@ pub async fn[G] Thread::run_streamed(
   self : Thread,
   prompt : String,
   extra_input? : Input = [],
-  turn_options? : TurnOptions = TurnOptions::{ output_schema: None },
+  turn_options? : TurnOptions = { output_schema: None },
   taskgroup : @async.TaskGroup[G],
 ) -> StreamedTurn {
   {
@@ -163,7 +163,7 @@ pub async fn Thread::run(
   self : Thread,
   prompt : String,
   extra_input? : Input = [],
-  turn_options? : TurnOptions = TurnOptions::{ output_schema: None },
+  turn_options? : TurnOptions = { output_schema: None },
 ) -> Turn raise Error {
   @async.with_task_group(taskgroup => {
     let generator = self.run_streamed_internal(
@@ -197,8 +197,8 @@ fn normalize_input(prompt : String, input : Input) -> (String, Array[String]) {
   let images : Array[String] = []
   for part in input {
     match part {
-      UserInput::Text(text) => parts.push(text)
-      UserInput::LocalImage(path~) => images.push(path)
+      Text(text) => parts.push(text)
+      LocalImage(path~) => images.push(path)
     }
   }
   (parts.join("\n\n"), images)
