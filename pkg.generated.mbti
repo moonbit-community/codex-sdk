@@ -3,6 +3,7 @@ package "peter-jerry-ye/codex"
 
 import {
   "moonbitlang/async",
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "peter-jerry-ye/codex/generator",
 }
@@ -28,11 +29,51 @@ pub fn Codex::start_thread(Self, options? : ThreadOptions) -> Thread
 type CodexOptions derive(Default)
 pub fn CodexOptions::new(codex_path_override? : String, base_url? : String, api_key? : String, env? : Map[String, String]) -> Self
 
+pub struct CollabAgentState {
+  status : CollabAgentStatus
+  message : String?
+} derive(@debug.Debug)
+pub impl ToJson for CollabAgentState
+pub impl @json.FromJson for CollabAgentState
+
+pub enum CollabAgentStatus {
+  PendingInit
+  Running
+  Interrupted
+  Completed
+  Errored
+  Shutdown
+  NotFound
+} derive(@debug.Debug)
+pub impl Show for CollabAgentStatus
+pub impl ToJson for CollabAgentStatus
+pub impl @json.FromJson for CollabAgentStatus
+
+pub enum CollabTool {
+  SpawnAgent
+  SendInput
+  Wait
+  CloseAgent
+} derive(@debug.Debug)
+pub impl Show for CollabTool
+pub impl ToJson for CollabTool
+pub impl @json.FromJson for CollabTool
+
+pub enum CollabToolCallStatus {
+  InProgress
+  Completed
+  Failed
+} derive(@debug.Debug)
+pub impl Show for CollabToolCallStatus
+pub impl ToJson for CollabToolCallStatus
+pub impl @json.FromJson for CollabToolCallStatus
+
 pub enum CommandExecutionStatus {
   InProgress
   Completed
   Failed
-}
+  Declined
+} derive(@debug.Debug)
 pub impl Show for CommandExecutionStatus
 pub impl ToJson for CommandExecutionStatus
 pub impl @json.FromJson for CommandExecutionStatus
@@ -53,13 +94,13 @@ pub impl @json.FromJson for Event
 pub struct FileUpdateChange {
   path : String
   kind : PatchChangeKind
-} derive(ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub impl Show for FileUpdateChange
 
 pub struct McpToolCallResult {
   content : Array[Json]
   structured_content : Json
-}
+} derive(@debug.Debug)
 pub impl ToJson for McpToolCallResult
 pub impl @json.FromJson for McpToolCallResult
 
@@ -67,7 +108,7 @@ pub enum McpToolCallStatus {
   InProgress
   Completed
   Failed
-}
+} derive(@debug.Debug)
 pub impl Show for McpToolCallStatus
 pub impl ToJson for McpToolCallStatus
 pub impl @json.FromJson for McpToolCallStatus
@@ -81,9 +122,10 @@ pub(all) enum ModelReasoningEffort {
 pub impl Show for ModelReasoningEffort
 
 pub enum PatchApplyStatus {
+  InProgress
   Completed
   Failed
-}
+} derive(@debug.Debug)
 pub impl Show for PatchApplyStatus
 pub impl ToJson for PatchApplyStatus
 pub impl @json.FromJson for PatchApplyStatus
@@ -92,7 +134,7 @@ pub enum PatchChangeKind {
   Add
   Delete
   Update
-}
+} derive(@debug.Debug)
 pub impl Show for PatchChangeKind
 pub impl ToJson for PatchChangeKind
 pub impl @json.FromJson for PatchChangeKind
@@ -124,10 +166,11 @@ pub enum ThreadItem {
   CommandExecutionItem(id~ : String, command~ : String, aggregated_output~ : String, exit_code~ : Int?, status~ : CommandExecutionStatus)
   FileChangeItem(id~ : String, changes~ : Array[FileUpdateChange], status~ : PatchApplyStatus)
   McpToolCallItem(id~ : String, server~ : String, tool~ : String, status~ : McpToolCallStatus, arguments~ : Json?, result~ : Result[McpToolCallResult, String]?)
+  CollabToolCallItem(id~ : String, tool~ : CollabTool, sender_thread_id~ : String, receiver_thread_ids~ : Array[String], prompt~ : String?, agents_states~ : Map[String, CollabAgentState], status~ : CollabToolCallStatus)
   WebSearchItem(id~ : String, query~ : String)
   TodoListItem(id~ : String, items~ : Array[TodoItem])
   ErrorItem(id~ : String, message~ : String)
-}
+} derive(@debug.Debug)
 pub impl ToJson for ThreadItem
 pub impl @json.FromJson for ThreadItem
 
@@ -137,7 +180,7 @@ pub fn ThreadOptions::new(model? : String, sandbox_mode? : SandboxMode, working_
 pub struct TodoItem {
   text : String
   completed : Bool
-} derive(ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub impl Show for TodoItem
 
 #alias(RunResult)
@@ -154,7 +197,8 @@ pub struct Usage {
   input_tokens : Int
   cached_input_tokens : Int
   output_tokens : Int
-} derive(ToJson, @json.FromJson)
+  reasoning_output_tokens : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum UserInput {
   Text(String)

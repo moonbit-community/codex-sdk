@@ -41,13 +41,23 @@ pub enum ThreadItem {
     arguments~ : Json?,
     result~ : Result[McpToolCallResult, String]?
   )
+  /// Represents a call to a Codex collab-agent tool.
+  CollabToolCallItem(
+    id~ : String,
+    tool~ : CollabTool,
+    sender_thread_id~ : String,
+    receiver_thread_ids~ : Array[String],
+    prompt~ : String?,
+    agents_states~ : Map[String, CollabAgentState],
+    status~ : CollabToolCallStatus
+  )
   /// Captures a web search request. Completes when results are returned to the agent.
   WebSearchItem(id~ : String, query~ : String)
   /// Tracks the agent's running to-do list. Starts when the plan is issued, updates as steps change, and completes when the turn ends.
   TodoListItem(id~ : String, items~ : Array[TodoItem])
   /// Describes a non-fatal error surfaced as an item.
   ErrorItem(id~ : String, message~ : String)
-}
+} derive(Debug)
 
 ///|
 pub impl ToJson for ThreadItem with to_json(item) {
@@ -91,6 +101,29 @@ pub impl ToJson for ThreadItem with to_json(item) {
         item.set("result", res.to_json())
       } else if result is Some(Err(err)) {
         item.set("error", { "message": err })
+      }
+      Json::object(item)
+    }
+    CollabToolCallItem(
+      id~,
+      tool~,
+      sender_thread_id~,
+      receiver_thread_ids~,
+      prompt~,
+      agents_states~,
+      status~
+    ) => {
+      let item : Map[String, Json] = {
+        "type": "collab_tool_call",
+        "id": id,
+        "tool": tool,
+        "sender_thread_id": sender_thread_id,
+        "receiver_thread_ids": receiver_thread_ids,
+        "agents_states": agents_states,
+        "status": status,
+      }
+      if prompt is Some(prompt) {
+        item.set("prompt", prompt.to_json())
       }
       Json::object(item)
     }
@@ -180,11 +213,11 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
         raise @json.JsonDecodeError((path, "expected McpToolCallItem"))
       }
       if error is Some(error) {
-        guard error is Object({ "message": String(_), .. }) else {
+        guard error is Null || error is Object({ "message": String(_), .. }) else {
           raise @json.JsonDecodeError(
             (
               path.add_key("error"),
-              "expected error object with message string, got \{error}",
+              "expected null or error object with message string, got \{error}",
             ),
           )
         }
@@ -195,13 +228,56 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
         tool~,
         status=@json.from_json(status, path=path.add_key("status")),
         arguments~,
-        result=if result is Some(res) {
-          Some(Ok(@json.from_json(res, path=path.add_key("result"))))
-        } else if error is Some(Object({ "message": String(msg), .. })) {
+        result=if error is Some(Object({ "message": String(msg), .. })) {
           Some(Err(msg))
+        } else if result is Some(Null) {
+          None
+        } else if result is Some(res) {
+          Some(Ok(@json.from_json(res, path=path.add_key("result"))))
         } else {
           None
         },
+      )
+    }
+    "collab_tool_call" => {
+      guard obj
+        is {
+          "id": String(id),
+          "tool": tool,
+          "sender_thread_id": String(sender_thread_id),
+          "receiver_thread_ids": receiver_thread_ids,
+          "prompt"? : prompt,
+          "agents_states": agents_states,
+          "status": status,
+          ..
+        } else {
+        raise @json.JsonDecodeError((path, "expected CollabToolCallItem"))
+      }
+      let prompt = match prompt {
+        Some(String(prompt)) => Some(prompt)
+        Some(Null) | None => None
+        v =>
+          raise @json.JsonDecodeError(
+            (
+              path.add_key("prompt"),
+              "expected string or null for CollabToolCallItem.prompt. Got: \{v}",
+            ),
+          )
+      }
+      CollabToolCallItem(
+        id~,
+        tool=@json.from_json(tool, path=path.add_key("tool")),
+        sender_thread_id~,
+        receiver_thread_ids=@json.from_json(
+          receiver_thread_ids,
+          path=path.add_key("receiver_thread_ids"),
+        ),
+        prompt~,
+        agents_states=@json.from_json(
+          agents_states,
+          path=path.add_key("agents_states"),
+        ),
+        status=@json.from_json(status, path=path.add_key("status")),
       )
     }
     "web_search" => {
@@ -234,7 +310,7 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
 pub struct FileUpdateChange {
   path : String
   kind : PatchChangeKind
-} derive(ToJson, @json.FromJson)
+} derive(ToJson, @json.FromJson, Debug)
 
 ///|
 pub impl Show for FileUpdateChange with output(self, logger) {
@@ -246,7 +322,7 @@ pub impl Show for FileUpdateChange with output(self, logger) {
 pub struct TodoItem {
   text : String
   completed : Bool
-} derive(ToJson, @json.FromJson)
+} derive(ToJson, @json.FromJson, Debug)
 
 ///|
 pub impl Show for TodoItem with output(self, logger) {
@@ -259,7 +335,8 @@ pub enum CommandExecutionStatus {
   InProgress
   Completed
   Failed
-}
+  Declined
+} derive(Debug)
 
 ///|
 pub impl Show for CommandExecutionStatus with output(status, logger) {
@@ -267,6 +344,7 @@ pub impl Show for CommandExecutionStatus with output(status, logger) {
     InProgress => logger.write_string("InProgress")
     Completed => logger.write_string("Completed")
     Failed => logger.write_string("Failed")
+    Declined => logger.write_string("Declined")
   }
 }
 
@@ -276,6 +354,7 @@ pub impl ToJson for CommandExecutionStatus with to_json(status) {
     Completed => "completed"
     InProgress => "in_progress"
     Failed => "failed"
+    Declined => "declined"
   }
 }
 
@@ -285,13 +364,198 @@ pub impl @json.FromJson for CommandExecutionStatus with from_json(value, path) {
     String("completed") => Completed
     String("in_progress") => InProgress
     String("failed") => Failed
+    String("declined") => Declined
     _ =>
       raise @json.JsonDecodeError(
         (
           path,
-          "expected string 'completed', 'in_progress', or 'failed' for CommandExecutionStatus. Got \{value}",
+          "expected string 'completed', 'in_progress', 'failed', or 'declined' for CommandExecutionStatus. Got \{value}",
         ),
       )
+  }
+}
+
+///|
+/// The status of a collab tool call.
+pub enum CollabToolCallStatus {
+  InProgress
+  Completed
+  Failed
+} derive(Debug)
+
+///|
+pub impl Show for CollabToolCallStatus with output(status, logger) {
+  match status {
+    InProgress => logger.write_string("InProgress")
+    Completed => logger.write_string("Completed")
+    Failed => logger.write_string("Failed")
+  }
+}
+
+///|
+pub impl ToJson for CollabToolCallStatus with to_json(status) {
+  match status {
+    Completed => "completed"
+    InProgress => "in_progress"
+    Failed => "failed"
+  }
+}
+
+///|
+pub impl @json.FromJson for CollabToolCallStatus with from_json(value, path) {
+  match value {
+    String("completed") => Completed
+    String("in_progress") => InProgress
+    String("failed") => Failed
+    _ =>
+      raise @json.JsonDecodeError(
+        (
+          path,
+          "expected string 'completed', 'in_progress', or 'failed' for CollabToolCallStatus. Got \{value}",
+        ),
+      )
+  }
+}
+
+///|
+/// Supported collab tools.
+pub enum CollabTool {
+  SpawnAgent
+  SendInput
+  Wait
+  CloseAgent
+} derive(Debug)
+
+///|
+pub impl Show for CollabTool with output(tool, logger) {
+  match tool {
+    SpawnAgent => logger.write_string("SpawnAgent")
+    SendInput => logger.write_string("SendInput")
+    Wait => logger.write_string("Wait")
+    CloseAgent => logger.write_string("CloseAgent")
+  }
+}
+
+///|
+pub impl ToJson for CollabTool with to_json(tool) {
+  match tool {
+    SpawnAgent => "spawn_agent"
+    SendInput => "send_input"
+    Wait => "wait"
+    CloseAgent => "close_agent"
+  }
+}
+
+///|
+pub impl @json.FromJson for CollabTool with from_json(value, path) {
+  match value {
+    String("spawn_agent") => SpawnAgent
+    String("send_input") => SendInput
+    String("wait") => Wait
+    String("close_agent") => CloseAgent
+    _ =>
+      raise @json.JsonDecodeError(
+        (
+          path,
+          "expected string 'spawn_agent', 'send_input', 'wait', or 'close_agent' for CollabTool. Got \{value}",
+        ),
+      )
+  }
+}
+
+///|
+/// The status of a collab agent.
+pub enum CollabAgentStatus {
+  PendingInit
+  Running
+  Interrupted
+  Completed
+  Errored
+  Shutdown
+  NotFound
+} derive(Debug)
+
+///|
+pub impl Show for CollabAgentStatus with output(status, logger) {
+  match status {
+    PendingInit => logger.write_string("PendingInit")
+    Running => logger.write_string("Running")
+    Interrupted => logger.write_string("Interrupted")
+    Completed => logger.write_string("Completed")
+    Errored => logger.write_string("Errored")
+    Shutdown => logger.write_string("Shutdown")
+    NotFound => logger.write_string("NotFound")
+  }
+}
+
+///|
+pub impl ToJson for CollabAgentStatus with to_json(status) {
+  match status {
+    PendingInit => "pending_init"
+    Running => "running"
+    Interrupted => "interrupted"
+    Completed => "completed"
+    Errored => "errored"
+    Shutdown => "shutdown"
+    NotFound => "not_found"
+  }
+}
+
+///|
+pub impl @json.FromJson for CollabAgentStatus with from_json(value, path) {
+  match value {
+    String("pending_init") => PendingInit
+    String("running") => Running
+    String("interrupted") => Interrupted
+    String("completed") => Completed
+    String("errored") => Errored
+    String("shutdown") => Shutdown
+    String("not_found") => NotFound
+    _ =>
+      raise @json.JsonDecodeError(
+        (
+          path,
+          "expected string 'pending_init', 'running', 'interrupted', 'completed', 'errored', 'shutdown', or 'not_found' for CollabAgentStatus. Got \{value}",
+        ),
+      )
+  }
+}
+
+///|
+/// Last known state of a collab agent.
+pub struct CollabAgentState {
+  status : CollabAgentStatus
+  message : String?
+} derive(Debug)
+
+///|
+pub impl ToJson for CollabAgentState with to_json(state) {
+  let obj : Map[String, Json] = { "status": state.status }
+  if state.message is Some(message) {
+    obj.set("message", message.to_json())
+  }
+  Json::object(obj)
+}
+
+///|
+pub impl @json.FromJson for CollabAgentState with from_json(value, path) {
+  guard value is Object({ "status": status, "message"? : message, .. }) else {
+    raise @json.JsonDecodeError((path, "expected CollabAgentState"))
+  }
+  let message = match message {
+    Some(String(message)) => Some(message)
+    Some(Null) | None => None
+    v =>
+      raise @json.JsonDecodeError(
+        (
+          path.add_key("message"),
+          "expected string or null for CollabAgentState.message. Got: \{v}",
+        ),
+      )
+  }
+  CollabAgentState::{
+    status: @json.from_json(status, path=path.add_key("status")),
+    message,
   }
 }
 
@@ -301,7 +565,7 @@ pub enum PatchChangeKind {
   Add
   Delete
   Update
-}
+} derive(Debug)
 
 ///|
 pub impl Show for PatchChangeKind with output(kind, logger) {
@@ -340,13 +604,15 @@ pub impl @json.FromJson for PatchChangeKind with from_json(value, path) {
 ///|
 /// The status of a file change.
 pub enum PatchApplyStatus {
+  InProgress
   Completed
   Failed
-}
+} derive(Debug)
 
 ///|
 pub impl Show for PatchApplyStatus with output(status, logger) {
   match status {
+    InProgress => logger.write_string("InProgress")
     Completed => logger.write_string("Completed")
     Failed => logger.write_string("Failed")
   }
@@ -355,6 +621,7 @@ pub impl Show for PatchApplyStatus with output(status, logger) {
 ///|
 pub impl ToJson for PatchApplyStatus with to_json(status) {
   match status {
+    InProgress => "in_progress"
     Completed => "completed"
     Failed => "failed"
   }
@@ -363,13 +630,14 @@ pub impl ToJson for PatchApplyStatus with to_json(status) {
 ///|
 pub impl @json.FromJson for PatchApplyStatus with from_json(value, path) {
   match value {
+    String("in_progress") => InProgress
     String("completed") => Completed
     String("failed") => Failed
     _ =>
       raise @json.JsonDecodeError(
         (
           path,
-          "expected string 'completed' or 'failed' for PatchApplyStatus. Got \{value}",
+          "expected string 'in_progress', 'completed', or 'failed' for PatchApplyStatus. Got \{value}",
         ),
       )
   }
@@ -381,7 +649,7 @@ pub enum McpToolCallStatus {
   InProgress
   Completed
   Failed
-}
+} derive(Debug)
 
 ///|
 pub impl Show for McpToolCallStatus with output(status, logger) {
@@ -421,7 +689,7 @@ pub impl @json.FromJson for McpToolCallStatus with from_json(value, path) {
 pub struct McpToolCallResult {
   content : Array[Json]
   structured_content : Json
-}
+} derive(Debug)
 
 ///|
 pub impl ToJson for McpToolCallResult with to_json(result) {
