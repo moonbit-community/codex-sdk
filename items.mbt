@@ -139,18 +139,18 @@ pub impl ToJson for ThreadItem with to_json(item) {
 ///|
 pub impl @json.FromJson for ThreadItem with from_json(value, path) {
   guard value is Object({ "type": String(ty), .. } as obj) else {
-    raise @json.JsonDecodeError((path, "expected ThreadItem"))
+    raise JsonDecodeError((path, "expected ThreadItem"))
   }
   match ty {
     "agent_message" => {
       guard obj is { "id": String(id), "text": String(text), .. } else {
-        raise @json.JsonDecodeError((path, "expected AgentMessageItem"))
+        raise JsonDecodeError((path, "expected AgentMessageItem"))
       }
       AgentMessageItem(id~, text~)
     }
     "reasoning" => {
       guard obj is { "id": String(id), "text": String(text), .. } else {
-        raise @json.JsonDecodeError((path, "expected ReasoningItem"))
+        raise JsonDecodeError((path, "expected ReasoningItem"))
       }
       ReasoningItem(id~, text~)
     }
@@ -164,18 +164,18 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
           "exit_code"? : exit_code,
           ..
         } else {
-        raise @json.JsonDecodeError(
-          (path, "expected CommandExecutionItem, got \{obj}"),
+        raise JsonDecodeError(
+          (path, "expected CommandExecutionItem, got \{@debug.to_repr(obj)}"),
         )
       }
       let exit_code = match exit_code {
         Some(Number(n, ..)) => Some(n.to_int())
         Some(Null) | None => None
         v =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (
               path.add_key("exit_code"),
-              "expected integer or null for CommandExecutionItem.exit_code. Got: \{v}",
+              "expected integer or null for CommandExecutionItem.exit_code. Got: \{@debug.to_repr(v)}",
             ),
           )
       }
@@ -190,7 +190,7 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
     "file_change" => {
       guard obj
         is { "id": String(id), "changes": changes, "status": status, .. } else {
-        raise @json.JsonDecodeError((path, "expected FileChangeItem"))
+        raise JsonDecodeError((path, "expected FileChangeItem"))
       }
       FileChangeItem(
         id~,
@@ -210,14 +210,14 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
           "error"? : error,
           ..
         } else {
-        raise @json.JsonDecodeError((path, "expected McpToolCallItem"))
+        raise JsonDecodeError((path, "expected McpToolCallItem"))
       }
       if error is Some(error) {
         guard error is Null || error is Object({ "message": String(_), .. }) else {
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (
               path.add_key("error"),
-              "expected null or error object with message string, got \{error}",
+              "expected null or error object with message string, got \{@debug.to_repr(error)}",
             ),
           )
         }
@@ -251,16 +251,16 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
           "status": status,
           ..
         } else {
-        raise @json.JsonDecodeError((path, "expected CollabToolCallItem"))
+        raise JsonDecodeError((path, "expected CollabToolCallItem"))
       }
       let prompt = match prompt {
         Some(String(prompt)) => Some(prompt)
         Some(Null) | None => None
         v =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (
               path.add_key("prompt"),
-              "expected string or null for CollabToolCallItem.prompt. Got: \{v}",
+              "expected string or null for CollabToolCallItem.prompt. Got: \{@debug.to_repr(v)}",
             ),
           )
       }
@@ -282,13 +282,13 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
     }
     "web_search" => {
       guard obj is { "id": String(id), "query": String(query), .. } else {
-        raise @json.JsonDecodeError((path, "expected WebSearchItem"))
+        raise JsonDecodeError((path, "expected WebSearchItem"))
       }
       WebSearchItem(id~, query~)
     }
     "todo_list" => {
       guard obj is { "id": String(id), "items": items, .. } else {
-        raise @json.JsonDecodeError((path, "expected TodoListItem"))
+        raise JsonDecodeError((path, "expected TodoListItem"))
       }
       TodoListItem(
         id~,
@@ -297,11 +297,11 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
     }
     "error" => {
       guard obj is { "id": String(id), "message": String(message), .. } else {
-        raise @json.JsonDecodeError((path, "expected ErrorItem"))
+        raise JsonDecodeError((path, "expected ErrorItem"))
       }
       ErrorItem(id~, message~)
     }
-    _ => raise @json.JsonDecodeError((path, "unknown ThreadItem type: \{ty}"))
+    _ => raise JsonDecodeError((path, "unknown ThreadItem type: \{ty}"))
   }
 }
 
@@ -310,7 +310,17 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
 pub struct FileUpdateChange {
   path : String
   kind : PatchChangeKind
-} derive(ToJson, @json.FromJson, Debug)
+} derive(ToJson, Debug)
+
+///|
+pub impl FromJson for FileUpdateChange with from_json(value, path) {
+  guard value is { "path": String(file_path), "kind": kind, .. } else {
+    raise JsonDecodeError(
+      (path, "expected FileUpdateChange object, got \{@debug.to_repr(value)}"),
+    )
+  }
+  { path: file_path, kind: @json.from_json(kind, path=path.add_key("kind")) }
+}
 
 ///|
 pub impl Show for FileUpdateChange with output(self, logger) {
@@ -322,7 +332,28 @@ pub impl Show for FileUpdateChange with output(self, logger) {
 pub struct TodoItem {
   text : String
   completed : Bool
-} derive(ToJson, @json.FromJson, Debug)
+} derive(ToJson, Debug)
+
+///|
+pub impl FromJson for TodoItem with from_json(value, path) {
+  guard value is { "text": String(text), "completed": completed_json, .. } else {
+    raise JsonDecodeError(
+      (path, "expected TodoItem object, got \{@debug.to_repr(value)}"),
+    )
+  }
+  let completed = match completed_json {
+    True => true
+    False => false
+    v =>
+      raise JsonDecodeError(
+        (
+          path.add_key("completed"),
+          "expected boolean for TodoItem.completed, got \{@debug.to_repr(v)}",
+        ),
+      )
+  }
+  { text, completed }
+}
 
 ///|
 pub impl Show for TodoItem with output(self, logger) {
@@ -366,10 +397,10 @@ pub impl @json.FromJson for CommandExecutionStatus with from_json(value, path) {
     String("failed") => Failed
     String("declined") => Declined
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path,
-          "expected string 'completed', 'in_progress', 'failed', or 'declined' for CommandExecutionStatus. Got \{value}",
+          "expected string 'completed', 'in_progress', 'failed', or 'declined' for CommandExecutionStatus. Got \{@debug.to_repr(value)}",
         ),
       )
   }
@@ -408,10 +439,10 @@ pub impl @json.FromJson for CollabToolCallStatus with from_json(value, path) {
     String("in_progress") => InProgress
     String("failed") => Failed
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path,
-          "expected string 'completed', 'in_progress', or 'failed' for CollabToolCallStatus. Got \{value}",
+          "expected string 'completed', 'in_progress', or 'failed' for CollabToolCallStatus. Got \{@debug.to_repr(value)}",
         ),
       )
   }
@@ -454,10 +485,10 @@ pub impl @json.FromJson for CollabTool with from_json(value, path) {
     String("wait") => Wait
     String("close_agent") => CloseAgent
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path,
-          "expected string 'spawn_agent', 'send_input', 'wait', or 'close_agent' for CollabTool. Got \{value}",
+          "expected string 'spawn_agent', 'send_input', 'wait', or 'close_agent' for CollabTool. Got \{@debug.to_repr(value)}",
         ),
       )
   }
@@ -512,10 +543,10 @@ pub impl @json.FromJson for CollabAgentStatus with from_json(value, path) {
     String("shutdown") => Shutdown
     String("not_found") => NotFound
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path,
-          "expected string 'pending_init', 'running', 'interrupted', 'completed', 'errored', 'shutdown', or 'not_found' for CollabAgentStatus. Got \{value}",
+          "expected string 'pending_init', 'running', 'interrupted', 'completed', 'errored', 'shutdown', or 'not_found' for CollabAgentStatus. Got \{@debug.to_repr(value)}",
         ),
       )
   }
@@ -540,23 +571,20 @@ pub impl ToJson for CollabAgentState with to_json(state) {
 ///|
 pub impl @json.FromJson for CollabAgentState with from_json(value, path) {
   guard value is Object({ "status": status, "message"? : message, .. }) else {
-    raise @json.JsonDecodeError((path, "expected CollabAgentState"))
+    raise JsonDecodeError((path, "expected CollabAgentState"))
   }
   let message = match message {
     Some(String(message)) => Some(message)
     Some(Null) | None => None
     v =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("message"),
-          "expected string or null for CollabAgentState.message. Got: \{v}",
+          "expected string or null for CollabAgentState.message. Got: \{@debug.to_repr(v)}",
         ),
       )
   }
-  CollabAgentState::{
-    status: @json.from_json(status, path=path.add_key("status")),
-    message,
-  }
+  { status: @json.from_json(status, path=path.add_key("status")), message }
 }
 
 ///|
@@ -592,10 +620,10 @@ pub impl @json.FromJson for PatchChangeKind with from_json(value, path) {
     String("delete") => Delete
     String("update") => Update
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path,
-          "expected string 'add', 'delete', or 'update' for PatchChangeKind. Got \{value}",
+          "expected string 'add', 'delete', or 'update' for PatchChangeKind. Got \{@debug.to_repr(value)}",
         ),
       )
   }
@@ -634,10 +662,10 @@ pub impl @json.FromJson for PatchApplyStatus with from_json(value, path) {
     String("completed") => Completed
     String("failed") => Failed
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path,
-          "expected string 'in_progress', 'completed', or 'failed' for PatchApplyStatus. Got \{value}",
+          "expected string 'in_progress', 'completed', or 'failed' for PatchApplyStatus. Got \{@debug.to_repr(value)}",
         ),
       )
   }
@@ -676,10 +704,10 @@ pub impl @json.FromJson for McpToolCallStatus with from_json(value, path) {
     String("in_progress") => InProgress
     String("failed") => Failed
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path,
-          "expected string 'completed', 'in_progress', or 'failed' for McpToolCallStatus. Got \{value}",
+          "expected string 'completed', 'in_progress', or 'failed' for McpToolCallStatus. Got \{@debug.to_repr(value)}",
         ),
       )
   }
@@ -704,12 +732,12 @@ pub impl FromJson for McpToolCallResult with from_json(value, path) {
       "structured_content": structured_content,
       ..
     } else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (
         path,
-        "expected McpToolCallResult object with content and structured_content. Got \{value}",
+        "expected McpToolCallResult object with content and structured_content. Got \{@debug.to_repr(value)}",
       ),
     )
   }
-  McpToolCallResult::{ content, structured_content }
+  { content, structured_content }
 }

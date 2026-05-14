@@ -76,7 +76,7 @@ pub async fn create_pr(
     let error_output = err_pipe.read_all().text().to_string()
     raise Failure::Failure("gh pr create failed: \{error_output}")
   }
-  pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
+  pipe.read_all().text().trim(char_set=" \t\n\r").to_owned()
 }
 
 ///|
@@ -85,7 +85,7 @@ pub async fn create_pr(
 pub fn extract_pr_number(pr_url : StringView) -> Int? {
   let parts = pr_url.split("/").to_array()
   if parts.length() > 0 {
-    let last = parts[parts.length() - 1].to_string().trim(char_set=" \t\n\r")
+    let last = parts[parts.length() - 1].to_owned().trim(char_set=" \t\n\r")
     let num = @string.parse_int(last) catch { _ => -1 }
     if num > 0 {
       Some(num)
@@ -122,7 +122,7 @@ pub async fn get_pr_state(repo_path : String, pr_number : Int) -> PrInfo {
       ),
     )
   }
-  let output = stdout.text().trim(char_set=" \t\n\r").to_string()
+  let output = stdout.text().trim(char_set=" \t\n\r").to_owned()
   let json = @json.parse(output) catch {
     e => @error.fail_with("Failed to parse JSON", e)
   }
@@ -136,14 +136,7 @@ pub async fn get_pr_state(repo_path : String, pr_number : Int) -> PrInfo {
         "reviewDecision": String(review_decision),
         ..
       }
-    ) =>
-      PrInfo::{
-        number: number.to_int(),
-        url,
-        state,
-        mergeable,
-        review_decision,
-      }
+    ) => { number: number.to_int(), url, state, mergeable, review_decision }
     _ => @error.fail("Unexpected JSON format: \{json.stringify()}")
   }
 }
@@ -196,7 +189,7 @@ pub async fn list_prs_for_branch(
   if status != 0 {
     return []
   }
-  let output = pipe.read_all().text().trim(char_set=" \t\n\r").to_string()
+  let output = pipe.read_all().text().trim(char_set=" \t\n\r").to_owned()
   let json = @json.parse(output) catch { _ => return [] }
   let result = []
   match json {

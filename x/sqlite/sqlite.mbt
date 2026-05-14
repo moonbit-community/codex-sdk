@@ -8,7 +8,7 @@ struct Database {
 ///|
 /// Create or open a database
 pub fn Database::new(path : String) -> Database {
-  Database::{ path, }
+  { path, }
 }
 
 ///|

@@ -70,7 +70,7 @@ pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
   let result = []
   let lines = []
   for line in output.split("\n") {
-    lines.push(line.to_string())
+    lines.push(line.to_owned())
   }
   let mut i = 0
   while i < lines.length() {
@@ -98,14 +98,14 @@ pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
     }
     let parts1 = []
     for part in location_line.split("[") {
-      parts1.push(part.to_string())
+      parts1.push(part.to_owned())
     }
     if parts1.length() < 2 {
       continue
     }
     let parts2 = []
     for part in parts1[1].split("]") {
-      parts2.push(part.to_string())
+      parts2.push(part.to_owned())
     }
     if parts2.length() < 1 {
       continue
@@ -115,7 +115,7 @@ pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
     // Parse location format: /path/to/file.mbt:line:col or /path/to/file.mbt:line
     let parts = []
     for part in location.split(":") {
-      parts.push(part.to_string())
+      parts.push(part.to_owned())
     }
     if parts.length() < 2 {
       continue
@@ -142,7 +142,7 @@ pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
         // Extract message after the arrow by splitting
         let arrow_parts = []
         for part in msg_line.split("╰──") {
-          arrow_parts.push(part.to_string())
+          arrow_parts.push(part.to_owned())
         }
         if arrow_parts.length() >= 2 {
           let msg = arrow_parts[1].trim()
@@ -202,9 +202,11 @@ pub async fn MoonProject::discover(path : String) -> MoonProject? {
     let content = @fs.read_file("\{path}/moon.mod.json").text()
     let schema = @json.parse(content)
     guard schema is Object({ "name": String(name), .. }) else {
-      fail("Invalid moon.mod.json at \{path} with content \{schema}")
+      fail(
+        "Invalid moon.mod.json at \{path} with content \{@debug.to_repr(schema)}",
+      )
     }
-    Some(MoonProject::{ root: path, name })
+    Some({ root: path, name })
   } else {
     None
   }
@@ -231,7 +233,7 @@ pub async fn MoonProject::packages(self : MoonProject) -> Array[Package] {
 
     // Found a package
     if entries.contains("moon.pkg.json") {
-      result.push(Package::{ project, path })
+      result.push({ project, path })
     }
 
     // Recurse into subdirectories
@@ -291,5 +293,5 @@ async fn run_moon_command(
   let (exit_code, stdout, stderr) = @process.collect_output("moon", full_args)
   let stdout = stdout.text()
   let stderr = stderr.text()
-  ValidationResult::{ passed: exit_code == 0, stdout, stderr, exit_code }
+  { passed: exit_code == 0, stdout, stderr, exit_code }
 }
