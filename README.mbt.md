@@ -218,3 +218,73 @@ async test {
 
 These primitives compose cleanly with your own orchestration layers, since
 everything in the SDK is expressed as plain MoonBit structs and async functions.
+
+### Connect to Codex app-server
+
+The app-server surface is separate from `codex exec --json`. It runs as a
+persistent JSON-RPC process with two channels:
+typed request methods / `respond` write client frames to app-server stdin,
+while `next` reads server frames from app-server stdout. Client-initiated
+requests are exposed through named methods:
+
+- `thread_list`, `thread_start`, `thread_read`, `turn_start`,
+  `turn_interrupt`, and `model_list` for client-initiated RPCs. These named
+  methods use typed `App*Params` values; raw JSON remains available through
+  `call` for protocol escape hatches.
+- `initialized` for the startup notification.
+- `respond` / `respond_error` when the server sends a request that your client
+  must answer.
+
+Because app-server carries more than turn-stream events, `next` returns
+`AppServerMessage` instead of forcing every message into `Event`. When a
+notification is semantically the same as the existing exec stream, use
+`AppServerEvent::thread_event` to bridge it back to `Event`.
+
+The app-server surface currently targets the Codex app-server v2 schema.
+
+```mbt check
+///|
+#skip
+async test {
+  let app = @codex.Codex::new().app_server()
+  @async.with_task_group(tg => {
+    let connection = app.connect(tg)
+    connection.initialized()
+    let response = connection.thread_list(
+      params=@codex.AppThreadListParams::new(limit=20),
+    )
+    println("threads: \{response.data.length()}")
+
+    while connection.next() is Some(message) {
+      match message {
+        @codex.AppServerMessage::Notification(event) =>
+          match event.thread_event() {
+            Some(@codex.Event::ItemStarted(item)) =>
+              println(item.to_json().stringify())
+            _ => ()
+          }
+        @codex.AppServerMessage::ErrorResponse(error~, ..) =>
+          fail("app-server error: \{error.message}")
+        @codex.AppServerMessage::Request(request) =>
+          connection.handle_request(request, fn(request) {
+            println("server requested: \{request.rpc_method}")
+            match request.details {
+              @codex.AppServerRequestDetails::AppCommandExecutionApprovalRequest(
+                _
+              ) =>
+                @codex.AppServerResponse::AppCommandExecutionApprovalResponse(
+                  decision=@codex.AppCommandExecutionApprovalDecision::AppCommandDecline,
+                )
+              @codex.AppServerRequestDetails::AppFileChangeApprovalRequest(_) =>
+                @codex.AppServerResponse::AppFileChangeApprovalResponse(
+                  decision=@codex.AppFileChangeApprovalDecision::AppFileChangeDecline,
+                )
+              _ => @codex.AppServerResponse::AppRawResponse({})
+            }
+          })
+        @codex.AppServerMessage::Response(..) => ()
+      }
+    }
+  })
+}
+```

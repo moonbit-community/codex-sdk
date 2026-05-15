@@ -422,6 +422,7 @@ pub impl @json.FromJson for CollabToolCallStatus with from_json(value, path) {
 pub enum CollabTool {
   SpawnAgent
   SendInput
+  ResumeAgent
   Wait
   CloseAgent
 } derive(Debug)
@@ -431,6 +432,7 @@ pub impl Show for CollabTool with output(tool, logger) {
   match tool {
     SpawnAgent => logger.write_string("SpawnAgent")
     SendInput => logger.write_string("SendInput")
+    ResumeAgent => logger.write_string("ResumeAgent")
     Wait => logger.write_string("Wait")
     CloseAgent => logger.write_string("CloseAgent")
   }
@@ -441,6 +443,7 @@ pub impl ToJson for CollabTool with to_json(tool) {
   match tool {
     SpawnAgent => "spawn_agent"
     SendInput => "send_input"
+    ResumeAgent => "resume_agent"
     Wait => "wait"
     CloseAgent => "close_agent"
   }
@@ -451,13 +454,14 @@ pub impl @json.FromJson for CollabTool with from_json(value, path) {
   match value {
     String("spawn_agent") => SpawnAgent
     String("send_input") => SendInput
+    String("resume_agent") => ResumeAgent
     String("wait") => Wait
     String("close_agent") => CloseAgent
     _ =>
       raise JsonDecodeError(
         (
           path,
-          "expected string 'spawn_agent', 'send_input', 'wait', or 'close_agent' for CollabTool. Got \{@debug.to_repr(value)}",
+          "expected string 'spawn_agent', 'send_input', 'resume_agent', 'wait', or 'close_agent' for CollabTool. Got \{@debug.to_repr(value)}",
         ),
       )
   }

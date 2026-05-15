@@ -73,7 +73,7 @@ pub(all) enum SandboxMode {
   WorkspaceWrite
   /// Full access (dangerous)
   DangerFullAccess
-}
+} derive(Debug)
 
 ///|
 /// Convert SandboxMode to its string representation for CLI arguments.
