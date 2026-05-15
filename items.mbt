@@ -310,17 +310,7 @@ pub impl @json.FromJson for ThreadItem with from_json(value, path) {
 pub struct FileUpdateChange {
   path : String
   kind : PatchChangeKind
-} derive(ToJson, Debug)
-
-///|
-pub impl FromJson for FileUpdateChange with from_json(value, path) {
-  guard value is { "path": String(file_path), "kind": kind, .. } else {
-    raise JsonDecodeError(
-      (path, "expected FileUpdateChange object, got \{@debug.to_repr(value)}"),
-    )
-  }
-  { path: file_path, kind: @json.from_json(kind, path=path.add_key("kind")) }
-}
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub impl Show for FileUpdateChange with output(self, logger) {
@@ -332,28 +322,7 @@ pub impl Show for FileUpdateChange with output(self, logger) {
 pub struct TodoItem {
   text : String
   completed : Bool
-} derive(ToJson, Debug)
-
-///|
-pub impl FromJson for TodoItem with from_json(value, path) {
-  guard value is { "text": String(text), "completed": completed_json, .. } else {
-    raise JsonDecodeError(
-      (path, "expected TodoItem object, got \{@debug.to_repr(value)}"),
-    )
-  }
-  let completed = match completed_json {
-    True => true
-    False => false
-    v =>
-      raise JsonDecodeError(
-        (
-          path.add_key("completed"),
-          "expected boolean for TodoItem.completed, got \{@debug.to_repr(v)}",
-        ),
-      )
-  }
-  { text, completed }
-}
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub impl Show for TodoItem with output(self, logger) {
