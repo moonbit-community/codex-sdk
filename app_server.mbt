@@ -16,7 +16,8 @@
 /// Entry point for low-level Codex app-server protocol handling.
 ///
 /// This does not replace `Codex::start_thread` or `codex exec --json`; it is a
-/// separate surface for callers that already have app-server JSON-RPC messages.
+/// separate surface for callers that need direct app-server JSON-RPC access.
+/// Prefer `Codex::with_app_server` unless you already own a task group.
 pub struct CodexApp {
   options : CodexOptions
 }
@@ -25,13 +26,37 @@ pub struct CodexApp {
 pub struct AppServerOptions {
   /// Override the path to the codex-app-server executable.
   executable_path_override : String?
+  /// Client metadata sent in the app-server `initialize` request.
+  client_info : AppClientInfo?
+  /// Optional client capabilities sent in the app-server `initialize` request.
+  capabilities : AppInitializeCapabilities?
 } derive(Default)
 
 ///|
 pub fn AppServerOptions::new(
   executable_path_override? : String,
+  client_info? : AppClientInfo,
+  capabilities? : AppInitializeCapabilities,
 ) -> AppServerOptions {
-  { executable_path_override, }
+  { executable_path_override, client_info, capabilities }
+}
+
+///|
+fn AppServerOptions::initialize_params(
+  self : AppServerOptions,
+) -> AppInitializeParams {
+  {
+    client_info: match self.client_info {
+      Some(client_info) => client_info
+      None =>
+        {
+          name: "moonbit-codex-sdk",
+          title: Some("MoonBit Codex SDK"),
+          version: "0.128.0",
+        }
+    },
+    capabilities: self.capabilities,
+  }
 }
 
 ///|
@@ -42,98 +67,148 @@ pub fn Codex::app_server(self : Codex) -> CodexApp {
 }
 
 ///|
+/// Run a scoped Codex app-server connection.
+///
+/// This is the preferred app-server entry point. It creates a task group for
+/// the app-server process, writer pump, and reader pump, then closes the send
+/// side when the callback returns or raises.
+pub async fn[R] Codex::with_app_server(
+  self : Codex,
+  options? : AppServerOptions = AppServerOptions::default(),
+  body : async (CodexAppConnection) -> R,
+) -> R {
+  @async.with_task_group(tg => {
+    let connection = self.spawn_app_server(tg, options~)
+    defer connection.close()
+    let _ = connection.initialize(options.initialize_params())
+    connection.initialized()
+    body(connection)
+  })
+}
+
+///|
+/// Low-level app-server process spawn for callers that already own structured
+/// concurrency.
+///
+/// The caller-provided task group owns the app-server process, stdin writer,
+/// and stdout reader. Prefer `Codex::with_app_server` unless the surrounding
+/// application already has a longer-lived task group.
+pub fn[G] Codex::spawn_app_server(
+  self : Codex,
+  taskgroup : @async.TaskGroup[G],
+  options? : AppServerOptions = AppServerOptions::default(),
+) -> CodexAppConnection raise Error {
+  self.app_server().spawn(taskgroup, options~)
+}
+
+///|
 /// Start a Codex app-server process using stdio JSON-RPC transport.
 ///
-/// The returned connection has two logical channels:
-/// - `send` writes client JSON-RPC frames to app-server stdin.
-/// - `next` reads server JSON-RPC frames from app-server stdout.
-pub fn[G] CodexApp::connect(
+/// This is the low-level builder method behind `Codex::spawn_app_server`.
+pub fn[G] CodexApp::spawn(
   self : CodexApp,
-  options? : AppServerOptions = AppServerOptions::default(),
   taskgroup : @async.TaskGroup[G],
-) -> CodexAppConnection {
+  options? : AppServerOptions = AppServerOptions::default(),
+) -> CodexAppConnection raise Error {
   let executable_path = options.executable_path_override.unwrap_or(
     "codex-app-server",
   )
   let outgoing : @async.Queue[Json] = @async.Queue::new(kind=Unbounded)
-  let buffered : @async.Queue[AppServerMessage] = @async.Queue::new(
+  let messages : @async.Queue[AppServerMessage] = @async.Queue::new(
     kind=Unbounded,
   )
-  let incoming = @generator.AsyncGenerator::new(
-    async fn(yield_) {
-      let stdin = @process.write_to_process() catch {
-        e => raise @error.reraise(e)
+  let stdin = @process.write_to_process() catch {
+    e => @error.fail("failed to open app-server stdin: \{e}")
+  }
+  let stdout = @process.read_from_process() catch {
+    e => @error.fail("failed to open app-server stdout: \{e}")
+  }
+  let extra_env = self.options.env.unwrap_or({})
+  if self.options.base_url is Some(base_url) {
+    extra_env.set("OPENAI_BASE_URL", base_url)
+  }
+  if self.options.api_key is Some(api_key) {
+    extra_env.set("CODEX_API_KEY", api_key)
+  }
+  let connection : CodexAppConnection = {
+    outgoing,
+    messages,
+    pending: [],
+    next_request_id: 1,
+  }
+  taskgroup.spawn_bg(() => {
+    let (exit_code, stderr) = @process.collect_stderr(
+      executable_path,
+      ["--listen", "stdio://"],
+      stdin=stdin.0,
+      stdout=stdout.1,
+      inherit_env=self.options.env is None,
+      extra_env~,
+    )
+    if exit_code != 0 {
+      @error.fail("Codex app server failed: \{stderr.text()}")
+    }
+  })
+  taskgroup.spawn_bg(() => {
+    defer stdin.1.close()
+    try {
+      while true {
+        let message = outgoing.get()
+        stdin.1.write("\{message.stringify()}\n")
       }
-      let stdout = @process.read_from_process() catch {
-        e => raise @error.reraise(e)
+    } catch {
+      _ => ()
+    }
+  })
+  taskgroup.spawn_bg(() => {
+    let reader = stdout.0
+    defer reader.close()
+    try {
+      while reader.read_until("\n") is Some(text) {
+        let message : AppServerMessage = @json.from_json(@json.parse(text))
+        connection.route_server_message(message)
       }
-      let extra_env = self.options.env.unwrap_or({})
-      if self.options.base_url is Some(base_url) {
-        extra_env.set("OPENAI_BASE_URL", base_url)
+    } catch {
+      e => {
+        connection.close_pending_requests()
+        messages.close(clear=false)
+        raise @error.reraise(e)
       }
-      if self.options.api_key is Some(api_key) {
-        extra_env.set("CODEX_API_KEY", api_key)
-      }
-      @async.with_task_group(taskgroup => {
-        taskgroup.spawn_bg(() => {
-          let (exit_code, stderr) = @process.collect_stderr(
-            executable_path,
-            ["--listen", "stdio://"],
-            stdin=stdin.0,
-            stdout=stdout.1,
-            inherit_env=self.options.env is None,
-            extra_env~,
-          )
-          if exit_code != 0 {
-            @error.fail("Codex app server failed: \{stderr.text()}")
-          }
-        })
-        taskgroup.spawn_bg(() => {
-          defer stdin.1.close()
-          try {
-            while true {
-              let message = outgoing.get()
-              stdin.1.write("\{message.stringify()}\n")
-            }
-          } catch {
-            _ => ()
-          }
-        })
-        let reader = stdout.0
-        defer reader.close()
-        while reader.read_until("\n") is Some(text) {
-          let message : AppServerMessage = @json.from_json(@json.parse(text))
-          yield_(message) catch {
-            @generator.Return => return
-            e => raise @error.reraise(e)
-          }
-        }
-      })
-    },
-    taskgroup,
-  )
-  { outgoing, incoming, buffered, next_request_id: 1 }
+    }
+    connection.close_pending_requests()
+    messages.close(clear=false)
+  })
+  connection
 }
 
 ///|
 struct CodexAppConnection {
   outgoing : @async.Queue[Json]
-  incoming : @generator.AsyncGenerator[AppServerMessage]
-  buffered : @async.Queue[AppServerMessage]
+  messages : @async.Queue[AppServerMessage]
+  mut pending : Array[AppPendingRequest]
   mut next_request_id : Int
+}
+
+///|
+priv struct AppPendingRequest {
+  id : AppRequestId
+  replies : @async.Queue[AppPendingResponse]
+}
+
+///|
+priv enum AppPendingResponse {
+  AppPendingResult(Json)
+  AppPendingError(AppRpcError)
 }
 
 ///|
 /// Call one app-server JSON-RPC method and wait for its response.
 ///
 /// This is the ergonomic request/response API for app-server operations. It
-/// allocates an integer JSON-RPC id, sends a `ClientRequest`, and returns the
-/// matching `Response` or `ErrorResponse`. Other server messages observed while
-/// waiting are buffered and can still be read later with `next`.
-///
-/// `call` and `next` share the same receive stream. Do not consume the same
-/// connection concurrently from multiple tasks unless you provide your own
-/// external synchronization.
+/// allocates an integer JSON-RPC id, sends a `ClientRequest`, and waits on a
+/// per-request response queue. A single reader pump owns stdout and routes
+/// responses by id, so multiple client-initiated RPC calls may be in flight at
+/// once.
 async fn CodexAppConnection::call(
   self : CodexAppConnection,
   rpc_method : String,
@@ -141,41 +216,96 @@ async fn CodexAppConnection::call(
 ) -> Json {
   let id = AppRequestId::IntId(self.next_request_id)
   self.next_request_id += 1
-  self.send(AppClientMessage::ClientRequest(id~, rpc_method~, params~))
-  let pending : Array[AppServerMessage] = []
-  try {
-    while self.buffered.try_get() is Some(message) {
-      match message {
-        Response(id=response_id, result~) if response_id == id => {
-          for pending_message in pending {
-            self.buffered.put(pending_message)
-          }
-          return result
-        }
-        ErrorResponse(id=response_id, error~) if response_id == id => {
-          for pending_message in pending {
-            self.buffered.put(pending_message)
-          }
-          @error.fail(format_app_rpc_error(error))
-        }
-        _ => pending.push(message)
+  let replies : @async.Queue[AppPendingResponse] = @async.Queue::new(
+    kind=Unbounded,
+  )
+  self.pending.push({ id, replies })
+  self.send(AppClientMessage::ClientRequest(id~, rpc_method~, params~)) catch {
+    e => {
+      self.drop_pending_request(id)
+      raise @error.reraise(e)
+    }
+  }
+  let response = replies.get() catch {
+    _ =>
+      @error.fail("Codex app server closed before responding to \{rpc_method}")
+  }
+  match response {
+    AppPendingResult(result) => result
+    AppPendingError(error) => @error.fail(format_app_rpc_error(error))
+  }
+}
+
+///|
+async fn CodexAppConnection::route_server_message(
+  self : CodexAppConnection,
+  message : AppServerMessage,
+) -> Unit {
+  match message {
+    Response(id~, result~) =>
+      if self.complete_pending_request(id, AppPendingResult(result)) {
+        ()
+      } else {
+        self.messages.put(Response(id~, result~))
       }
+    ErrorResponse(id~, error~) =>
+      if self.complete_pending_request(id, AppPendingError(error)) {
+        ()
+      } else {
+        self.messages.put(ErrorResponse(id~, error~))
+      }
+    _ => self.messages.put(message)
+  }
+}
+
+///|
+async fn CodexAppConnection::complete_pending_request(
+  self : CodexAppConnection,
+  id : AppRequestId,
+  response : AppPendingResponse,
+) -> Bool {
+  let mut replies : @async.Queue[AppPendingResponse]? = None
+  let remaining : Array[AppPendingRequest] = []
+  for pending in self.pending {
+    if replies is None && pending.id == id {
+      replies = Some(pending.replies)
+    } else {
+      remaining.push(pending)
     }
-  } catch {
-    _ => ()
   }
-  for pending_message in pending {
-    self.buffered.put(pending_message)
+  self.pending = remaining
+  match replies {
+    Some(replies) => {
+      replies.put(response)
+      true
+    }
+    None => false
   }
-  while self.incoming.next() is Some(message) {
-    match message {
-      Response(id=response_id, result~) if response_id == id => return result
-      ErrorResponse(id=response_id, error~) if response_id == id =>
-        @error.fail(format_app_rpc_error(error))
-      _ => self.buffered.put(message)
+}
+
+///|
+fn CodexAppConnection::close_pending_requests(
+  self : CodexAppConnection,
+) -> Unit {
+  let pending = self.pending
+  self.pending = []
+  for request in pending {
+    request.replies.close(clear=true)
+  }
+}
+
+///|
+fn CodexAppConnection::drop_pending_request(
+  self : CodexAppConnection,
+  id : AppRequestId,
+) -> Unit {
+  let remaining : Array[AppPendingRequest] = []
+  for request in self.pending {
+    if request.id != id {
+      remaining.push(request)
     }
   }
-  @error.fail("Codex app server closed before responding to \{rpc_method}")
+  self.pending = remaining
 }
 
 ///|
@@ -444,7 +574,7 @@ pub struct AppThreadListResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThreadListResponse with from_json(value, path) {
+pub impl FromJson for AppThreadListResponse with fn from_json(value, path) {
   guard value
     is {
       "data": data,
@@ -479,7 +609,7 @@ pub struct AppThreadStartResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThreadStartResponse with from_json(value, path) {
+pub impl FromJson for AppThreadStartResponse with fn from_json(value, path) {
   guard value
     is {
       "thread": thread,
@@ -534,7 +664,7 @@ pub struct AppThreadReadResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThreadReadResponse with from_json(value, path) {
+pub impl FromJson for AppThreadReadResponse with fn from_json(value, path) {
   guard value is { "thread": thread, .. } else {
     raise JsonDecodeError((path, "expected thread/read response"))
   }
@@ -547,7 +677,7 @@ pub struct AppTurnStartResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppTurnStartResponse with from_json(value, path) {
+pub impl FromJson for AppTurnStartResponse with fn from_json(value, path) {
   guard value is { "turn": turn, .. } else {
     raise JsonDecodeError((path, "expected turn/start response"))
   }
@@ -560,7 +690,7 @@ pub struct AppTurnInterruptResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppTurnInterruptResponse with from_json(value, path) {
+pub impl FromJson for AppTurnInterruptResponse with fn from_json(value, path) {
   guard value is Object(_) else {
     raise JsonDecodeError((path, "expected turn/interrupt response"))
   }
@@ -573,7 +703,7 @@ pub struct AppEmptyResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppEmptyResponse with from_json(value, path) {
+pub impl FromJson for AppEmptyResponse with fn from_json(value, path) {
   guard value is Object(_) else {
     raise JsonDecodeError((path, "expected empty object response"))
   }
@@ -591,7 +721,7 @@ pub fn AppThreadIdParams::new(thread_id : String) -> AppThreadIdParams {
 }
 
 ///|
-pub impl ToJson for AppThreadIdParams with to_json(params) {
+pub impl ToJson for AppThreadIdParams with fn to_json(params) {
   { "threadId": params.thread_id }
 }
 
@@ -610,7 +740,7 @@ pub fn AppThreadSetNameParams::new(
 }
 
 ///|
-pub impl ToJson for AppThreadSetNameParams with to_json(params) {
+pub impl ToJson for AppThreadSetNameParams with fn to_json(params) {
   { "threadId": params.thread_id, "name": params.name }
 }
 
@@ -662,7 +792,7 @@ pub fn AppThreadResumeParams::new(
 }
 
 ///|
-pub impl ToJson for AppThreadResumeParams with to_json(params) {
+pub impl ToJson for AppThreadResumeParams with fn to_json(params) {
   let obj : Map[String, Json] = { "threadId": params.thread_id }
   if params.model is Some(model) {
     obj.set("model", model.to_json())
@@ -715,7 +845,7 @@ pub fn AppThreadLoadedListParams::new(
 }
 
 ///|
-pub impl ToJson for AppThreadLoadedListParams with to_json(params) {
+pub impl ToJson for AppThreadLoadedListParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   if params.cursor is Some(cursor) {
     obj.set("cursor", cursor.to_json())
@@ -733,7 +863,7 @@ pub struct AppThreadLoadedListResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThreadLoadedListResponse with from_json(value, path) {
+pub impl FromJson for AppThreadLoadedListResponse with fn from_json(value, path) {
   guard value is { "data": data, "nextCursor"? : next_cursor, .. } else {
     raise JsonDecodeError((path, "expected thread/loaded/list response"))
   }
@@ -749,7 +879,10 @@ pub struct AppThreadUnsubscribeResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThreadUnsubscribeResponse with from_json(value, path) {
+pub impl FromJson for AppThreadUnsubscribeResponse with fn from_json(
+  value,
+  path,
+) {
   guard value is { "status": status, .. } else {
     raise JsonDecodeError((path, "expected thread/unsubscribe response"))
   }
@@ -764,7 +897,7 @@ pub(all) enum AppThreadUnsubscribeStatus {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThreadUnsubscribeStatus with from_json(value, path) {
+pub impl FromJson for AppThreadUnsubscribeStatus with fn from_json(value, path) {
   match value {
     String("notLoaded") => AppThreadNotLoaded
     String("notSubscribed") => AppThreadNotSubscribed
@@ -790,7 +923,7 @@ pub fn AppTurnSteerParams::new(
 }
 
 ///|
-pub impl ToJson for AppTurnSteerParams with to_json(params) {
+pub impl ToJson for AppTurnSteerParams with fn to_json(params) {
   {
     "threadId": params.thread_id,
     "input": params.input,
@@ -804,7 +937,7 @@ pub struct AppTurnSteerResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppTurnSteerResponse with from_json(value, path) {
+pub impl FromJson for AppTurnSteerResponse with fn from_json(value, path) {
   guard value is { "turnId": String(turn_id), .. } else {
     raise JsonDecodeError((path, "expected turn/steer response"))
   }
@@ -826,7 +959,7 @@ pub fn AppSkillsListParams::new(
 }
 
 ///|
-pub impl ToJson for AppSkillsListParams with to_json(params) {
+pub impl ToJson for AppSkillsListParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   if params.cwds is Some(cwds) {
     obj.set("cwds", cwds.to_json())
@@ -843,7 +976,7 @@ pub struct AppSkillsListEntry {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppSkillsListEntry with from_json(value, _path) {
+pub impl FromJson for AppSkillsListEntry with fn from_json(value, _path) {
   { raw: value }
 }
 
@@ -853,7 +986,7 @@ pub struct AppSkillsListResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppSkillsListResponse with from_json(value, path) {
+pub impl FromJson for AppSkillsListResponse with fn from_json(value, path) {
   guard value is { "data": data, .. } else {
     raise JsonDecodeError((path, "expected skills/list response"))
   }
@@ -879,7 +1012,7 @@ pub fn AppListParams::new(
 }
 
 ///|
-pub impl ToJson for AppListParams with to_json(params) {
+pub impl ToJson for AppListParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   if params.cursor is Some(cursor) {
     obj.set("cursor", cursor.to_json())
@@ -903,7 +1036,7 @@ pub struct AppListResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppListResponse with from_json(value, path) {
+pub impl FromJson for AppListResponse with fn from_json(value, path) {
   guard value is { "data": data, "nextCursor"? : next_cursor, .. } else {
     raise JsonDecodeError((path, "expected app/list response"))
   }
@@ -925,7 +1058,7 @@ pub struct AppInfo {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppInfo with from_json(value, path) {
+pub impl FromJson for AppInfo with fn from_json(value, path) {
   guard value
     is {
       "id": String(id),
@@ -967,7 +1100,7 @@ pub fn AppConfigReadParams::new(
 }
 
 ///|
-pub impl ToJson for AppConfigReadParams with to_json(params) {
+pub impl ToJson for AppConfigReadParams with fn to_json(params) {
   let obj : Map[String, Json] = { "includeLayers": params.include_layers }
   if params.cwd is Some(cwd) {
     obj.set("cwd", cwd.to_json())
@@ -981,7 +1114,7 @@ pub struct AppConfigSnapshot {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppConfigSnapshot with from_json(value, _path) {
+pub impl FromJson for AppConfigSnapshot with fn from_json(value, _path) {
   { raw: value }
 }
 
@@ -991,7 +1124,7 @@ pub struct AppConfigOrigins {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppConfigOrigins with from_json(value, _path) {
+pub impl FromJson for AppConfigOrigins with fn from_json(value, _path) {
   { raw: value }
 }
 
@@ -1001,7 +1134,7 @@ pub struct AppConfigLayers {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppConfigLayers with from_json(value, _path) {
+pub impl FromJson for AppConfigLayers with fn from_json(value, _path) {
   { raw: value }
 }
 
@@ -1013,7 +1146,7 @@ pub struct AppConfigReadResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppConfigReadResponse with from_json(value, path) {
+pub impl FromJson for AppConfigReadResponse with fn from_json(value, path) {
   guard value
     is { "config": config, "origins": origins, "layers"? : layers, .. } else {
     raise JsonDecodeError((path, "expected config/read response"))
@@ -1036,7 +1169,7 @@ pub struct AppModelProviderCapabilitiesReadResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppModelProviderCapabilitiesReadResponse with from_json(
+pub impl FromJson for AppModelProviderCapabilitiesReadResponse with fn from_json(
   value,
   path,
 ) {
@@ -1104,7 +1237,7 @@ pub fn AppThreadListParams::new(
 }
 
 ///|
-pub impl ToJson for AppThreadListParams with to_json(params) {
+pub impl ToJson for AppThreadListParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   if params.cursor is Some(cursor) {
     obj.set("cursor", cursor.to_json())
@@ -1146,7 +1279,7 @@ pub(all) enum AppThreadListCwd {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadListCwd with to_json(cwd) {
+pub impl ToJson for AppThreadListCwd with fn to_json(cwd) {
   match cwd {
     OneCwd(value) => value.to_json()
     ManyCwds(values) => values.to_json()
@@ -1160,7 +1293,7 @@ pub(all) enum AppThreadSortKey {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadSortKey with to_json(key) {
+pub impl ToJson for AppThreadSortKey with fn to_json(key) {
   match key {
     ThreadCreatedAt => "created_at".to_json()
     ThreadUpdatedAt => "updated_at".to_json()
@@ -1174,7 +1307,7 @@ pub(all) enum AppSortDirection {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppSortDirection with to_json(direction) {
+pub impl ToJson for AppSortDirection with fn to_json(direction) {
   match direction {
     SortAsc => "asc".to_json()
     SortDesc => "desc".to_json()
@@ -1196,7 +1329,7 @@ pub(all) enum AppThreadSourceKind {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadSourceKind with to_json(kind) {
+pub impl ToJson for AppThreadSourceKind with fn to_json(kind) {
   match kind {
     SourceCli => "cli".to_json()
     SourceVscode => "vscode".to_json()
@@ -1269,7 +1402,7 @@ pub fn AppThreadStartParams::new(
 }
 
 ///|
-pub impl ToJson for AppThreadStartParams with to_json(params) {
+pub impl ToJson for AppThreadStartParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   if params.model is Some(model) {
     obj.set("model", model.to_json())
@@ -1335,7 +1468,7 @@ pub(all) enum AppApprovalPolicy {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppApprovalPolicy with to_json(policy) {
+pub impl ToJson for AppApprovalPolicy with fn to_json(policy) {
   match policy {
     AppApprovalUntrusted => "untrusted".to_json()
     AppApprovalOnFailure => "on-failure".to_json()
@@ -1361,7 +1494,7 @@ pub impl ToJson for AppApprovalPolicy with to_json(policy) {
 }
 
 ///|
-pub impl FromJson for AppApprovalPolicy with from_json(value, path) {
+pub impl FromJson for AppApprovalPolicy with fn from_json(value, path) {
   match value {
     String("untrusted") => AppApprovalUntrusted
     String("on-failure") => AppApprovalOnFailure
@@ -1409,7 +1542,7 @@ pub(all) enum AppApprovalsReviewer {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppApprovalsReviewer with to_json(reviewer) {
+pub impl ToJson for AppApprovalsReviewer with fn to_json(reviewer) {
   match reviewer {
     AppReviewerUser => "user".to_json()
     AppReviewerAutoReview => "auto_review".to_json()
@@ -1418,7 +1551,7 @@ pub impl ToJson for AppApprovalsReviewer with to_json(reviewer) {
 }
 
 ///|
-pub impl FromJson for AppApprovalsReviewer with from_json(value, path) {
+pub impl FromJson for AppApprovalsReviewer with fn from_json(value, path) {
   match value {
     String("user") => AppReviewerUser
     String("auto_review") => AppReviewerAutoReview
@@ -1435,7 +1568,7 @@ pub(all) enum AppPersonality {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPersonality with to_json(personality) {
+pub impl ToJson for AppPersonality with fn to_json(personality) {
   match personality {
     AppNoPersonality => "none".to_json()
     AppFriendlyPersonality => "friendly".to_json()
@@ -1450,7 +1583,7 @@ pub(all) enum AppThreadStartSource {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadStartSource with to_json(source) {
+pub impl ToJson for AppThreadStartSource with fn to_json(source) {
   match source {
     AppThreadStartup => "startup".to_json()
     AppThreadClear => "clear".to_json()
@@ -1465,7 +1598,7 @@ pub(all) enum AppThreadSource {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadSource with to_json(source) {
+pub impl ToJson for AppThreadSource with fn to_json(source) {
   match source {
     AppThreadSourceUser => "user".to_json()
     AppThreadSourceSubagent => "subagent".to_json()
@@ -1474,7 +1607,7 @@ pub impl ToJson for AppThreadSource with to_json(source) {
 }
 
 ///|
-pub impl ToJson for SandboxMode with to_json(mode) {
+pub impl ToJson for SandboxMode with fn to_json(mode) {
   match mode {
     ReadOnly => "read-only".to_json()
     WorkspaceWrite => "workspace-write".to_json()
@@ -1498,7 +1631,7 @@ pub fn AppThreadReadParams::new(
 }
 
 ///|
-pub impl ToJson for AppThreadReadParams with to_json(params) {
+pub impl ToJson for AppThreadReadParams with fn to_json(params) {
   { "threadId": params.thread_id, "includeTurns": params.include_turns }
 }
 
@@ -1551,7 +1684,7 @@ pub fn AppTurnStartParams::new(
 }
 
 ///|
-pub impl ToJson for AppTurnStartParams with to_json(params) {
+pub impl ToJson for AppTurnStartParams with fn to_json(params) {
   let obj : Map[String, Json] = {
     "threadId": params.thread_id,
     "input": params.input,
@@ -1599,7 +1732,7 @@ pub(all) enum AppUserInput {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppUserInput with to_json(input) {
+pub impl ToJson for AppUserInput with fn to_json(input) {
   match input {
     AppInputText(text~) => { "type": "text", "text": text, "text_elements": [] }
     AppInputImage(url~) => { "type": "image", "url": url }
@@ -1618,7 +1751,7 @@ pub(all) enum AppNetworkAccess {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppNetworkAccess with to_json(access) {
+pub impl ToJson for AppNetworkAccess with fn to_json(access) {
   match access {
     AppNetworkRestricted => "restricted".to_json()
     AppNetworkEnabled => "enabled".to_json()
@@ -1626,7 +1759,7 @@ pub impl ToJson for AppNetworkAccess with to_json(access) {
 }
 
 ///|
-pub impl FromJson for AppNetworkAccess with from_json(value, path) {
+pub impl FromJson for AppNetworkAccess with fn from_json(value, path) {
   match value {
     String("restricted") => AppNetworkRestricted
     String("enabled") => AppNetworkEnabled
@@ -1648,7 +1781,7 @@ pub(all) enum AppSandboxPolicy {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppSandboxPolicy with to_json(policy) {
+pub impl ToJson for AppSandboxPolicy with fn to_json(policy) {
   match policy {
     AppDangerFullAccess => { "type": "dangerFullAccess" }
     AppReadOnly(network_access~) =>
@@ -1672,7 +1805,7 @@ pub impl ToJson for AppSandboxPolicy with to_json(policy) {
 }
 
 ///|
-pub impl FromJson for AppSandboxPolicy with from_json(value, path) {
+pub impl FromJson for AppSandboxPolicy with fn from_json(value, path) {
   match value {
     { "type": String("dangerFullAccess"), .. } => AppDangerFullAccess
     { "type": String("readOnly"), "networkAccess": network_access, .. } =>
@@ -1724,7 +1857,7 @@ pub(all) enum AppReasoningEffort {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppReasoningEffort with to_json(effort) {
+pub impl ToJson for AppReasoningEffort with fn to_json(effort) {
   match effort {
     AppEffortNone => "none".to_json()
     AppEffortMinimal => "minimal".to_json()
@@ -1736,7 +1869,7 @@ pub impl ToJson for AppReasoningEffort with to_json(effort) {
 }
 
 ///|
-pub impl FromJson for AppReasoningEffort with from_json(value, path) {
+pub impl FromJson for AppReasoningEffort with fn from_json(value, path) {
   match value {
     String("none") => AppEffortNone
     String("minimal") => AppEffortMinimal
@@ -1757,7 +1890,7 @@ pub(all) enum AppReasoningSummary {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppReasoningSummary with to_json(summary) {
+pub impl ToJson for AppReasoningSummary with fn to_json(summary) {
   match summary {
     AppSummaryAuto => "auto".to_json()
     AppSummaryConcise => "concise".to_json()
@@ -1782,7 +1915,7 @@ pub fn AppTurnInterruptParams::new(
 }
 
 ///|
-pub impl ToJson for AppTurnInterruptParams with to_json(params) {
+pub impl ToJson for AppTurnInterruptParams with fn to_json(params) {
   { "threadId": params.thread_id, "turnId": params.turn_id }
 }
 
@@ -1811,7 +1944,7 @@ pub struct AppModelListResponse {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppModelListResponse with from_json(value, path) {
+pub impl FromJson for AppModelListResponse with fn from_json(value, path) {
   guard value is { "data": data, "nextCursor"? : next_cursor, .. } else {
     raise JsonDecodeError((path, "expected model/list response"))
   }
@@ -1836,7 +1969,7 @@ pub struct AppModel {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppModel with from_json(value, path) {
+pub impl FromJson for AppModel with fn from_json(value, path) {
   guard value
     is {
       "id": String(id),
@@ -1882,7 +2015,7 @@ pub(all) enum AppInputModality {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppInputModality with from_json(value, path) {
+pub impl FromJson for AppInputModality with fn from_json(value, path) {
   match value {
     String("text") => AppTextModality
     String("image") => AppImageModality
@@ -1911,7 +2044,7 @@ pub fn AppModelListParams::new(
 }
 
 ///|
-pub impl ToJson for AppModelListParams with to_json(params) {
+pub impl ToJson for AppModelListParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   if params.cursor is Some(cursor) {
     obj.set("cursor", cursor.to_json())
@@ -1947,11 +2080,11 @@ pub async fn CodexAppConnection::handle_next_request(
 ) -> Bool {
   let skipped : Array[AppServerMessage] = []
   try {
-    while self.buffered.try_get() is Some(message) {
+    while self.messages.try_get() is Some(message) {
       match message {
         Request(request) => {
           for skipped_message in skipped {
-            self.buffered.put(skipped_message)
+            self.messages.put(skipped_message)
           }
           self.handle_request(request, handler)
           return true
@@ -1962,16 +2095,17 @@ pub async fn CodexAppConnection::handle_next_request(
   } catch {
     _ => ()
   }
-  for skipped_message in skipped {
-    self.buffered.put(skipped_message)
-  }
-  while self.incoming.next() is Some(message) {
+  while true {
+    let message = self.messages.get() catch { _ => return false }
     match message {
       Request(request) => {
+        for skipped_message in skipped {
+          self.messages.put(skipped_message)
+        }
         self.handle_request(request, handler)
         return true
       }
-      _ => self.buffered.put(message)
+      _ => skipped.push(message)
     }
   }
   false
@@ -2027,7 +2161,7 @@ pub(all) enum AppServerResponse {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppServerResponse with to_json(response) {
+pub impl ToJson for AppServerResponse with fn to_json(response) {
   match response {
     AppCommandExecutionApprovalResponse(decision~) => { "decision": decision }
     AppFileChangeApprovalResponse(decision~) => { "decision": decision }
@@ -2050,7 +2184,7 @@ pub(all) struct AppCommandExecutionApprovalRequest {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppCommandExecutionApprovalRequest with from_json(
+pub impl FromJson for AppCommandExecutionApprovalRequest with fn from_json(
   value,
   path,
 ) {
@@ -2092,7 +2226,9 @@ pub(all) enum AppCommandExecutionApprovalDecision {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppCommandExecutionApprovalDecision with to_json(decision) {
+pub impl ToJson for AppCommandExecutionApprovalDecision with fn to_json(
+  decision,
+) {
   match decision {
     AppCommandAccept => "accept".to_json()
     AppCommandAcceptForSession => "acceptForSession".to_json()
@@ -2119,7 +2255,10 @@ pub(all) struct AppFileChangeApprovalRequest {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppFileChangeApprovalRequest with from_json(value, path) {
+pub impl FromJson for AppFileChangeApprovalRequest with fn from_json(
+  value,
+  path,
+) {
   guard value
     is {
       "threadId": String(thread_id),
@@ -2152,7 +2291,7 @@ pub(all) enum AppFileChangeApprovalDecision {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppFileChangeApprovalDecision with to_json(decision) {
+pub impl ToJson for AppFileChangeApprovalDecision with fn to_json(decision) {
   match decision {
     AppFileChangeAccept => "accept".to_json()
     AppFileChangeAcceptForSession => "acceptForSession".to_json()
@@ -2171,7 +2310,10 @@ pub(all) struct AppToolRequestUserInputRequest {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppToolRequestUserInputRequest with from_json(value, path) {
+pub impl FromJson for AppToolRequestUserInputRequest with fn from_json(
+  value,
+  path,
+) {
   guard value
     is {
       "threadId": String(thread_id),
@@ -2202,7 +2344,7 @@ pub(all) struct AppToolRequestUserInputQuestion {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppToolRequestUserInputQuestion with from_json(
+pub impl FromJson for AppToolRequestUserInputQuestion with fn from_json(
   value,
   path,
 ) {
@@ -2277,18 +2419,15 @@ async fn CodexAppConnection::send(
 pub async fn CodexAppConnection::next(
   self : CodexAppConnection,
 ) -> AppServerMessage? {
-  let buffered = self.buffered.try_get() catch { _ => None }
-  match buffered {
-    Some(message) => Some(message)
-    None => self.incoming.next()
-  }
+  let message = self.messages.get() catch { _ => return None }
+  Some(message)
 }
 
 ///|
 /// Close the send channel. The app-server process exits after stdin closes.
 pub fn CodexAppConnection::close(self : CodexAppConnection) -> Unit {
   self.outgoing.close(clear=true)
-  self.buffered.close(clear=true)
+  self.close_pending_requests()
 }
 
 ///|
@@ -2299,7 +2438,7 @@ pub(all) enum AppRequestId {
 } derive(Debug, Eq)
 
 ///|
-pub impl ToJson for AppRequestId with to_json(id) {
+pub impl ToJson for AppRequestId with fn to_json(id) {
   match id {
     StringId(value) => value.to_json()
     IntId(value) => value.to_json()
@@ -2307,7 +2446,7 @@ pub impl ToJson for AppRequestId with to_json(id) {
 }
 
 ///|
-pub impl FromJson for AppRequestId with from_json(value, path) {
+pub impl FromJson for AppRequestId with fn from_json(value, path) {
   match value {
     String(value) => StringId(value)
     Number(value, ..) => IntId(value.to_int())
@@ -2328,7 +2467,7 @@ pub struct AppRpcError {
 } derive(ToJson, Debug)
 
 ///|
-pub impl FromJson for AppRpcError with from_json(value, path) {
+pub impl FromJson for AppRpcError with fn from_json(value, path) {
   guard value
     is {
       "code": Number(code, ..),
@@ -2401,7 +2540,7 @@ pub(all) struct AppClientInfo {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppClientInfo with to_json(info) {
+pub impl ToJson for AppClientInfo with fn to_json(info) {
   let obj : Map[String, Json] = { "name": info.name, "version": info.version }
   app_put_string(obj, "title", info.title)
   Json::object(obj)
@@ -2415,7 +2554,7 @@ pub(all) struct AppInitializeCapabilities {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppInitializeCapabilities with to_json(capabilities) {
+pub impl ToJson for AppInitializeCapabilities with fn to_json(capabilities) {
   let obj : Map[String, Json] = {
     "experimentalApi": capabilities.experimental_api,
     "requestAttestation": capabilities.request_attestation,
@@ -2435,7 +2574,7 @@ pub(all) struct AppInitializeParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppInitializeParams with to_json(params) {
+pub impl ToJson for AppInitializeParams with fn to_json(params) {
   let obj : Map[String, Json] = { "clientInfo": params.client_info }
   match params.capabilities {
     Some(capabilities) => obj.set("capabilities", capabilities.to_json())
@@ -2462,7 +2601,7 @@ pub(all) struct AppThreadForkParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadForkParams with to_json(params) {
+pub impl ToJson for AppThreadForkParams with fn to_json(params) {
   let obj : Map[String, Json] = { "threadId": params.thread_id }
   app_put_string(obj, "model", params.model)
   app_put_string(obj, "modelProvider", params.model_provider)
@@ -2497,7 +2636,7 @@ pub(all) struct AppThreadMetadataGitInfoUpdateParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadMetadataGitInfoUpdateParams with to_json(params) {
+pub impl ToJson for AppThreadMetadataGitInfoUpdateParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   app_put_string(obj, "sha", params.sha)
   app_put_string(obj, "branch", params.branch)
@@ -2512,7 +2651,7 @@ pub(all) struct AppThreadMetadataUpdateParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadMetadataUpdateParams with to_json(params) {
+pub impl ToJson for AppThreadMetadataUpdateParams with fn to_json(params) {
   let obj : Map[String, Json] = { "threadId": params.thread_id }
   if params.git_info is Some(value) {
     obj.set("gitInfo", value.to_json())
@@ -2527,7 +2666,7 @@ pub(all) struct AppThreadShellCommandParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadShellCommandParams with to_json(params) {
+pub impl ToJson for AppThreadShellCommandParams with fn to_json(params) {
   { "threadId": params.thread_id, "command": params.command }
 }
 
@@ -2538,7 +2677,7 @@ pub(all) struct AppThreadApproveGuardianDeniedActionParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadApproveGuardianDeniedActionParams with to_json(
+pub impl ToJson for AppThreadApproveGuardianDeniedActionParams with fn to_json(
   params,
 ) {
   { "threadId": params.thread_id, "event": params.event }
@@ -2551,7 +2690,7 @@ pub(all) struct AppThreadRollbackParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadRollbackParams with to_json(params) {
+pub impl ToJson for AppThreadRollbackParams with fn to_json(params) {
   { "threadId": params.thread_id, "numTurns": params.num_turns }
 }
 
@@ -2562,7 +2701,7 @@ pub(all) struct AppThreadInjectItemsParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppThreadInjectItemsParams with to_json(params) {
+pub impl ToJson for AppThreadInjectItemsParams with fn to_json(params) {
   { "threadId": params.thread_id, "items": params.items }
 }
 
@@ -2572,7 +2711,7 @@ pub(all) struct AppHooksListParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppHooksListParams with to_json(params) {
+pub impl ToJson for AppHooksListParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   app_put_strings(obj, "cwds", params.cwds)
   Json::object(obj)
@@ -2586,7 +2725,7 @@ pub(all) struct AppMarketplaceAddParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppMarketplaceAddParams with to_json(params) {
+pub impl ToJson for AppMarketplaceAddParams with fn to_json(params) {
   let obj : Map[String, Json] = { "source": params.source }
   app_put_string(obj, "refName", params.ref_name)
   app_put_strings(obj, "sparsePaths", params.sparse_paths)
@@ -2599,7 +2738,7 @@ pub(all) struct AppMarketplaceRemoveParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppMarketplaceRemoveParams with to_json(params) {
+pub impl ToJson for AppMarketplaceRemoveParams with fn to_json(params) {
   { "marketplaceName": params.marketplace_name }
 }
 
@@ -2609,7 +2748,7 @@ pub(all) struct AppMarketplaceUpgradeParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppMarketplaceUpgradeParams with to_json(params) {
+pub impl ToJson for AppMarketplaceUpgradeParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   app_put_string(obj, "marketplaceName", params.marketplace_name)
   Json::object(obj)
@@ -2623,7 +2762,7 @@ pub(all) enum AppPluginListMarketplaceKind {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginListMarketplaceKind with to_json(kind) {
+pub impl ToJson for AppPluginListMarketplaceKind with fn to_json(kind) {
   match kind {
     AppPluginMarketplaceLocal => "local".to_json()
     AppPluginMarketplaceWorkspaceDirectory => "workspace-directory".to_json()
@@ -2638,7 +2777,7 @@ pub(all) struct AppPluginListParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginListParams with to_json(params) {
+pub impl ToJson for AppPluginListParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   app_put_strings(obj, "cwds", params.cwds)
   if params.marketplace_kinds is Some(value) {
@@ -2655,7 +2794,7 @@ pub(all) struct AppPluginReadParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginReadParams with to_json(params) {
+pub impl ToJson for AppPluginReadParams with fn to_json(params) {
   let obj : Map[String, Json] = { "pluginName": params.plugin_name }
   app_put_string(obj, "marketplacePath", params.marketplace_path)
   app_put_string(obj, "remoteMarketplaceName", params.remote_marketplace_name)
@@ -2670,7 +2809,7 @@ pub(all) struct AppPluginSkillReadParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginSkillReadParams with to_json(params) {
+pub impl ToJson for AppPluginSkillReadParams with fn to_json(params) {
   {
     "remoteMarketplaceName": params.remote_marketplace_name,
     "remotePluginId": params.remote_plugin_id,
@@ -2686,7 +2825,7 @@ pub(all) enum AppPluginShareDiscoverability {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginShareDiscoverability with to_json(value) {
+pub impl ToJson for AppPluginShareDiscoverability with fn to_json(value) {
   match value {
     AppPluginShareListed => "LISTED".to_json()
     AppPluginShareUnlisted => "UNLISTED".to_json()
@@ -2701,7 +2840,7 @@ pub(all) enum AppPluginShareUpdateDiscoverability {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginShareUpdateDiscoverability with to_json(value) {
+pub impl ToJson for AppPluginShareUpdateDiscoverability with fn to_json(value) {
   match value {
     AppPluginShareUpdateUnlisted => "UNLISTED".to_json()
     AppPluginShareUpdatePrivate => "PRIVATE".to_json()
@@ -2716,7 +2855,7 @@ pub(all) struct AppPluginShareTarget {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginShareTarget with to_json(target) {
+pub impl ToJson for AppPluginShareTarget with fn to_json(target) {
   {
     "principalType": target.principal_type,
     "principalId": target.principal_id,
@@ -2733,7 +2872,7 @@ pub(all) struct AppPluginShareSaveParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginShareSaveParams with to_json(params) {
+pub impl ToJson for AppPluginShareSaveParams with fn to_json(params) {
   let obj : Map[String, Json] = { "pluginPath": params.plugin_path }
   app_put_string(obj, "remotePluginId", params.remote_plugin_id)
   if params.discoverability is Some(value) {
@@ -2753,7 +2892,7 @@ pub(all) struct AppPluginShareUpdateTargetsParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginShareUpdateTargetsParams with to_json(params) {
+pub impl ToJson for AppPluginShareUpdateTargetsParams with fn to_json(params) {
   {
     "remotePluginId": params.remote_plugin_id,
     "discoverability": params.discoverability,
@@ -2767,7 +2906,7 @@ pub(all) struct AppPluginRemoteIdParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginRemoteIdParams with to_json(params) {
+pub impl ToJson for AppPluginRemoteIdParams with fn to_json(params) {
   { "remotePluginId": params.remote_plugin_id }
 }
 
@@ -2777,7 +2916,7 @@ pub(all) struct AppFsPathParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppFsPathParams with to_json(params) {
+pub impl ToJson for AppFsPathParams with fn to_json(params) {
   { "path": params.path }
 }
 
@@ -2788,7 +2927,7 @@ pub(all) struct AppFsWriteFileParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppFsWriteFileParams with to_json(params) {
+pub impl ToJson for AppFsWriteFileParams with fn to_json(params) {
   { "path": params.path, "dataBase64": params.data_base64 }
 }
 
@@ -2799,7 +2938,7 @@ pub(all) struct AppFsCreateDirectoryParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppFsCreateDirectoryParams with to_json(params) {
+pub impl ToJson for AppFsCreateDirectoryParams with fn to_json(params) {
   let obj : Map[String, Json] = { "path": params.path }
   app_put_bool(obj, "recursive", params.recursive)
   Json::object(obj)
@@ -2813,7 +2952,7 @@ pub(all) struct AppFsRemoveParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppFsRemoveParams with to_json(params) {
+pub impl ToJson for AppFsRemoveParams with fn to_json(params) {
   let obj : Map[String, Json] = { "path": params.path }
   app_put_bool(obj, "recursive", params.recursive)
   app_put_bool(obj, "force", params.force)
@@ -2828,7 +2967,7 @@ pub(all) struct AppFsCopyParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppFsCopyParams with to_json(params) {
+pub impl ToJson for AppFsCopyParams with fn to_json(params) {
   let obj : Map[String, Json] = {
     "sourcePath": params.source_path,
     "destinationPath": params.destination_path,
@@ -2844,7 +2983,7 @@ pub(all) struct AppFsWatchParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppFsWatchParams with to_json(params) {
+pub impl ToJson for AppFsWatchParams with fn to_json(params) {
   { "watchId": params.watch_id, "path": params.path }
 }
 
@@ -2854,7 +2993,7 @@ pub(all) struct AppFsUnwatchParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppFsUnwatchParams with to_json(params) {
+pub impl ToJson for AppFsUnwatchParams with fn to_json(params) {
   { "watchId": params.watch_id }
 }
 
@@ -2866,7 +3005,7 @@ pub(all) struct AppSkillsConfigWriteParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppSkillsConfigWriteParams with to_json(params) {
+pub impl ToJson for AppSkillsConfigWriteParams with fn to_json(params) {
   let obj : Map[String, Json] = { "enabled": params.enabled }
   app_put_string(obj, "path", params.path)
   app_put_string(obj, "name", params.name)
@@ -2881,7 +3020,7 @@ pub(all) struct AppPluginInstallParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginInstallParams with to_json(params) {
+pub impl ToJson for AppPluginInstallParams with fn to_json(params) {
   let obj : Map[String, Json] = { "pluginName": params.plugin_name }
   app_put_string(obj, "marketplacePath", params.marketplace_path)
   app_put_string(obj, "remoteMarketplaceName", params.remote_marketplace_name)
@@ -2894,7 +3033,7 @@ pub(all) struct AppPluginUninstallParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppPluginUninstallParams with to_json(params) {
+pub impl ToJson for AppPluginUninstallParams with fn to_json(params) {
   { "pluginId": params.plugin_id }
 }
 
@@ -2907,7 +3046,7 @@ pub(all) enum AppReviewTarget {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppReviewTarget with to_json(target) {
+pub impl ToJson for AppReviewTarget with fn to_json(target) {
   match target {
     AppReviewUncommittedChanges => { "type": "uncommittedChanges" }
     AppReviewBaseBranch(branch~) => { "type": "baseBranch", "branch": branch }
@@ -2931,7 +3070,7 @@ pub(all) enum AppReviewDelivery {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppReviewDelivery with to_json(delivery) {
+pub impl ToJson for AppReviewDelivery with fn to_json(delivery) {
   match delivery {
     AppReviewInline => "inline".to_json()
     AppReviewDetached => "detached".to_json()
@@ -2946,7 +3085,7 @@ pub(all) struct AppReviewStartParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppReviewStartParams with to_json(params) {
+pub impl ToJson for AppReviewStartParams with fn to_json(params) {
   let obj : Map[String, Json] = {
     "threadId": params.thread_id,
     "target": params.target,
@@ -2964,7 +3103,7 @@ pub(all) struct AppCursorLimitParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppCursorLimitParams with to_json(params) {
+pub impl ToJson for AppCursorLimitParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   app_put_string(obj, "cursor", params.cursor)
   app_put_int(obj, "limit", params.limit)
@@ -2977,7 +3116,7 @@ pub(all) struct AppExperimentalFeatureEnablementSetParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppExperimentalFeatureEnablementSetParams with to_json(
+pub impl ToJson for AppExperimentalFeatureEnablementSetParams with fn to_json(
   params,
 ) {
   { "enablement": params.enablement }
@@ -2991,7 +3130,7 @@ pub(all) struct AppMcpServerOauthLoginParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppMcpServerOauthLoginParams with to_json(params) {
+pub impl ToJson for AppMcpServerOauthLoginParams with fn to_json(params) {
   let obj : Map[String, Json] = { "name": params.name }
   app_put_strings(obj, "scopes", params.scopes)
   app_put_int(obj, "timeoutSecs", params.timeout_secs)
@@ -3005,7 +3144,7 @@ pub(all) enum AppMcpServerStatusDetail {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppMcpServerStatusDetail with to_json(detail) {
+pub impl ToJson for AppMcpServerStatusDetail with fn to_json(detail) {
   match detail {
     AppMcpServerStatusFull => "full".to_json()
     AppMcpServerStatusToolsAndAuthOnly => "toolsAndAuthOnly".to_json()
@@ -3020,7 +3159,7 @@ pub(all) struct AppMcpServerStatusListParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppMcpServerStatusListParams with to_json(params) {
+pub impl ToJson for AppMcpServerStatusListParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   app_put_string(obj, "cursor", params.cursor)
   app_put_int(obj, "limit", params.limit)
@@ -3038,7 +3177,7 @@ pub(all) struct AppMcpResourceReadParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppMcpResourceReadParams with to_json(params) {
+pub impl ToJson for AppMcpResourceReadParams with fn to_json(params) {
   let obj : Map[String, Json] = { "server": params.server, "uri": params.uri }
   app_put_string(obj, "threadId", params.thread_id)
   Json::object(obj)
@@ -3054,7 +3193,7 @@ pub(all) struct AppMcpServerToolCallParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppMcpServerToolCallParams with to_json(params) {
+pub impl ToJson for AppMcpServerToolCallParams with fn to_json(params) {
   let obj : Map[String, Json] = {
     "threadId": params.thread_id,
     "server": params.server,
@@ -3072,7 +3211,7 @@ pub(all) enum AppWindowsSandboxSetupMode {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppWindowsSandboxSetupMode with to_json(mode) {
+pub impl ToJson for AppWindowsSandboxSetupMode with fn to_json(mode) {
   match mode {
     AppWindowsSandboxElevated => "elevated".to_json()
     AppWindowsSandboxUnelevated => "unelevated".to_json()
@@ -3086,7 +3225,7 @@ pub(all) struct AppWindowsSandboxSetupStartParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppWindowsSandboxSetupStartParams with to_json(params) {
+pub impl ToJson for AppWindowsSandboxSetupStartParams with fn to_json(params) {
   let obj : Map[String, Json] = { "mode": params.mode }
   app_put_string(obj, "cwd", params.cwd)
   Json::object(obj)
@@ -3105,7 +3244,7 @@ pub(all) enum AppLoginAccountParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppLoginAccountParams with to_json(params) {
+pub impl ToJson for AppLoginAccountParams with fn to_json(params) {
   match params {
     AppLoginApiKey(api_key~) => { "type": "apiKey", "apiKey": api_key }
     AppLoginChatGPT(codex_streamlined_login~) => {
@@ -3136,32 +3275,32 @@ pub(all) struct AppCancelLoginAccountParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppCancelLoginAccountParams with to_json(params) {
+pub impl ToJson for AppCancelLoginAccountParams with fn to_json(params) {
   { "loginId": params.login_id }
 }
 
 ///|
-pub(all) enum AppAddCreditsNudgeCreditType {
-  AppAddCreditsNudgeCredits
-  AppAddCreditsNudgeUsageLimit
+pub(all) enum AppAddCreditsNudgeKind {
+  AppNudgeCredits
+  AppNudgeUsageLimit
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppAddCreditsNudgeCreditType with to_json(credit_type) {
-  match credit_type {
-    AppAddCreditsNudgeCredits => "credits".to_json()
-    AppAddCreditsNudgeUsageLimit => "usage_limit".to_json()
+pub impl ToJson for AppAddCreditsNudgeKind with fn to_json(kind) {
+  match kind {
+    AppNudgeCredits => "credits".to_json()
+    AppNudgeUsageLimit => "usage_limit".to_json()
   }
 }
 
 ///|
 pub(all) struct AppSendAddCreditsNudgeEmailParams {
-  credit_type : AppAddCreditsNudgeCreditType
+  kind : AppAddCreditsNudgeKind
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppSendAddCreditsNudgeEmailParams with to_json(params) {
-  { "creditType": params.credit_type }
+pub impl ToJson for AppSendAddCreditsNudgeEmailParams with fn to_json(params) {
+  { "creditType": params.kind }
 }
 
 ///|
@@ -3175,7 +3314,7 @@ pub(all) struct AppFeedbackUploadParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppFeedbackUploadParams with to_json(params) {
+pub impl ToJson for AppFeedbackUploadParams with fn to_json(params) {
   let obj : Map[String, Json] = {
     "classification": params.classification,
     "includeLogs": params.include_logs,
@@ -3196,7 +3335,7 @@ pub(all) struct AppCommandExecTerminalSize {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppCommandExecTerminalSize with to_json(size) {
+pub impl ToJson for AppCommandExecTerminalSize with fn to_json(size) {
   { "rows": size.rows, "cols": size.cols }
 }
 
@@ -3218,7 +3357,7 @@ pub(all) struct AppCommandExecParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppCommandExecParams with to_json(params) {
+pub impl ToJson for AppCommandExecParams with fn to_json(params) {
   let obj : Map[String, Json] = { "command": params.command }
   app_put_string(obj, "processId", params.process_id)
   app_put_bool(obj, "tty", params.tty)
@@ -3249,7 +3388,7 @@ pub(all) struct AppCommandExecWriteParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppCommandExecWriteParams with to_json(params) {
+pub impl ToJson for AppCommandExecWriteParams with fn to_json(params) {
   let obj : Map[String, Json] = { "processId": params.process_id }
   app_put_string(obj, "deltaBase64", params.delta_base64)
   app_put_bool(obj, "closeStdin", params.close_stdin)
@@ -3262,7 +3401,7 @@ pub(all) struct AppCommandExecProcessParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppCommandExecProcessParams with to_json(params) {
+pub impl ToJson for AppCommandExecProcessParams with fn to_json(params) {
   { "processId": params.process_id }
 }
 
@@ -3273,7 +3412,7 @@ pub(all) struct AppCommandExecResizeParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppCommandExecResizeParams with to_json(params) {
+pub impl ToJson for AppCommandExecResizeParams with fn to_json(params) {
   { "processId": params.process_id, "size": params.size }
 }
 
@@ -3284,7 +3423,7 @@ pub(all) struct AppExternalAgentConfigDetectParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppExternalAgentConfigDetectParams with to_json(params) {
+pub impl ToJson for AppExternalAgentConfigDetectParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   app_put_bool(obj, "includeHome", params.include_home)
   app_put_strings(obj, "cwds", params.cwds)
@@ -3300,7 +3439,7 @@ pub(all) struct AppExternalAgentConfigMigrationItem {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppExternalAgentConfigMigrationItem with to_json(item) {
+pub impl ToJson for AppExternalAgentConfigMigrationItem with fn to_json(item) {
   let obj : Map[String, Json] = {
     "itemType": item.item_type,
     "description": item.description,
@@ -3319,7 +3458,7 @@ pub(all) struct AppExternalAgentConfigImportParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppExternalAgentConfigImportParams with to_json(params) {
+pub impl ToJson for AppExternalAgentConfigImportParams with fn to_json(params) {
   { "migrationItems": params.migration_items }
 }
 
@@ -3330,7 +3469,7 @@ pub(all) enum AppMergeStrategy {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppMergeStrategy with to_json(strategy) {
+pub impl ToJson for AppMergeStrategy with fn to_json(strategy) {
   match strategy {
     AppMergeReplace => "replace".to_json()
     AppMergeUpsert => "upsert".to_json()
@@ -3345,7 +3484,7 @@ pub(all) struct AppConfigEdit {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppConfigEdit with to_json(edit) {
+pub impl ToJson for AppConfigEdit with fn to_json(edit) {
   {
     "keyPath": edit.key_path,
     "value": edit.value,
@@ -3363,7 +3502,7 @@ pub(all) struct AppConfigValueWriteParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppConfigValueWriteParams with to_json(params) {
+pub impl ToJson for AppConfigValueWriteParams with fn to_json(params) {
   let obj : Map[String, Json] = {
     "keyPath": params.key_path,
     "value": params.value,
@@ -3383,7 +3522,7 @@ pub(all) struct AppConfigBatchWriteParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppConfigBatchWriteParams with to_json(params) {
+pub impl ToJson for AppConfigBatchWriteParams with fn to_json(params) {
   let obj : Map[String, Json] = { "edits": params.edits }
   app_put_string(obj, "filePath", params.file_path)
   app_put_string(obj, "expectedVersion", params.expected_version)
@@ -3397,7 +3536,7 @@ pub(all) struct AppAccountReadParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppAccountReadParams with to_json(params) {
+pub impl ToJson for AppAccountReadParams with fn to_json(params) {
   { "refreshToken": params.refresh_token }
 }
 
@@ -3408,7 +3547,7 @@ pub(all) enum AppConversationSummaryParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppConversationSummaryParams with to_json(params) {
+pub impl ToJson for AppConversationSummaryParams with fn to_json(params) {
   match params {
     AppConversationSummaryByRolloutPath(path) => { "rolloutPath": path }
     AppConversationSummaryByConversationId(id) => { "conversationId": id }
@@ -3421,7 +3560,7 @@ pub(all) struct AppCwdParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppCwdParams with to_json(params) {
+pub impl ToJson for AppCwdParams with fn to_json(params) {
   { "cwd": params.cwd }
 }
 
@@ -3432,7 +3571,7 @@ pub(all) struct AppGetAuthStatusParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppGetAuthStatusParams with to_json(params) {
+pub impl ToJson for AppGetAuthStatusParams with fn to_json(params) {
   let obj : Map[String, Json] = {}
   app_put_bool(obj, "includeToken", params.include_token)
   app_put_bool(obj, "refreshToken", params.refresh_token)
@@ -3447,7 +3586,7 @@ pub(all) struct AppFuzzyFileSearchParams {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppFuzzyFileSearchParams with to_json(params) {
+pub impl ToJson for AppFuzzyFileSearchParams with fn to_json(params) {
   let obj : Map[String, Json] = { "query": params.query, "roots": params.roots }
   match params.cancellation_token {
     Some(value) => obj.set("cancellationToken", value.to_json())
@@ -4361,7 +4500,7 @@ pub(all) enum AppClientMessage {
 } derive(Debug)
 
 ///|
-pub impl ToJson for AppClientMessage with to_json(message) {
+pub impl ToJson for AppClientMessage with fn to_json(message) {
   match message {
     ClientRequest(id~, rpc_method~, params~) => {
       let obj : Map[String, Json] = { "id": id, "method": rpc_method }
@@ -4383,7 +4522,7 @@ pub impl ToJson for AppClientMessage with to_json(message) {
 }
 
 ///|
-pub impl FromJson for AppServerMessage with from_json(value, path) {
+pub impl FromJson for AppServerMessage with fn from_json(value, path) {
   guard value is Object(obj) else {
     raise JsonDecodeError((path, "expected JSON-RPC object"))
   }
@@ -4476,7 +4615,7 @@ pub enum AppServerEvent {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppServerEvent with from_json(value, path) {
+pub impl FromJson for AppServerEvent with fn from_json(value, path) {
   guard value
     is Object({ "method": String(rpc_method), "params"? : params, .. }) else {
     raise JsonDecodeError((path, "expected app-server notification"))
@@ -4639,7 +4778,7 @@ pub struct AppThread {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThread with from_json(value, path) {
+pub impl FromJson for AppThread with fn from_json(value, path) {
   guard value
     is {
       "id": String(id),
@@ -4663,7 +4802,7 @@ pub struct AppThreadActiveFlag {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThreadActiveFlag with from_json(value, _path) {
+pub impl FromJson for AppThreadActiveFlag with fn from_json(value, _path) {
   { raw: value }
 }
 
@@ -4676,7 +4815,7 @@ pub enum AppThreadStatus {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThreadStatus with from_json(value, path) {
+pub impl FromJson for AppThreadStatus with fn from_json(value, path) {
   match value {
     { "type": String("notLoaded"), .. } => ThreadNotLoaded
     { "type": String("idle"), .. } => ThreadIdle
@@ -4701,7 +4840,7 @@ pub struct AppTurn {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppTurn with from_json(value, path) {
+pub impl FromJson for AppTurn with fn from_json(value, path) {
   guard value is { "id": String(id), "status": status, "error"? : error, .. } else {
     raise JsonDecodeError((path, "expected app-server Turn"))
   }
@@ -4726,7 +4865,7 @@ pub enum AppTurnStatus {
 } derive(Debug, Eq)
 
 ///|
-pub impl FromJson for AppTurnStatus with from_json(value, path) {
+pub impl FromJson for AppTurnStatus with fn from_json(value, path) {
   match value {
     String("completed") => AppTurnCompletedStatus
     String("interrupted") => AppTurnInterruptedStatus
@@ -4744,7 +4883,7 @@ pub struct AppTurnError {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppTurnError with from_json(value, path) {
+pub impl FromJson for AppTurnError with fn from_json(value, path) {
   guard value
     is {
       "message": String(message),
@@ -4774,7 +4913,7 @@ pub struct AppThreadItemEvent {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThreadItemEvent with from_json(value, path) {
+pub impl FromJson for AppThreadItemEvent with fn from_json(value, path) {
   match value {
     {
       "method": String("item/started"),
@@ -4827,7 +4966,7 @@ pub struct AppThreadTokenUsage {
 } derive(Debug)
 
 ///|
-pub impl FromJson for AppThreadTokenUsage with from_json(value, path) {
+pub impl FromJson for AppThreadTokenUsage with fn from_json(value, path) {
   guard value
     is {
       "total": total,

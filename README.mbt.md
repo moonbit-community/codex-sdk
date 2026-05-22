@@ -222,23 +222,31 @@ everything in the SDK is expressed as plain MoonBit structs and async functions.
 ### Connect to Codex app-server
 
 The app-server surface is separate from `codex exec --json`. It runs as a
-persistent JSON-RPC process with two channels:
-typed request methods / `respond` write client frames to app-server stdin,
-while `next` reads server frames from app-server stdout. Client-initiated
-requests are exposed through named methods:
+persistent JSON-RPC process. Prefer `Codex::with_app_server` for scoped use:
+the SDK owns the task group, starts the app-server process, sends the required
+`initialize` request plus `initialized` notification, and closes stdin when your
+callback returns. If your application already owns structured concurrency, use
+the lower-level `Codex::spawn_app_server` and pass your own task group.
+
+Client-initiated requests are exposed through named methods:
 
 - `thread_list`, `thread_start`, `thread_read`, `turn_start`,
   `turn_interrupt`, and `model_list` for client-initiated RPCs. These named
-  methods use typed `App*Params` values; raw JSON remains available through
-  `call` for protocol escape hatches.
-- `initialized` for the startup notification.
-- `respond` / `respond_error` when the server sends a request that your client
-  must answer.
+  methods use typed `App*Params` values.
+- `initialize` / `initialized` for callers using the low-level spawn API.
+- `handle_request` / `handle_next_request` when the server sends a request that
+  your client must answer. Handler exceptions are translated into JSON-RPC
+  error responses by the SDK.
 
 Because app-server carries more than turn-stream events, `next` returns
 `AppServerMessage` instead of forcing every message into `Event`. When a
 notification is semantically the same as the existing exec stream, use
 `AppServerEvent::thread_event` to bridge it back to `Event`.
+
+The connection uses one stdout reader pump internally and routes JSON-RPC
+responses by request id, so multiple typed client RPCs may be in flight at the
+same time. Treat `next` as the single event/request channel for server-originated
+messages.
 
 The app-server surface currently targets the Codex app-server v2 schema.
 
@@ -246,10 +254,7 @@ The app-server surface currently targets the Codex app-server v2 schema.
 ///|
 #skip
 async test {
-  let app = @codex.Codex::new().app_server()
-  @async.with_task_group(tg => {
-    let connection = app.connect(tg)
-    connection.initialized()
+  @codex.Codex::new().with_app_server(async fn(connection) {
     let response = connection.thread_list(
       params=@codex.AppThreadListParams::new(limit=20),
     )

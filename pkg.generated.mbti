@@ -42,11 +42,11 @@ pub struct AppAccountSendAddCreditsNudgeEmailResponse {
   // private fields
 } derive(@debug.Debug)
 
-pub(all) enum AppAddCreditsNudgeCreditType {
-  AppAddCreditsNudgeCredits
-  AppAddCreditsNudgeUsageLimit
+pub(all) enum AppAddCreditsNudgeKind {
+  AppNudgeCredits
+  AppNudgeUsageLimit
 } derive(@debug.Debug)
-pub impl ToJson for AppAddCreditsNudgeCreditType
+pub impl ToJson for AppAddCreditsNudgeKind
 
 pub(all) enum AppApprovalPolicy {
   AppApprovalUntrusted
@@ -826,7 +826,7 @@ pub impl ToJson for AppSandboxPolicy
 pub impl @json.FromJson for AppSandboxPolicy
 
 pub(all) struct AppSendAddCreditsNudgeEmailParams {
-  credit_type : AppAddCreditsNudgeCreditType
+  kind : AppAddCreditsNudgeKind
 } derive(@debug.Debug)
 pub impl ToJson for AppSendAddCreditsNudgeEmailParams
 
@@ -856,8 +856,10 @@ pub impl @json.FromJson for AppServerMessage
 
 pub struct AppServerOptions {
   executable_path_override : String?
+  client_info : AppClientInfo?
+  capabilities : AppInitializeCapabilities?
 } derive(Default)
-pub fn AppServerOptions::new(executable_path_override? : String) -> Self
+pub fn AppServerOptions::new(executable_path_override? : String, client_info? : AppClientInfo, capabilities? : AppInitializeCapabilities) -> Self
 
 pub struct AppServerRequest {
   id : AppRequestId
@@ -1335,12 +1337,14 @@ type Codex
 pub fn Codex::app_server(Self) -> CodexApp
 pub fn Codex::new(options? : CodexOptions) -> Self
 pub fn Codex::resume_thread(Self, String, options? : ThreadOptions) -> Thread
+pub fn[G] Codex::spawn_app_server(Self, @async.TaskGroup[G], options? : AppServerOptions) -> CodexAppConnection raise
 pub fn Codex::start_thread(Self, options? : ThreadOptions) -> Thread
+pub async fn[R] Codex::with_app_server(Self, options? : AppServerOptions, async (CodexAppConnection) -> R) -> R
 
 pub struct CodexApp {
   options : CodexOptions
 }
-pub fn[G] CodexApp::connect(Self, options? : AppServerOptions, @async.TaskGroup[G]) -> CodexAppConnection
+pub fn[G] CodexApp::spawn(Self, @async.TaskGroup[G], options? : AppServerOptions) -> CodexAppConnection raise
 
 type CodexAppConnection
 pub async fn CodexAppConnection::account_login_cancel(Self, AppCancelLoginAccountParams) -> AppAccountLoginCancelResponse

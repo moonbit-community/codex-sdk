@@ -21,7 +21,7 @@ pub impl AppCall for AppRawCall
 
 // Traits
 pub(open) trait AppCall {
-  rpc_method(Self) -> String
-  params(Self) -> Json? = _
+  fn rpc_method(Self) -> String
+  fn params(Self) -> Json? = _
 }
 
