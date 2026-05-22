@@ -75,6 +75,7 @@ pub fn Codex::app_server(self : Codex) -> CodexApp {
 pub async fn[R] Codex::with_app_server(
   self : Codex,
   options? : AppServerOptions = AppServerOptions::default(),
+  request_handler? : (AppServerRequest) -> AppServerResponse raise,
   body : async (CodexAppConnection) -> R,
 ) -> R {
   @async.with_task_group(tg => {
@@ -82,6 +83,9 @@ pub async fn[R] Codex::with_app_server(
     defer connection.close()
     let _ = connection.initialize(options.initialize_params())
     connection.initialized()
+    if request_handler is Some(handler) {
+      tg.spawn_bg(() => connection.serve_requests(handler))
+    }
     body(connection)
   })
 }
@@ -114,7 +118,8 @@ pub fn[G] CodexApp::spawn(
     "codex-app-server",
   )
   let outgoing : @async.Queue[Json] = @async.Queue::new(kind=Unbounded)
-  let messages : @async.Queue[AppServerMessage] = @async.Queue::new(
+  let events : @async.Queue[AppServerEvent] = @async.Queue::new(kind=Unbounded)
+  let requests : @async.Queue[AppServerRequest] = @async.Queue::new(
     kind=Unbounded,
   )
   let stdin = @process.write_to_process() catch {
@@ -132,7 +137,8 @@ pub fn[G] CodexApp::spawn(
   }
   let connection : CodexAppConnection = {
     outgoing,
-    messages,
+    events,
+    requests,
     pending: [],
     next_request_id: 1,
   }
@@ -171,12 +177,14 @@ pub fn[G] CodexApp::spawn(
     } catch {
       e => {
         connection.close_pending_requests()
-        messages.close(clear=false)
+        events.close(clear=false)
+        requests.close(clear=false)
         raise @error.reraise(e)
       }
     }
     connection.close_pending_requests()
-    messages.close(clear=false)
+    events.close(clear=false)
+    requests.close(clear=false)
   })
   connection
 }
@@ -184,7 +192,8 @@ pub fn[G] CodexApp::spawn(
 ///|
 struct CodexAppConnection {
   outgoing : @async.Queue[Json]
-  messages : @async.Queue[AppServerMessage]
+  events : @async.Queue[AppServerEvent]
+  requests : @async.Queue[AppServerRequest]
   mut pending : Array[AppPendingRequest]
   mut next_request_id : Int
 }
@@ -245,16 +254,13 @@ async fn CodexAppConnection::route_server_message(
     Response(id~, result~) =>
       if self.complete_pending_request(id, AppPendingResult(result)) {
         ()
-      } else {
-        self.messages.put(Response(id~, result~))
       }
     ErrorResponse(id~, error~) =>
       if self.complete_pending_request(id, AppPendingError(error)) {
         ()
-      } else {
-        self.messages.put(ErrorResponse(id~, error~))
       }
-    _ => self.messages.put(message)
+    Request(request) => self.requests.put(request)
+    Notification(event) => self.events.put(event)
   }
 }
 
@@ -2078,37 +2084,13 @@ pub async fn CodexAppConnection::handle_next_request(
   self : CodexAppConnection,
   handler : (AppServerRequest) -> AppServerResponse raise,
 ) -> Bool {
-  let skipped : Array[AppServerMessage] = []
-  try {
-    while self.messages.try_get() is Some(message) {
-      match message {
-        Request(request) => {
-          for skipped_message in skipped {
-            self.messages.put(skipped_message)
-          }
-          self.handle_request(request, handler)
-          return true
-        }
-        _ => skipped.push(message)
-      }
+  match self.next_request() {
+    Some(request) => {
+      self.handle_request(request, handler)
+      true
     }
-  } catch {
-    _ => ()
+    None => false
   }
-  while true {
-    let message = self.messages.get() catch { _ => return false }
-    match message {
-      Request(request) => {
-        for skipped_message in skipped {
-          self.messages.put(skipped_message)
-        }
-        self.handle_request(request, handler)
-        return true
-      }
-      _ => skipped.push(message)
-    }
-  }
-  false
 }
 
 ///|
@@ -2129,6 +2111,21 @@ pub async fn CodexAppConnection::handle_request(
     }
   }
   self.respond(id, result.to_json())
+}
+
+///|
+/// Serve server-initiated app-server requests until the connection closes.
+///
+/// This is intended for long-running app-server sessions that also consume
+/// notifications through `next_event`. The handler may raise; raised errors are
+/// caught by `handle_request` and sent back as JSON-RPC error responses.
+pub async fn CodexAppConnection::serve_requests(
+  self : CodexAppConnection,
+  handler : (AppServerRequest) -> AppServerResponse raise,
+) -> Unit {
+  while self.handle_next_request(handler) {
+    ()
+  }
 }
 
 ///|
@@ -2415,12 +2412,35 @@ async fn CodexAppConnection::send(
 }
 
 ///|
-/// Receive the next server JSON-RPC frame from the app server.
+/// Receive the next server notification from the app server.
+pub async fn CodexAppConnection::next_event(
+  self : CodexAppConnection,
+) -> AppServerEvent? {
+  let event = self.events.get() catch { _ => return None }
+  Some(event)
+}
+
+///|
+/// Receive the next server-initiated JSON-RPC request from the app server.
+pub async fn CodexAppConnection::next_request(
+  self : CodexAppConnection,
+) -> AppServerRequest? {
+  let request = self.requests.get() catch { _ => return None }
+  Some(request)
+}
+
+///|
+/// Receive the next server notification as a JSON-RPC message.
+///
+/// Prefer `next_event` for notifications and `next_request` or
+/// `serve_requests` for server-initiated requests.
 pub async fn CodexAppConnection::next(
   self : CodexAppConnection,
 ) -> AppServerMessage? {
-  let message = self.messages.get() catch { _ => return None }
-  Some(message)
+  match self.next_event() {
+    Some(event) => Some(Notification(event))
+    None => None
+  }
 }
 
 ///|

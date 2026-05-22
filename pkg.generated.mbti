@@ -1339,7 +1339,7 @@ pub fn Codex::new(options? : CodexOptions) -> Self
 pub fn Codex::resume_thread(Self, String, options? : ThreadOptions) -> Thread
 pub fn[G] Codex::spawn_app_server(Self, @async.TaskGroup[G], options? : AppServerOptions) -> CodexAppConnection raise
 pub fn Codex::start_thread(Self, options? : ThreadOptions) -> Thread
-pub async fn[R] Codex::with_app_server(Self, options? : AppServerOptions, async (CodexAppConnection) -> R) -> R
+pub async fn[R] Codex::with_app_server(Self, options? : AppServerOptions, request_handler? : (AppServerRequest) -> AppServerResponse raise, async (CodexAppConnection) -> R) -> R
 
 pub struct CodexApp {
   options : CodexOptions
@@ -1397,6 +1397,8 @@ pub async fn CodexAppConnection::mcp_server_tool_call(Self, AppMcpServerToolCall
 pub async fn CodexAppConnection::model_list(Self, params? : AppModelListParams) -> AppModelListResponse
 pub async fn CodexAppConnection::model_provider_capabilities_read(Self) -> AppModelProviderCapabilitiesReadResponse
 pub async fn CodexAppConnection::next(Self) -> AppServerMessage?
+pub async fn CodexAppConnection::next_event(Self) -> AppServerEvent?
+pub async fn CodexAppConnection::next_request(Self) -> AppServerRequest?
 pub async fn CodexAppConnection::plugin_install(Self, AppPluginInstallParams) -> AppPluginInstallResponse
 pub async fn CodexAppConnection::plugin_list(Self, AppPluginListParams) -> AppPluginListResponse
 pub async fn CodexAppConnection::plugin_read(Self, AppPluginReadParams) -> AppPluginReadResponse
@@ -1408,6 +1410,7 @@ pub async fn CodexAppConnection::plugin_share_update_targets(Self, AppPluginShar
 pub async fn CodexAppConnection::plugin_skill_read(Self, AppPluginSkillReadParams) -> AppPluginSkillReadResponse
 pub async fn CodexAppConnection::plugin_uninstall(Self, AppPluginUninstallParams) -> AppPluginUninstallResponse
 pub async fn CodexAppConnection::review_start(Self, AppReviewStartParams) -> AppReviewStartResponse
+pub async fn CodexAppConnection::serve_requests(Self, (AppServerRequest) -> AppServerResponse raise) -> Unit
 pub async fn CodexAppConnection::skills_config_write(Self, AppSkillsConfigWriteParams) -> AppSkillsConfigWriteResponse
 pub async fn CodexAppConnection::skills_list(Self, params? : AppSkillsListParams) -> AppSkillsListResponse
 pub async fn CodexAppConnection::thread_approve_guardian_denied_action(Self, AppThreadApproveGuardianDeniedActionParams) -> AppThreadApproveGuardianDeniedActionResponse

@@ -225,8 +225,10 @@ The app-server surface is separate from `codex exec --json`. It runs as a
 persistent JSON-RPC process. Prefer `Codex::with_app_server` for scoped use:
 the SDK owns the task group, starts the app-server process, sends the required
 `initialize` request plus `initialized` notification, and closes stdin when your
-callback returns. If your application already owns structured concurrency, use
-the lower-level `Codex::spawn_app_server` and pass your own task group.
+callback returns. If you pass `request_handler`, the SDK also runs a request
+serving loop for server-initiated requests. If your application already owns
+structured concurrency, use the lower-level `Codex::spawn_app_server` and pass
+your own task group.
 
 Client-initiated requests are exposed through named methods:
 
@@ -234,19 +236,20 @@ Client-initiated requests are exposed through named methods:
   `turn_interrupt`, and `model_list` for client-initiated RPCs. These named
   methods use typed `App*Params` values.
 - `initialize` / `initialized` for callers using the low-level spawn API.
-- `handle_request` / `handle_next_request` when the server sends a request that
-  your client must answer. Handler exceptions are translated into JSON-RPC
-  error responses by the SDK.
+- `next_event` for server notifications.
+- `next_request`, `handle_next_request`, or `serve_requests` when the server
+  sends a request that your client must answer. Handler exceptions are
+  translated into JSON-RPC error responses by the SDK.
 
-Because app-server carries more than turn-stream events, `next` returns
-`AppServerMessage` instead of forcing every message into `Event`. When a
-notification is semantically the same as the existing exec stream, use
+Because app-server carries more than turn-stream events, request handling is
+kept on a separate channel from notifications. When a notification is
+semantically the same as the existing exec stream, use
 `AppServerEvent::thread_event` to bridge it back to `Event`.
 
 The connection uses one stdout reader pump internally and routes JSON-RPC
-responses by request id, so multiple typed client RPCs may be in flight at the
-same time. Treat `next` as the single event/request channel for server-originated
-messages.
+responses by request id, server notifications to the event channel, and
+server-initiated requests to the request channel. Multiple typed client RPCs may
+be in flight at the same time.
 
 The app-server surface currently targets the Codex app-server v2 schema.
 
@@ -255,41 +258,38 @@ The app-server surface currently targets the Codex app-server v2 schema.
 #skip
 async test {
   @codex.Codex::new().with_app_server(async fn(connection) {
-    let response = connection.thread_list(
-      params=@codex.AppThreadListParams::new(limit=20),
-    )
-    println("threads: \{response.data.length()}")
-
-    while connection.next() is Some(message) {
-      match message {
-        @codex.AppServerMessage::Notification(event) =>
-          match event.thread_event() {
-            Some(@codex.Event::ItemStarted(item)) =>
-              println(item.to_json().stringify())
-            _ => ()
+    @async.with_task_group(tg => {
+      tg.spawn_bg(() => {
+        connection.serve_requests(fn(request) {
+          println("server requested: \{request.rpc_method}")
+          match request.details {
+            @codex.AppServerRequestDetails::AppCommandExecutionApprovalRequest(
+              _
+            ) =>
+              @codex.AppServerResponse::AppCommandExecutionApprovalResponse(
+                decision=@codex.AppCommandExecutionApprovalDecision::AppCommandDecline,
+              )
+            @codex.AppServerRequestDetails::AppFileChangeApprovalRequest(_) =>
+              @codex.AppServerResponse::AppFileChangeApprovalResponse(
+                decision=@codex.AppFileChangeApprovalDecision::AppFileChangeDecline,
+              )
+            _ => @codex.AppServerResponse::AppRawResponse({})
           }
-        @codex.AppServerMessage::ErrorResponse(error~, ..) =>
-          fail("app-server error: \{error.message}")
-        @codex.AppServerMessage::Request(request) =>
-          connection.handle_request(request, fn(request) {
-            println("server requested: \{request.rpc_method}")
-            match request.details {
-              @codex.AppServerRequestDetails::AppCommandExecutionApprovalRequest(
-                _
-              ) =>
-                @codex.AppServerResponse::AppCommandExecutionApprovalResponse(
-                  decision=@codex.AppCommandExecutionApprovalDecision::AppCommandDecline,
-                )
-              @codex.AppServerRequestDetails::AppFileChangeApprovalRequest(_) =>
-                @codex.AppServerResponse::AppFileChangeApprovalResponse(
-                  decision=@codex.AppFileChangeApprovalDecision::AppFileChangeDecline,
-                )
-              _ => @codex.AppServerResponse::AppRawResponse({})
-            }
-          })
-        @codex.AppServerMessage::Response(..) => ()
+        })
+      })
+      let response = connection.thread_list(
+        params=@codex.AppThreadListParams::new(limit=20),
+      )
+      println("threads: \{response.data.length()}")
+
+      while connection.next_event() is Some(event) {
+        match event.thread_event() {
+          Some(@codex.Event::ItemStarted(item)) =>
+            println(item.to_json().stringify())
+          _ => ()
+        }
       }
-    }
+    })
   })
 }
 ```
