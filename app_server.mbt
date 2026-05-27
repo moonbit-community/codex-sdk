@@ -24,7 +24,7 @@ pub struct CodexApp {
 
 ///|
 pub struct AppServerOptions {
-  /// Override the path to the codex-app-server executable.
+  /// Override the path to the codex executable used for `codex app-server`.
   executable_path_override : String?
   /// Client metadata sent in the app-server `initialize` request.
   client_info : AppClientInfo?
@@ -75,7 +75,7 @@ pub fn Codex::app_server(self : Codex) -> CodexApp {
 pub async fn[R] Codex::with_app_server(
   self : Codex,
   options? : AppServerOptions = AppServerOptions::default(),
-  request_handler? : (AppServerRequest) -> AppServerResponse raise,
+  request_handler? : async (AppServerRequest) -> AppServerResponse,
   body : async (CodexAppConnection) -> R,
 ) -> R {
   @async.with_task_group(tg => {
@@ -114,9 +114,10 @@ pub fn[G] CodexApp::spawn(
   taskgroup : @async.TaskGroup[G],
   options? : AppServerOptions = AppServerOptions::default(),
 ) -> CodexAppConnection raise Error {
-  let executable_path = options.executable_path_override.unwrap_or(
-    "codex-app-server",
-  )
+  let executable_path = match options.executable_path_override {
+    Some(path) => path
+    None => self.options.codex_path_override.unwrap_or("codex")
+  }
   let outgoing : @async.Queue[Json] = @async.Queue::new(kind=Unbounded)
   let events : @async.Queue[AppServerEvent] = @async.Queue::new(kind=Unbounded)
   let requests : @async.Queue[AppServerRequest] = @async.Queue::new(
@@ -145,7 +146,7 @@ pub fn[G] CodexApp::spawn(
   taskgroup.spawn_bg(() => {
     let (exit_code, stderr) = @process.collect_stderr(
       executable_path,
-      ["--listen", "stdio://"],
+      ["app-server", "--listen", "stdio://"],
       stdin=stdin.0,
       stdout=stdout.1,
       inherit_env=self.options.env is None,
@@ -2092,12 +2093,11 @@ async fn CodexAppConnection::notify(
 ///|
 /// Handle the next server-initiated JSON-RPC request.
 ///
-/// Non-request messages observed while waiting are buffered for `next`. If the
-/// handler returns normally, the SDK sends the JSON-RPC response. If the handler
-/// raises, the SDK catches the error and sends a JSON-RPC error response.
+/// If the handler returns normally, the SDK sends the JSON-RPC response. If the
+/// handler raises, the SDK catches the error and sends a JSON-RPC error response.
 pub async fn CodexAppConnection::handle_next_request(
   self : CodexAppConnection,
-  handler : (AppServerRequest) -> AppServerResponse raise,
+  handler : async (AppServerRequest) -> AppServerResponse,
 ) -> Bool {
   match self.next_request() {
     Some(request) => {
@@ -2112,7 +2112,7 @@ pub async fn CodexAppConnection::handle_next_request(
 pub async fn CodexAppConnection::handle_request(
   self : CodexAppConnection,
   request : AppServerRequest,
-  handler : (AppServerRequest) -> AppServerResponse raise,
+  handler : async (AppServerRequest) -> AppServerResponse,
 ) -> Unit {
   let id = request.id
   let result = handler(request) catch {
@@ -2136,7 +2136,7 @@ pub async fn CodexAppConnection::handle_request(
 /// caught by `handle_request` and sent back as JSON-RPC error responses.
 pub async fn CodexAppConnection::serve_requests(
   self : CodexAppConnection,
-  handler : (AppServerRequest) -> AppServerResponse raise,
+  handler : async (AppServerRequest) -> AppServerResponse,
 ) -> Unit {
   while self.handle_next_request(handler) {
     ()

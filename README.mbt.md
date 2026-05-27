@@ -230,6 +230,11 @@ serving loop for server-initiated requests. If your application already owns
 structured concurrency, use the lower-level `Codex::spawn_app_server` and pass
 your own task group.
 
+The SDK starts the process through `codex app-server --listen stdio://`, using
+`CodexOptions::codex_path_override` or `AppServerOptions::executable_path_override`
+when you need a non-default Codex CLI path. Request handlers are async, so
+approval flows may do I/O before returning a JSON-RPC response.
+
 Client-initiated requests are exposed through named methods:
 
 - `thread_list`, `thread_start`, `thread_read`, `turn_start`,
@@ -257,26 +262,22 @@ The app-server surface currently targets the Codex app-server v2 schema.
 ///|
 #skip
 async test {
-  @codex.Codex::new().with_app_server(async fn(connection) {
-    @async.with_task_group(tg => {
-      tg.spawn_bg(() => {
-        connection.serve_requests(fn(request) {
-          println("server requested: \{request.rpc_method}")
-          match request.details {
-            @codex.AppServerRequestDetails::AppCommandExecutionApprovalRequest(
-              _
-            ) =>
-              @codex.AppServerResponse::AppCommandExecutionApprovalResponse(
-                decision=@codex.AppCommandExecutionApprovalDecision::AppCommandDecline,
-              )
-            @codex.AppServerRequestDetails::AppFileChangeApprovalRequest(_) =>
-              @codex.AppServerResponse::AppFileChangeApprovalResponse(
-                decision=@codex.AppFileChangeApprovalDecision::AppFileChangeDecline,
-              )
-            _ => @codex.AppServerResponse::AppRawResponse({})
-          }
-        })
-      })
+  @codex.Codex::new().with_app_server(
+    request_handler=fn(request) {
+      println("server requested: \{request.rpc_method}")
+      match request.details {
+        @codex.AppServerRequestDetails::AppCommandExecutionApprovalRequest(_) =>
+          @codex.AppServerResponse::AppCommandExecutionApprovalResponse(
+            decision=@codex.AppCommandExecutionApprovalDecision::AppCommandDecline,
+          )
+        @codex.AppServerRequestDetails::AppFileChangeApprovalRequest(_) =>
+          @codex.AppServerResponse::AppFileChangeApprovalResponse(
+            decision=@codex.AppFileChangeApprovalDecision::AppFileChangeDecline,
+          )
+        _ => @codex.AppServerResponse::AppRawResponse({})
+      }
+    },
+    async fn(connection) {
       let response = connection.thread_list(
         params=@codex.AppThreadListParams::new(limit=20),
       )
@@ -289,7 +290,7 @@ async test {
           _ => ()
         }
       }
-    })
-  })
+    },
+  )
 }
 ```
