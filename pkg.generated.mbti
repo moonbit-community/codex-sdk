@@ -1342,7 +1342,7 @@ pub fn Codex::new(options? : CodexOptions) -> Self
 pub fn Codex::resume_thread(Self, String, options? : ThreadOptions) -> Thread
 pub fn[G] Codex::spawn_app_server(Self, @async.TaskGroup[G], options? : AppServerOptions) -> CodexAppConnection raise
 pub fn Codex::start_thread(Self, options? : ThreadOptions) -> Thread
-pub async fn[R] Codex::with_app_server(Self, options? : AppServerOptions, request_handler? : (AppServerRequest) -> AppServerResponse raise, async (CodexAppConnection) -> R) -> R
+pub async fn[R] Codex::with_app_server(Self, options? : AppServerOptions, request_handler? : async (AppServerRequest) -> AppServerResponse, async (CodexAppConnection) -> R) -> R
 
 pub struct CodexApp {
   options : CodexOptions
@@ -1385,8 +1385,8 @@ pub async fn CodexAppConnection::fuzzy_file_search(Self, AppFuzzyFileSearchParam
 pub async fn CodexAppConnection::get_auth_status(Self, AppGetAuthStatusParams) -> AppGetAuthStatusResponse
 pub async fn CodexAppConnection::get_conversation_summary(Self, AppConversationSummaryParams) -> AppConversationSummaryResponse
 pub async fn CodexAppConnection::git_diff_to_remote(Self, AppCwdParams) -> AppGitDiffToRemoteResponse
-pub async fn CodexAppConnection::handle_next_request(Self, (AppServerRequest) -> AppServerResponse raise) -> Bool
-pub async fn CodexAppConnection::handle_request(Self, AppServerRequest, (AppServerRequest) -> AppServerResponse raise) -> Unit
+pub async fn CodexAppConnection::handle_next_request(Self, async (AppServerRequest) -> AppServerResponse) -> Bool
+pub async fn CodexAppConnection::handle_request(Self, AppServerRequest, async (AppServerRequest) -> AppServerResponse) -> Unit
 pub async fn CodexAppConnection::hooks_list(Self, AppHooksListParams) -> AppHooksListResponse
 pub async fn CodexAppConnection::initialize(Self, AppInitializeParams) -> AppInitializeResponse
 pub async fn CodexAppConnection::initialized(Self) -> Unit
@@ -1413,7 +1413,7 @@ pub async fn CodexAppConnection::plugin_share_update_targets(Self, AppPluginShar
 pub async fn CodexAppConnection::plugin_skill_read(Self, AppPluginSkillReadParams) -> AppPluginSkillReadResponse
 pub async fn CodexAppConnection::plugin_uninstall(Self, AppPluginUninstallParams) -> AppPluginUninstallResponse
 pub async fn CodexAppConnection::review_start(Self, AppReviewStartParams) -> AppReviewStartResponse
-pub async fn CodexAppConnection::serve_requests(Self, (AppServerRequest) -> AppServerResponse raise) -> Unit
+pub async fn CodexAppConnection::serve_requests(Self, async (AppServerRequest) -> AppServerResponse) -> Unit
 pub async fn CodexAppConnection::skills_config_write(Self, AppSkillsConfigWriteParams) -> AppSkillsConfigWriteResponse
 pub async fn CodexAppConnection::skills_list(Self, params? : AppSkillsListParams) -> AppSkillsListResponse
 pub async fn CodexAppConnection::thread_approve_guardian_denied_action(Self, AppThreadApproveGuardianDeniedActionParams) -> AppThreadApproveGuardianDeniedActionResponse
