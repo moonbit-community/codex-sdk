@@ -24,4 +24,3 @@ pub(open) trait AppCall {
   fn rpc_method(Self) -> String
   fn params(Self) -> Json? = _
 }
-

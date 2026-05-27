@@ -1125,6 +1125,11 @@ pub impl FromJson for AppConfigSnapshot with fn from_json(value, _path) {
 }
 
 ///|
+pub impl ToJson for AppConfigSnapshot with fn to_json(snapshot) {
+  snapshot.raw
+}
+
+///|
 pub struct AppConfigOrigins {
   priv raw : Json
 } derive(Debug)
@@ -1135,6 +1140,11 @@ pub impl FromJson for AppConfigOrigins with fn from_json(value, _path) {
 }
 
 ///|
+pub impl ToJson for AppConfigOrigins with fn to_json(origins) {
+  origins.raw
+}
+
+///|
 pub struct AppConfigLayers {
   priv raw : Json
 } derive(Debug)
@@ -1142,6 +1152,11 @@ pub struct AppConfigLayers {
 ///|
 pub impl FromJson for AppConfigLayers with fn from_json(value, _path) {
   { raw: value }
+}
+
+///|
+pub impl ToJson for AppConfigLayers with fn to_json(layers) {
+  layers.raw
 }
 
 ///|
@@ -4604,8 +4619,8 @@ fn app_server_request(
 pub enum AppServerEvent {
   AppThreadStarted(AppThread)
   AppThreadStatusChanged(thread_id~ : String, status~ : AppThreadStatus)
-  AppTurnStarted(thread_id~ : String, turn~ : AppTurn)
-  AppTurnCompleted(thread_id~ : String, turn~ : AppTurn)
+  AppTurnStarted(thread_id~ : String?, turn~ : AppTurn)
+  AppTurnCompleted(thread_id~ : String?, turn~ : AppTurn)
   AppTurnError(
     thread_id~ : String,
     turn_id~ : String,
@@ -4663,20 +4678,26 @@ pub impl FromJson for AppServerEvent with fn from_json(value, path) {
       )
     }
     "turn/started" => {
-      guard params is Some({ "threadId": String(thread_id), "turn": turn, .. }) else {
+      guard params is Some({ "threadId"? : thread_id, "turn": turn, .. }) else {
         raise JsonDecodeError((path, "expected turn/started params"))
       }
       AppTurnStarted(
-        thread_id~,
+        thread_id=app_optional_string(
+          thread_id,
+          path.add_key("params").add_key("threadId"),
+        ),
         turn=@json.from_json(turn, path=path.add_key("params").add_key("turn")),
       )
     }
     "turn/completed" => {
-      guard params is Some({ "threadId": String(thread_id), "turn": turn, .. }) else {
+      guard params is Some({ "threadId"? : thread_id, "turn": turn, .. }) else {
         raise JsonDecodeError((path, "expected turn/completed params"))
       }
       AppTurnCompleted(
-        thread_id~,
+        thread_id=app_optional_string(
+          thread_id,
+          path.add_key("params").add_key("threadId"),
+        ),
         turn=@json.from_json(turn, path=path.add_key("params").add_key("turn")),
       )
     }

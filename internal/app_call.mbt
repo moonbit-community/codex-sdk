@@ -18,12 +18,12 @@
 /// The root SDK package exposes named methods such as `thread_list`; this trait
 /// only centralizes JSON-RPC plumbing behind those public methods.
 pub(open) trait AppCall {
-  rpc_method(Self) -> String
-  params(Self) -> Json? = _
+  fn rpc_method(Self) -> String
+  fn params(Self) -> Json? = _
 }
 
 ///|
-impl AppCall with params(_) {
+impl AppCall with fn params(_) {
   None
 }
 
@@ -40,11 +40,11 @@ pub fn AppRawCall::new(rpc_method : String, params? : Json) -> AppRawCall {
 }
 
 ///|
-pub impl AppCall for AppRawCall with rpc_method(call) {
+pub impl AppCall for AppRawCall with fn rpc_method(call) {
   call.rpc_method
 }
 
 ///|
-pub impl AppCall for AppRawCall with params(call) {
+pub impl AppCall for AppRawCall with fn params(call) {
   call.params
 }

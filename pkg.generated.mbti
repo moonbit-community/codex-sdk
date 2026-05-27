@@ -188,6 +188,7 @@ pub impl ToJson for AppConfigEdit
 pub struct AppConfigLayers {
   // private fields
 } derive(@debug.Debug)
+pub impl ToJson for AppConfigLayers
 pub impl @json.FromJson for AppConfigLayers
 
 pub struct AppConfigMcpServerReloadResponse {
@@ -197,6 +198,7 @@ pub struct AppConfigMcpServerReloadResponse {
 pub struct AppConfigOrigins {
   // private fields
 } derive(@debug.Debug)
+pub impl ToJson for AppConfigOrigins
 pub impl @json.FromJson for AppConfigOrigins
 
 pub struct AppConfigReadParams {
@@ -220,6 +222,7 @@ pub struct AppConfigRequirementsReadResponse {
 pub struct AppConfigSnapshot {
   // private fields
 } derive(@debug.Debug)
+pub impl ToJson for AppConfigSnapshot
 pub impl @json.FromJson for AppConfigSnapshot
 
 pub(all) struct AppConfigValueWriteParams {
@@ -833,8 +836,8 @@ pub impl ToJson for AppSendAddCreditsNudgeEmailParams
 pub enum AppServerEvent {
   AppThreadStarted(AppThread)
   AppThreadStatusChanged(thread_id~ : String, status~ : AppThreadStatus)
-  AppTurnStarted(thread_id~ : String, turn~ : AppTurn)
-  AppTurnCompleted(thread_id~ : String, turn~ : AppTurn)
+  AppTurnStarted(thread_id~ : String?, turn~ : AppTurn)
+  AppTurnCompleted(thread_id~ : String?, turn~ : AppTurn)
   AppTurnError(thread_id~ : String, turn_id~ : String, error~ : AppTurnError, will_retry~ : Bool)
   AppItemStarted(AppThreadItemEvent)
   AppItemCompleted(AppThreadItemEvent)

@@ -121,6 +121,43 @@ test "serialize app-server typed request responses" {
 }
 
 ///|
+test "parse config read payload wrappers as json" {
+  let response : AppConfigReadResponse = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "config": { "model": "gpt-5" },
+        #|  "origins": { "model": "defaults" },
+        #|  "layers": [{ "path": "config.toml" }]
+        #|}
+      ),
+    ),
+  )
+  debug_inspect(
+    response.config.to_json(),
+    content=(
+      #|Object({ "model": String("gpt-5") })
+    ),
+  )
+  debug_inspect(
+    response.origins.to_json(),
+    content=(
+      #|Object({ "model": String("defaults") })
+    ),
+  )
+  match response.layers {
+    Some(layers) =>
+      debug_inspect(
+        layers.to_json(),
+        content=(
+          #|Array([Object({ "path": String("config.toml") })])
+        ),
+      )
+    None => fail("expected config layers")
+  }
+}
+
+///|
 test "parse app-server item started notification" {
   let message : AppServerMessage = @json.from_json(
     @json.parse(
@@ -218,6 +255,60 @@ test "parse app-server thread status notification" {
       }
     }
     _ => fail("expected thread status notification")
+  }
+}
+
+///|
+test "parse app-server turn lifecycle notifications without thread id" {
+  let started : AppServerEvent = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "method": "turn/started",
+        #|  "params": {
+        #|    "turn": { "id": "turn-1", "status": "inProgress" }
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  match started {
+    AppTurnStarted(thread_id~, turn~) => {
+      guard thread_id is None else { fail("expected no thread id") }
+      debug_inspect(
+        turn.id,
+        content=(
+          #|"turn-1"
+        ),
+      )
+      debug_inspect(turn.status, content="AppTurnInProgressStatus")
+    }
+    _ => fail("expected turn started notification")
+  }
+  let completed : AppServerEvent = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "method": "turn/completed",
+        #|  "params": {
+        #|    "turn": { "id": "turn-1", "status": "completed" }
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  match completed {
+    AppTurnCompleted(thread_id~, turn~) => {
+      guard thread_id is None else { fail("expected no thread id") }
+      debug_inspect(
+        turn.id,
+        content=(
+          #|"turn-1"
+        ),
+      )
+      debug_inspect(turn.status, content="AppTurnCompletedStatus")
+    }
+    _ => fail("expected turn completed notification")
   }
 }
 
