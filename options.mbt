@@ -55,7 +55,7 @@ pub(all) enum ApprovalMode {
 }
 
 ///|
-pub impl Show for ApprovalMode with output(self, logger) {
+pub impl Show for ApprovalMode with fn output(self, logger) {
   match self {
     Never => logger.write_string("never")
     OnRequest => logger.write_string("on-request")
@@ -73,11 +73,11 @@ pub(all) enum SandboxMode {
   WorkspaceWrite
   /// Full access (dangerous)
   DangerFullAccess
-}
+} derive(Debug)
 
 ///|
 /// Convert SandboxMode to its string representation for CLI arguments.
-pub impl Show for SandboxMode with output(self : SandboxMode, logger) {
+pub impl Show for SandboxMode with fn output(self : SandboxMode, logger) {
   match self {
     ReadOnly => logger.write_string("read-only")
     WorkspaceWrite => logger.write_string("workspace-write")
@@ -94,7 +94,7 @@ pub(all) enum ModelReasoningEffort {
 }
 
 ///|
-pub impl Show for ModelReasoningEffort with output(self, logger) {
+pub impl Show for ModelReasoningEffort with fn output(self, logger) {
   match self {
     Minimal => logger.write_string("minimal")
     Low => logger.write_string("low")

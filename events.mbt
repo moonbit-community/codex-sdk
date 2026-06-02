@@ -34,7 +34,7 @@ pub enum Event {
 }
 
 ///|
-pub impl ToJson for Event with to_json(event) {
+pub impl ToJson for Event with fn to_json(event) {
   match event {
     ThreadStarted(thread_id~) =>
       { "type": "thread.started", "thread_id": thread_id }
@@ -50,7 +50,7 @@ pub impl ToJson for Event with to_json(event) {
 }
 
 ///|
-pub impl @json.FromJson for Event with from_json(value, path) {
+pub impl @json.FromJson for Event with fn from_json(value, path) {
   guard value is Object({ "type": String(ty), .. } as obj) else {
     raise JsonDecodeError(
       (

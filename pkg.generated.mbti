@@ -13,6 +13,3102 @@ import {
 // Errors
 
 // Types and methods
+pub enum AppAccount {
+  AppAccountApiKey
+  AppAccountChatGPT(email~ : String, plan_type~ : AppPlanType)
+  AppAccountAmazonBedrock
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAccount
+
+pub struct AppAccountLoginCancelResponse {
+  status : AppCancelLoginAccountStatus
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAccountLoginCancelResponse
+
+pub enum AppAccountLoginStartResponse {
+  AppAccountLoginApiKey
+  AppAccountLoginChatGPT(login_id~ : String, auth_url~ : String)
+  AppAccountLoginChatGPTDeviceCode(login_id~ : String, verification_url~ : String, user_code~ : String)
+  AppAccountLoginChatGPTAuthTokens
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAccountLoginStartResponse
+
+pub struct AppAccountLogoutResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub struct AppAccountRateLimitsReadResponse {
+  rate_limits : AppRateLimitSnapshot
+  rate_limits_by_limit_id : Map[String, AppRateLimitSnapshot]?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAccountRateLimitsReadResponse
+
+pub(all) struct AppAccountReadParams {
+  refresh_token : Bool
+} derive(@debug.Debug)
+pub impl ToJson for AppAccountReadParams
+
+pub struct AppAccountReadResponse {
+  account : AppAccount?
+  requires_openai_auth : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAccountReadResponse
+
+pub struct AppAccountSendAddCreditsNudgeEmailResponse {
+  status : AppAddCreditsNudgeEmailStatus
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAccountSendAddCreditsNudgeEmailResponse
+
+pub enum AppAddCreditsNudgeEmailStatus {
+  AppAddCreditsNudgeSent
+  AppAddCreditsNudgeCooldownActive
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAddCreditsNudgeEmailStatus
+
+pub(all) enum AppAddCreditsNudgeKind {
+  AppNudgeCredits
+  AppNudgeUsageLimit
+} derive(@debug.Debug)
+pub impl ToJson for AppAddCreditsNudgeKind
+
+pub(all) struct AppAdditionalFileSystemPermissions {
+  read : ArrayView[String]?
+  write : ArrayView[String]?
+  glob_scan_max_depth : UInt64?
+  entries : ArrayView[AppFileSystemSandboxEntry]?
+} derive(@debug.Debug)
+pub impl ToJson for AppAdditionalFileSystemPermissions
+pub impl @json.FromJson for AppAdditionalFileSystemPermissions
+
+pub(all) struct AppAdditionalNetworkPermissions {
+  enabled : Bool?
+} derive(@debug.Debug)
+pub impl ToJson for AppAdditionalNetworkPermissions
+pub impl @json.FromJson for AppAdditionalNetworkPermissions
+
+pub struct AppAnalyticsConfig {
+  enabled : Bool?
+  additional : Map[String, Json]
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAnalyticsConfig
+
+pub(all) enum AppApprovalPolicy {
+  AppApprovalUntrusted
+  AppApprovalOnFailure
+  AppApprovalOnRequest
+  AppApprovalNever
+  AppApprovalGranular(sandbox_approval~ : Bool, rules~ : Bool, skill_approval~ : Bool, request_permissions~ : Bool, mcp_elicitations~ : Bool)
+} derive(@debug.Debug)
+pub impl ToJson for AppApprovalPolicy
+pub impl @json.FromJson for AppApprovalPolicy
+
+pub(all) enum AppApprovalsReviewer {
+  AppReviewerUser
+  AppReviewerAutoReview
+  AppReviewerGuardianSubagent
+} derive(@debug.Debug)
+pub impl ToJson for AppApprovalsReviewer
+pub impl @json.FromJson for AppApprovalsReviewer
+
+pub struct AppAppsConfig {
+  default_config : AppAppsDefaultConfig?
+  apps : Map[String, AppConnectorConfig]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAppsConfig
+
+pub struct AppAppsDefaultConfig {
+  enabled : Bool
+  destructive_enabled : Bool
+  open_world_enabled : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAppsDefaultConfig
+
+pub enum AppAuthMode {
+  AppAuthApiKey
+  AppAuthChatGPT
+  AppAuthChatGPTAuthTokens
+  AppAuthAgentIdentity
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAuthMode
+
+pub(all) enum AppAutoReviewDecisionSource {
+  AppAutoReviewDecisionAgent
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAutoReviewDecisionSource
+
+pub struct AppByteRange {
+  start : UInt64
+  end : UInt64
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppByteRange
+
+pub(all) struct AppCancelLoginAccountParams {
+  login_id : String
+} derive(@debug.Debug)
+pub impl ToJson for AppCancelLoginAccountParams
+
+pub enum AppCancelLoginAccountStatus {
+  AppCancelLoginCanceled
+  AppCancelLoginNotFound
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppCancelLoginAccountStatus
+
+pub(all) enum AppChatgptAuthTokensRefreshReason {
+  AppChatgptAuthTokensUnauthorized
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppChatgptAuthTokensRefreshReason
+
+pub(all) struct AppChatgptAuthTokensRefreshRequest {
+  reason : AppChatgptAuthTokensRefreshReason
+  previous_account_id : String?
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppChatgptAuthTokensRefreshRequest
+
+pub(all) struct AppClientInfo {
+  name : String
+  title : String?
+  version : String
+} derive(@debug.Debug)
+pub impl ToJson for AppClientInfo
+
+pub(all) enum AppClientMessage {
+  ClientRequest(id~ : AppRequestId, rpc_method~ : String, params~ : Json?)
+  ClientNotification(rpc_method~ : String, params~ : Json?)
+  ClientResponse(id~ : AppRequestId, result~ : Json)
+  ClientErrorResponse(id~ : AppRequestId, error~ : AppRpcError)
+} derive(@debug.Debug)
+pub impl ToJson for AppClientMessage
+
+pub enum AppCodexErrorInfo {
+  AppContextWindowExceeded
+  AppUsageLimitExceeded
+  AppServerOverloaded
+  AppCyberPolicy
+  AppHttpConnectionFailed(http_status_code~ : Int?)
+  AppResponseStreamConnectionFailed(http_status_code~ : Int?)
+  AppInternalServerError
+  AppUnauthorized
+  AppBadRequest
+  AppThreadRollbackFailed
+  AppSandboxError
+  AppResponseStreamDisconnected(http_status_code~ : Int?)
+  AppResponseTooManyFailedAttempts(http_status_code~ : Int?)
+  AppActiveTurnNotSteerable(turn_kind~ : AppNonSteerableTurnKind)
+  AppCodexOtherError
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppCodexErrorInfo
+
+pub(all) enum AppCollaborationModeKind {
+  AppCollaborationPlan
+  AppCollaborationDefault
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppCollaborationModeKind
+
+pub(all) struct AppCollaborationModeListResponse {
+  data : ArrayView[AppCollaborationModeMask]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppCollaborationModeListResponse
+
+pub(all) struct AppCollaborationModeMask {
+  name : String
+  mode : AppCollaborationModeKind?
+  model : String?
+  reasoning_effort : AppReasoningEffort?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppCollaborationModeMask
+
+pub enum AppCommandAction {
+  AppCommandReadAction(command~ : String, name~ : String, path~ : String)
+  AppCommandListFilesAction(command~ : String, path~ : String?)
+  AppCommandSearchAction(command~ : String, query~ : String?, path~ : String?)
+  AppCommandUnknownAction(command~ : String)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppCommandAction
+
+pub(all) struct AppCommandExecParams {
+  command : Array[String]
+  process_id : String?
+  tty : Bool?
+  stream_stdin : Bool?
+  stream_stdout_stderr : Bool?
+  output_bytes_cap : UInt64?
+  disable_output_cap : Bool?
+  disable_timeout : Bool?
+  timeout_ms : Int64?
+  cwd : String?
+  env : Map[String, String?]?
+  size : AppCommandExecTerminalSize?
+  sandbox_policy : AppSandboxPolicy?
+} derive(@debug.Debug)
+pub impl ToJson for AppCommandExecParams
+
+pub(all) struct AppCommandExecProcessParams {
+  process_id : String
+} derive(@debug.Debug)
+pub impl ToJson for AppCommandExecProcessParams
+
+pub(all) struct AppCommandExecResizeParams {
+  process_id : String
+  size : AppCommandExecTerminalSize
+} derive(@debug.Debug)
+pub impl ToJson for AppCommandExecResizeParams
+
+pub struct AppCommandExecResizeResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub struct AppCommandExecResponse {
+  exit_code : Int
+  stdout : String
+  stderr : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppCommandExecResponse
+
+pub(all) struct AppCommandExecTerminalSize {
+  rows : UInt16
+  cols : UInt16
+} derive(@debug.Debug)
+pub impl ToJson for AppCommandExecTerminalSize
+
+pub struct AppCommandExecTerminateResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub(all) struct AppCommandExecWriteParams {
+  process_id : String
+  delta_base64 : String?
+  close_stdin : Bool?
+} derive(@debug.Debug)
+pub impl ToJson for AppCommandExecWriteParams
+
+pub struct AppCommandExecWriteResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub(all) enum AppCommandExecutionApprovalDecision {
+  AppCommandAccept
+  AppCommandAcceptForSession
+  AppCommandDecline
+  AppCommandCancel
+  AppCommandAcceptWithExecpolicyAmendment(ArrayView[String])
+  AppCommandApplyNetworkPolicyAmendment(AppNetworkPolicyAmendment)
+} derive(@debug.Debug)
+pub impl ToJson for AppCommandExecutionApprovalDecision
+
+pub(all) struct AppCommandExecutionApprovalRequest {
+  thread_id : String
+  turn_id : String
+  item_id : String
+  started_at_ms : Int64
+  approval_id : String?
+  reason : String?
+  network_approval_context : AppNetworkApprovalContext?
+  command : String?
+  cwd : String?
+  command_actions : ArrayView[AppCommandAction]?
+  proposed_execpolicy_amendment : ArrayView[String]?
+  proposed_network_policy_amendments : ArrayView[AppNetworkPolicyAmendment]?
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppCommandExecutionApprovalRequest
+
+pub(all) struct AppConfigBatchWriteParams {
+  edits : Array[AppConfigEdit]
+  file_path : String?
+  expected_version : String?
+  reload_user_config : Bool?
+} derive(@debug.Debug)
+pub impl ToJson for AppConfigBatchWriteParams
+
+pub struct AppConfigBatchWriteResponse {
+  status : AppConfigWriteStatus
+  version : String
+  file_path : String
+  overridden_metadata : AppConfigOverriddenMetadata?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigBatchWriteResponse
+
+pub(all) struct AppConfigEdit {
+  key_path : String
+  value : Json
+  merge_strategy : AppMergeStrategy
+} derive(@debug.Debug)
+pub impl ToJson for AppConfigEdit
+
+pub struct AppConfigLayer {
+  name : AppConfigLayerSource
+  version : String
+  config : Json
+  disabled_reason : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigLayer
+
+pub struct AppConfigLayerMetadata {
+  name : AppConfigLayerSource
+  version : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigLayerMetadata
+
+pub enum AppConfigLayerSource {
+  AppConfigLayerMdm(domain~ : String, key~ : String)
+  AppConfigLayerSystem(file~ : String)
+  AppConfigLayerUser(file~ : String)
+  AppConfigLayerProject(dot_codex_folder~ : String)
+  AppConfigLayerSessionFlags
+  AppConfigLayerLegacyManagedConfigTomlFromFile(file~ : String)
+  AppConfigLayerLegacyManagedConfigTomlFromMdm
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigLayerSource
+
+pub struct AppConfigMcpServerReloadResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub struct AppConfigOverriddenMetadata {
+  message : String
+  overriding_layer : AppConfigLayerMetadata
+  effective_value : Json
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigOverriddenMetadata
+
+pub struct AppConfigReadParams {
+  include_layers : Bool
+  cwd : String?
+} derive(@debug.Debug)
+pub fn AppConfigReadParams::new(Bool, cwd? : String) -> Self
+pub impl ToJson for AppConfigReadParams
+
+pub struct AppConfigReadResponse {
+  config : AppConfigSnapshot
+  origins : Map[String, AppConfigLayerMetadata]
+  layers : ArrayView[AppConfigLayer]?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigReadResponse
+
+pub struct AppConfigRequirements {
+  allowed_approval_policies : ArrayView[AppApprovalPolicy]?
+  allowed_sandbox_modes : ArrayView[SandboxMode]?
+  allowed_web_search_modes : ArrayView[AppWebSearchMode]?
+  allow_managed_hooks_only : Bool?
+  feature_requirements : Map[String, Bool]?
+  enforce_residency : AppResidencyRequirement?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigRequirements
+
+pub struct AppConfigRequirementsReadResponse {
+  requirements : AppConfigRequirements?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigRequirementsReadResponse
+
+pub struct AppConfigSnapshot {
+  model : String?
+  review_model : String?
+  model_context_window : Int64?
+  model_auto_compact_token_limit : Int64?
+  model_provider : String?
+  approval_policy : AppApprovalPolicy?
+  approvals_reviewer : AppApprovalsReviewer?
+  sandbox_mode : SandboxMode?
+  sandbox_workspace_write : AppSandboxWorkspaceWrite?
+  forced_chatgpt_workspace_id : String?
+  forced_login_method : AppForcedLoginMethod?
+  web_search : AppWebSearchMode?
+  tools : AppConfigToolsV2?
+  profile : String?
+  profiles : Map[String, AppProfileV2]
+  instructions : String?
+  developer_instructions : String?
+  compact_prompt : String?
+  model_reasoning_effort : AppReasoningEffort?
+  model_reasoning_summary : AppReasoningSummary?
+  model_verbosity : AppModelVerbosity?
+  service_tier : String?
+  analytics : AppAnalyticsConfig?
+  apps : AppAppsConfig?
+  additional : Map[String, Json]
+  // private fields
+} derive(@debug.Debug)
+pub impl ToJson for AppConfigSnapshot
+pub impl @json.FromJson for AppConfigSnapshot
+
+pub struct AppConfigToolsV2 {
+  web_search : AppWebSearchToolConfig?
+  view_image : Bool?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigToolsV2
+
+pub(all) struct AppConfigValueWriteParams {
+  key_path : String
+  value : Json
+  merge_strategy : AppMergeStrategy
+  file_path : String?
+  expected_version : String?
+} derive(@debug.Debug)
+pub impl ToJson for AppConfigValueWriteParams
+
+pub struct AppConfigValueWriteResponse {
+  status : AppConfigWriteStatus
+  version : String
+  file_path : String
+  overridden_metadata : AppConfigOverriddenMetadata?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigValueWriteResponse
+
+pub enum AppConfigWriteStatus {
+  AppConfigWriteOk
+  AppConfigWriteOkOverridden
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConfigWriteStatus
+
+pub struct AppConnectorConfig {
+  enabled : Bool
+  destructive_enabled : Bool?
+  open_world_enabled : Bool?
+  default_tools_approval_mode : AppToolApproval?
+  default_tools_enabled : Bool?
+  tools : AppToolsConfig?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConnectorConfig
+
+pub struct AppConversationGitInfo {
+  sha : String?
+  branch : String?
+  origin_url : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppConversationGitInfo
+
+pub struct AppCreditsSnapshot {
+  has_credits : Bool
+  unlimited : Bool
+  balance : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppCreditsSnapshot
+
+pub(all) struct AppCursorLimitParams {
+  cursor : String?
+  limit : UInt?
+} derive(@debug.Debug)
+pub impl ToJson for AppCursorLimitParams
+
+pub(all) enum AppDynamicToolCallOutputContentItem {
+  AppDynamicToolCallOutputText(text~ : String)
+  AppDynamicToolCallOutputImage(image_url~ : String)
+} derive(@debug.Debug)
+pub impl ToJson for AppDynamicToolCallOutputContentItem
+pub impl @json.FromJson for AppDynamicToolCallOutputContentItem
+
+pub(all) struct AppDynamicToolCallRequest {
+  thread_id : String
+  turn_id : String
+  call_id : String
+  tool_namespace : String?
+  tool : String
+  arguments : Json
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppDynamicToolCallRequest
+
+pub struct AppEmptyResponse {
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppEmptyResponse
+
+pub struct AppExperimentalFeature {
+  name : String
+  stage : AppExperimentalFeatureStage
+  display_name : String?
+  description : String?
+  announcement : String?
+  enabled : Bool
+  default_enabled : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppExperimentalFeature
+
+pub(all) struct AppExperimentalFeatureEnablementSetParams {
+  enablement : Map[String, Bool]
+} derive(@debug.Debug)
+pub impl ToJson for AppExperimentalFeatureEnablementSetParams
+
+pub struct AppExperimentalFeatureEnablementSetResponse {
+  enablement : Map[String, Bool]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppExperimentalFeatureEnablementSetResponse
+
+pub struct AppExperimentalFeatureListResponse {
+  data : ArrayView[AppExperimentalFeature]
+  next_cursor : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppExperimentalFeatureListResponse
+
+pub enum AppExperimentalFeatureStage {
+  AppFeatureBeta
+  AppFeatureUnderDevelopment
+  AppFeatureStable
+  AppFeatureDeprecated
+  AppFeatureRemoved
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppExperimentalFeatureStage
+
+pub(all) struct AppExternalAgentConfigDetectParams {
+  include_home : Bool?
+  cwds : Array[String]?
+} derive(@debug.Debug)
+pub impl ToJson for AppExternalAgentConfigDetectParams
+
+pub struct AppExternalAgentConfigDetectResponse {
+  items : ArrayView[AppExternalAgentConfigMigrationItem]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppExternalAgentConfigDetectResponse
+
+pub(all) struct AppExternalAgentConfigImportParams {
+  migration_items : Array[AppExternalAgentConfigMigrationItem]
+} derive(@debug.Debug)
+pub impl ToJson for AppExternalAgentConfigImportParams
+
+pub struct AppExternalAgentConfigImportResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub(all) struct AppExternalAgentConfigMigrationItem {
+  item_type : AppExternalAgentConfigMigrationItemType
+  description : String
+  cwd : String?
+  details : AppMigrationDetails?
+} derive(@debug.Debug)
+pub impl ToJson for AppExternalAgentConfigMigrationItem
+pub impl @json.FromJson for AppExternalAgentConfigMigrationItem
+
+pub(all) enum AppExternalAgentConfigMigrationItemType {
+  AppMigrationAgentsMd
+  AppMigrationConfig
+  AppMigrationSkills
+  AppMigrationPlugins
+  AppMigrationMcpServerConfig
+  AppMigrationSubagents
+  AppMigrationHooks
+  AppMigrationCommands
+  AppMigrationSessions
+} derive(@debug.Debug)
+pub impl ToJson for AppExternalAgentConfigMigrationItemType
+pub impl @json.FromJson for AppExternalAgentConfigMigrationItemType
+
+pub(all) struct AppFeedbackUploadParams {
+  classification : String
+  reason : String?
+  thread_id : String?
+  include_logs : Bool
+  extra_log_files : Array[String]?
+  tags : Map[String, String]?
+} derive(@debug.Debug)
+pub impl ToJson for AppFeedbackUploadParams
+
+pub struct AppFeedbackUploadResponse {
+  thread_id : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFeedbackUploadResponse
+
+pub(all) enum AppFileChangeApprovalDecision {
+  AppFileChangeAccept
+  AppFileChangeAcceptForSession
+  AppFileChangeDecline
+  AppFileChangeCancel
+} derive(@debug.Debug)
+pub impl ToJson for AppFileChangeApprovalDecision
+
+pub(all) struct AppFileChangeApprovalRequest {
+  thread_id : String
+  turn_id : String
+  item_id : String
+  started_at_ms : Int64
+  reason : String?
+  grant_root : String?
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFileChangeApprovalRequest
+
+pub(all) enum AppFileSystemAccessMode {
+  AppFileSystemReadAccess
+  AppFileSystemWriteAccess
+  AppFileSystemNoAccess
+} derive(@debug.Debug)
+pub impl ToJson for AppFileSystemAccessMode
+pub impl @json.FromJson for AppFileSystemAccessMode
+
+pub(all) enum AppFileSystemPath {
+  AppFileSystemAbsolutePath(path~ : String)
+  AppFileSystemGlobPattern(pattern~ : String)
+  AppFileSystemSpecialPath(value~ : AppFileSystemSpecialPath)
+} derive(@debug.Debug)
+pub impl ToJson for AppFileSystemPath
+pub impl @json.FromJson for AppFileSystemPath
+
+pub(all) struct AppFileSystemSandboxEntry {
+  path : AppFileSystemPath
+  access : AppFileSystemAccessMode
+} derive(@debug.Debug)
+pub impl ToJson for AppFileSystemSandboxEntry
+pub impl @json.FromJson for AppFileSystemSandboxEntry
+
+pub(all) enum AppFileSystemSpecialPath {
+  AppFileSystemRoot
+  AppFileSystemMinimal
+  AppFileSystemProjectRoots(subpath~ : String?)
+  AppFileSystemTmpdir
+  AppFileSystemSlashTmp
+  AppFileSystemUnknown(path~ : String, subpath~ : String?)
+} derive(@debug.Debug)
+pub impl ToJson for AppFileSystemSpecialPath
+pub impl @json.FromJson for AppFileSystemSpecialPath
+
+pub enum AppForcedLoginMethod {
+  AppForcedLoginChatGPT
+  AppForcedLoginApi
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppForcedLoginMethod
+
+pub(all) struct AppFsCopyParams {
+  source_path : String
+  destination_path : String
+  recursive : Bool?
+} derive(@debug.Debug)
+pub impl ToJson for AppFsCopyParams
+
+pub struct AppFsCopyResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub(all) struct AppFsCreateDirectoryParams {
+  path : String
+  recursive : Bool?
+} derive(@debug.Debug)
+pub impl ToJson for AppFsCreateDirectoryParams
+
+pub struct AppFsCreateDirectoryResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub struct AppFsGetMetadataResponse {
+  is_directory : Bool
+  is_file : Bool
+  is_symlink : Bool
+  created_at_ms : Int64
+  modified_at_ms : Int64
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFsGetMetadataResponse
+
+pub(all) struct AppFsPathParams {
+  path : String
+} derive(@debug.Debug)
+pub impl ToJson for AppFsPathParams
+
+pub struct AppFsReadDirectoryEntry {
+  file_name : String
+  is_directory : Bool
+  is_file : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFsReadDirectoryEntry
+
+pub struct AppFsReadDirectoryResponse {
+  entries : ArrayView[AppFsReadDirectoryEntry]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFsReadDirectoryResponse
+
+pub struct AppFsReadFileResponse {
+  data_base64 : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFsReadFileResponse
+
+pub(all) struct AppFsRemoveParams {
+  path : String
+  recursive : Bool?
+  force : Bool?
+} derive(@debug.Debug)
+pub impl ToJson for AppFsRemoveParams
+
+pub struct AppFsRemoveResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub(all) struct AppFsUnwatchParams {
+  watch_id : String
+} derive(@debug.Debug)
+pub impl ToJson for AppFsUnwatchParams
+
+pub struct AppFsUnwatchResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub(all) struct AppFsWatchParams {
+  watch_id : String
+  path : String
+} derive(@debug.Debug)
+pub impl ToJson for AppFsWatchParams
+
+pub struct AppFsWatchResponse {
+  path : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFsWatchResponse
+
+pub(all) struct AppFsWriteFileParams {
+  path : String
+  data_base64 : String
+} derive(@debug.Debug)
+pub impl ToJson for AppFsWriteFileParams
+
+pub struct AppFsWriteFileResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub enum AppFuzzyFileSearchMatchType {
+  AppFuzzyFile
+  AppFuzzyDirectory
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFuzzyFileSearchMatchType
+
+pub(all) struct AppFuzzyFileSearchParams {
+  query : String
+  roots : Array[String]
+  cancellation_token : String?
+} derive(@debug.Debug)
+pub impl ToJson for AppFuzzyFileSearchParams
+
+pub struct AppFuzzyFileSearchResponse {
+  files : ArrayView[AppFuzzyFileSearchResult]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFuzzyFileSearchResponse
+
+pub struct AppFuzzyFileSearchResult {
+  root : String
+  path : String
+  match_type : AppFuzzyFileSearchMatchType
+  file_name : String
+  score : UInt
+  indices : ArrayView[UInt]?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFuzzyFileSearchResult
+
+pub(all) struct AppFuzzyFileSearchSessionEmptyResponse {
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppFuzzyFileSearchSessionEmptyResponse
+
+pub(all) struct AppFuzzyFileSearchSessionStartParams {
+  session_id : String
+  roots : Array[String]
+} derive(@debug.Debug)
+pub impl ToJson for AppFuzzyFileSearchSessionStartParams
+
+pub(all) struct AppFuzzyFileSearchSessionStopParams {
+  session_id : String
+} derive(@debug.Debug)
+pub impl ToJson for AppFuzzyFileSearchSessionStopParams
+
+pub(all) struct AppFuzzyFileSearchSessionUpdateParams {
+  session_id : String
+  query : String
+} derive(@debug.Debug)
+pub impl ToJson for AppFuzzyFileSearchSessionUpdateParams
+
+pub(all) struct AppGrantedPermissionProfile {
+  network : AppAdditionalNetworkPermissions?
+  file_system : AppAdditionalFileSystemPermissions?
+} derive(@debug.Debug)
+pub impl ToJson for AppGrantedPermissionProfile
+pub impl @json.FromJson for AppGrantedPermissionProfile
+
+pub(all) struct AppGuardianApprovalReview {
+  status : AppGuardianApprovalReviewStatus
+  risk_level : AppGuardianRiskLevel?
+  user_authorization : AppGuardianUserAuthorization?
+  rationale : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppGuardianApprovalReview
+
+pub(all) enum AppGuardianApprovalReviewAction {
+  AppGuardianCommandAction(source~ : AppGuardianCommandSource, command~ : String, cwd~ : String)
+  AppGuardianExecveAction(source~ : AppGuardianCommandSource, program~ : String, argv~ : ArrayView[String], cwd~ : String)
+  AppGuardianApplyPatchAction(cwd~ : String, files~ : ArrayView[String])
+  AppGuardianNetworkAccessAction(target~ : String, host~ : String, protocol~ : AppNetworkApprovalProtocol, port~ : UInt)
+  AppGuardianMcpToolCallAction(server~ : String, tool_name~ : String, connector_id~ : String?, connector_name~ : String?, tool_title~ : String?)
+  AppGuardianRequestPermissionsAction(reason~ : String?, permissions~ : AppRequestPermissionProfile)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppGuardianApprovalReviewAction
+
+pub(all) enum AppGuardianApprovalReviewStatus {
+  AppGuardianReviewInProgress
+  AppGuardianReviewApproved
+  AppGuardianReviewDenied
+  AppGuardianReviewTimedOut
+  AppGuardianReviewAborted
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppGuardianApprovalReviewStatus
+
+pub(all) enum AppGuardianCommandSource {
+  AppGuardianCommandSourceShell
+  AppGuardianCommandSourceUnifiedExec
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppGuardianCommandSource
+
+pub(all) enum AppGuardianRiskLevel {
+  AppGuardianRiskLow
+  AppGuardianRiskMedium
+  AppGuardianRiskHigh
+  AppGuardianRiskCritical
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppGuardianRiskLevel
+
+pub(all) enum AppGuardianUserAuthorization {
+  AppGuardianUserAuthorizationUnknown
+  AppGuardianUserAuthorizationLow
+  AppGuardianUserAuthorizationMedium
+  AppGuardianUserAuthorizationHigh
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppGuardianUserAuthorization
+
+pub struct AppHookErrorInfo {
+  path : String
+  message : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookErrorInfo
+
+pub enum AppHookEventName {
+  AppHookPreToolUse
+  AppHookPermissionRequest
+  AppHookPostToolUse
+  AppHookPreCompact
+  AppHookPostCompact
+  AppHookSessionStart
+  AppHookUserPromptSubmit
+  AppHookStop
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookEventName
+
+pub(all) enum AppHookExecutionMode {
+  AppHookSyncExecution
+  AppHookAsyncExecution
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookExecutionMode
+
+pub enum AppHookHandlerType {
+  AppHookCommandHandler
+  AppHookPromptHandler
+  AppHookAgentHandler
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookHandlerType
+
+pub struct AppHookMetadata {
+  key : String
+  event_name : AppHookEventName
+  handler_type : AppHookHandlerType
+  matcher : String?
+  command : String?
+  timeout_sec : UInt64
+  status_message : String?
+  source_path : String
+  source : AppHookSource
+  plugin_id : String?
+  display_order : Int64
+  enabled : Bool
+  is_managed : Bool
+  current_hash : String
+  trust_status : AppHookTrustStatus
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookMetadata
+
+pub(all) struct AppHookOutputEntry {
+  kind : AppHookOutputEntryKind
+  text : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookOutputEntry
+
+pub(all) enum AppHookOutputEntryKind {
+  AppHookOutputWarning
+  AppHookOutputStop
+  AppHookOutputFeedback
+  AppHookOutputContext
+  AppHookOutputError
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookOutputEntryKind
+
+pub struct AppHookPromptFragment {
+  text : String
+  hook_run_id : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookPromptFragment
+
+pub(all) enum AppHookRunStatus {
+  AppHookRunning
+  AppHookCompleted
+  AppHookFailed
+  AppHookBlocked
+  AppHookStopped
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookRunStatus
+
+pub(all) struct AppHookRunSummary {
+  id : String
+  event_name : AppHookEventName
+  handler_type : AppHookHandlerType
+  execution_mode : AppHookExecutionMode
+  scope : AppHookScope
+  source_path : String
+  source : AppHookSource
+  display_order : Int64
+  status : AppHookRunStatus
+  status_message : String?
+  started_at : Int64
+  completed_at : Int64?
+  duration_ms : Int64?
+  entries : ArrayView[AppHookOutputEntry]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookRunSummary
+
+pub(all) enum AppHookScope {
+  AppHookThreadScope
+  AppHookTurnScope
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookScope
+
+pub enum AppHookSource {
+  AppHookSystemSource
+  AppHookUserSource
+  AppHookProjectSource
+  AppHookMdmSource
+  AppHookSessionFlagsSource
+  AppHookPluginSource
+  AppHookCloudRequirementsSource
+  AppHookLegacyManagedConfigFileSource
+  AppHookLegacyManagedConfigMdmSource
+  AppHookUnknownSource
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookSource
+
+pub enum AppHookTrustStatus {
+  AppHookManagedTrust
+  AppHookUntrusted
+  AppHookTrusted
+  AppHookModified
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHookTrustStatus
+
+pub struct AppHooksListEntry {
+  cwd : String
+  hooks : ArrayView[AppHookMetadata]
+  warnings : ArrayView[String]
+  errors : ArrayView[AppHookErrorInfo]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHooksListEntry
+
+pub(all) struct AppHooksListParams {
+  cwds : Array[String]?
+} derive(@debug.Debug)
+pub impl ToJson for AppHooksListParams
+
+pub struct AppHooksListResponse {
+  data : ArrayView[AppHooksListEntry]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppHooksListResponse
+
+pub struct AppInfo {
+  id : String
+  name : String
+  description : String?
+  is_accessible : Bool
+  is_enabled : Bool
+  plugin_display_names : ArrayView[String]
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppInfo
+
+pub(all) struct AppInitializeCapabilities {
+  experimental_api : Bool
+  opt_out_notification_methods : Array[String]?
+} derive(@debug.Debug)
+pub impl ToJson for AppInitializeCapabilities
+
+pub(all) struct AppInitializeParams {
+  client_info : AppClientInfo
+  capabilities : AppInitializeCapabilities?
+} derive(@debug.Debug)
+pub impl ToJson for AppInitializeParams
+
+pub struct AppInitializeResponse {
+  user_agent : String
+  codex_home : String
+  platform_family : String
+  platform_os : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppInitializeResponse
+
+pub(all) enum AppInputModality {
+  AppTextModality
+  AppImageModality
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppInputModality
+
+pub struct AppListParams {
+  cursor : String?
+  limit : UInt?
+  thread_id : String?
+  force_refetch : Bool?
+} derive(@debug.Debug)
+pub fn AppListParams::new(cursor? : String, limit? : UInt, thread_id? : String, force_refetch? : Bool) -> Self
+pub impl ToJson for AppListParams
+
+pub struct AppListResponse {
+  data : ArrayView[AppInfo]
+  next_cursor : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppListResponse
+
+pub(all) enum AppLoginAccountParams {
+  AppLoginApiKey(api_key~ : String)
+  AppLoginChatGPT(codex_streamlined_login~ : Bool?)
+  AppLoginChatGPTDeviceCode
+  AppLoginChatGPTAuthTokens(access_token~ : String, chatgpt_account_id~ : String, chatgpt_plan_type~ : String?)
+} derive(@debug.Debug)
+pub impl ToJson for AppLoginAccountParams
+
+pub(all) struct AppMarketplaceAddParams {
+  source : String
+  ref_name : String?
+  sparse_paths : Array[String]?
+} derive(@debug.Debug)
+pub impl ToJson for AppMarketplaceAddParams
+
+pub struct AppMarketplaceAddResponse {
+  marketplace_name : String
+  installed_root : String
+  already_added : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMarketplaceAddResponse
+
+pub struct AppMarketplaceInterface {
+  display_name : String?
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMarketplaceInterface
+
+pub struct AppMarketplaceLoadErrorInfo {
+  marketplace_path : String
+  message : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMarketplaceLoadErrorInfo
+
+pub(all) struct AppMarketplaceRemoveParams {
+  marketplace_name : String
+} derive(@debug.Debug)
+pub impl ToJson for AppMarketplaceRemoveParams
+
+pub struct AppMarketplaceRemoveResponse {
+  marketplace_name : String
+  installed_root : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMarketplaceRemoveResponse
+
+pub struct AppMarketplaceUpgradeErrorInfo {
+  marketplace_name : String
+  message : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMarketplaceUpgradeErrorInfo
+
+pub(all) struct AppMarketplaceUpgradeParams {
+  marketplace_name : String?
+} derive(@debug.Debug)
+pub impl ToJson for AppMarketplaceUpgradeParams
+
+pub struct AppMarketplaceUpgradeResponse {
+  selected_marketplaces : ArrayView[String]
+  upgraded_roots : ArrayView[String]
+  errors : ArrayView[AppMarketplaceUpgradeErrorInfo]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMarketplaceUpgradeResponse
+
+pub enum AppMcpAuthStatus {
+  AppMcpUnsupported
+  AppMcpNotLoggedIn
+  AppMcpBearerToken
+  AppMcpOAuth
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpAuthStatus
+
+pub(all) struct AppMcpElicitationBooleanSchema {
+  title : String?
+  description : String?
+  default : Bool?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationBooleanSchema
+
+pub(all) struct AppMcpElicitationConstOption {
+  const_value : String
+  title : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationConstOption
+
+pub(all) struct AppMcpElicitationNumberSchema {
+  number_type : AppMcpElicitationNumberType
+  title : String?
+  description : String?
+  minimum : Double?
+  maximum : Double?
+  default : Double?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationNumberSchema
+
+pub(all) enum AppMcpElicitationNumberType {
+  AppMcpElicitationNumberTypeNumber
+  AppMcpElicitationNumberTypeInteger
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationNumberType
+
+pub(all) enum AppMcpElicitationObjectType {
+  AppMcpElicitationObject
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationObjectType
+
+pub(all) enum AppMcpElicitationPrimitiveSchema {
+  AppMcpElicitationString(AppMcpElicitationStringSchema)
+  AppMcpElicitationNumber(AppMcpElicitationNumberSchema)
+  AppMcpElicitationBoolean(AppMcpElicitationBooleanSchema)
+  AppMcpElicitationStringEnum(AppMcpElicitationStringEnumSchema)
+  AppMcpElicitationTitledStringEnum(AppMcpElicitationTitledStringEnumSchema)
+  AppMcpElicitationUntitledMultiSelect(AppMcpElicitationUntitledMultiSelectSchema)
+  AppMcpElicitationTitledMultiSelect(AppMcpElicitationTitledMultiSelectSchema)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationPrimitiveSchema
+
+pub(all) struct AppMcpElicitationSchema {
+  schema_uri : String?
+  object_type : AppMcpElicitationObjectType
+  properties : Map[String, AppMcpElicitationPrimitiveSchema]
+  required : ArrayView[String]?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationSchema
+
+pub(all) struct AppMcpElicitationStringEnumSchema {
+  title : String?
+  description : String?
+  enum_values : ArrayView[String]
+  enum_names : ArrayView[String]?
+  default : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationStringEnumSchema
+
+pub(all) enum AppMcpElicitationStringFormat {
+  AppMcpElicitationEmailFormat
+  AppMcpElicitationUriFormat
+  AppMcpElicitationDateFormat
+  AppMcpElicitationDateTimeFormat
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationStringFormat
+
+pub(all) struct AppMcpElicitationStringSchema {
+  title : String?
+  description : String?
+  min_length : UInt?
+  max_length : UInt?
+  format : AppMcpElicitationStringFormat?
+  default : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationStringSchema
+
+pub(all) struct AppMcpElicitationTitledEnumItems {
+  any_of : ArrayView[AppMcpElicitationConstOption]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationTitledEnumItems
+
+pub(all) struct AppMcpElicitationTitledMultiSelectSchema {
+  title : String?
+  description : String?
+  min_items : UInt64?
+  max_items : UInt64?
+  items : AppMcpElicitationTitledEnumItems
+  default : ArrayView[String]?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationTitledMultiSelectSchema
+
+pub(all) struct AppMcpElicitationTitledStringEnumSchema {
+  title : String?
+  description : String?
+  one_of : ArrayView[AppMcpElicitationConstOption]
+  default : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationTitledStringEnumSchema
+
+pub(all) struct AppMcpElicitationUntitledEnumItems {
+  enum_values : ArrayView[String]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationUntitledEnumItems
+
+pub(all) struct AppMcpElicitationUntitledMultiSelectSchema {
+  title : String?
+  description : String?
+  min_items : UInt64?
+  max_items : UInt64?
+  items : AppMcpElicitationUntitledEnumItems
+  default : ArrayView[String]?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpElicitationUntitledMultiSelectSchema
+
+pub struct AppMcpResource {
+  annotations : Json?
+  description : String?
+  mime_type : String?
+  name : String
+  size : Int64?
+  title : String?
+  uri : String
+  icons : ArrayView[Json]?
+  meta : Json?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpResource
+
+pub enum AppMcpResourceContent {
+  AppMcpTextResourceContent(uri~ : String, mime_type~ : String?, text~ : String, meta~ : Json?)
+  AppMcpBlobResourceContent(uri~ : String, mime_type~ : String?, blob~ : String, meta~ : Json?)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpResourceContent
+
+pub(all) struct AppMcpResourceReadParams {
+  thread_id : String?
+  server : String
+  uri : String
+} derive(@debug.Debug)
+pub impl ToJson for AppMcpResourceReadParams
+
+pub struct AppMcpResourceTemplate {
+  annotations : Json?
+  uri_template : String
+  name : String
+  title : String?
+  description : String?
+  mime_type : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpResourceTemplate
+
+pub(all) enum AppMcpServerElicitationAction {
+  AppMcpElicitationAccept
+  AppMcpElicitationDecline
+  AppMcpElicitationCancel
+} derive(@debug.Debug)
+pub impl ToJson for AppMcpServerElicitationAction
+
+pub(all) enum AppMcpServerElicitationContent {
+  AppMcpElicitationForm(meta~ : Json?, message~ : String, requested_schema~ : AppMcpElicitationSchema)
+  AppMcpElicitationUrl(meta~ : Json?, message~ : String, url~ : String, elicitation_id~ : String)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpServerElicitationContent
+
+pub(all) struct AppMcpServerElicitationRequest {
+  thread_id : String
+  turn_id : String?
+  server_name : String
+  elicitation : AppMcpServerElicitationContent
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpServerElicitationRequest
+
+pub(all) struct AppMcpServerOauthLoginParams {
+  name : String
+  scopes : Array[String]?
+  timeout_secs : Int64?
+} derive(@debug.Debug)
+pub impl ToJson for AppMcpServerOauthLoginParams
+
+pub struct AppMcpServerOauthLoginResponse {
+  authorization_url : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpServerOauthLoginResponse
+
+pub struct AppMcpServerResourceReadResponse {
+  contents : ArrayView[AppMcpResourceContent]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpServerResourceReadResponse
+
+pub enum AppMcpServerStartupState {
+  AppMcpServerStarting
+  AppMcpServerReady
+  AppMcpServerFailed
+  AppMcpServerCancelled
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpServerStartupState
+
+pub struct AppMcpServerStatus {
+  name : String
+  tools : Map[String, AppMcpTool]
+  resources : ArrayView[AppMcpResource]
+  resource_templates : ArrayView[AppMcpResourceTemplate]
+  auth_status : AppMcpAuthStatus
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpServerStatus
+
+pub(all) enum AppMcpServerStatusDetail {
+  AppMcpServerStatusFull
+  AppMcpServerStatusToolsAndAuthOnly
+} derive(@debug.Debug)
+pub impl ToJson for AppMcpServerStatusDetail
+
+pub(all) struct AppMcpServerStatusListParams {
+  cursor : String?
+  limit : UInt?
+  detail : AppMcpServerStatusDetail?
+} derive(@debug.Debug)
+pub impl ToJson for AppMcpServerStatusListParams
+
+pub struct AppMcpServerStatusListResponse {
+  data : ArrayView[AppMcpServerStatus]
+  next_cursor : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpServerStatusListResponse
+
+pub(all) struct AppMcpServerToolCallParams {
+  thread_id : String
+  server : String
+  tool : String
+  arguments : Json?
+  meta : Json?
+} derive(@debug.Debug)
+pub impl ToJson for AppMcpServerToolCallParams
+
+pub struct AppMcpServerToolCallResponse {
+  content : ArrayView[Json]
+  structured_content : Json?
+  is_error : Bool?
+  meta : Json?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpServerToolCallResponse
+
+pub struct AppMcpTool {
+  name : String
+  title : String?
+  description : String?
+  input_schema : Json
+  output_schema : Json?
+  annotations : Json?
+  icons : ArrayView[Json]?
+  meta : Json?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMcpTool
+
+pub struct AppMemoryCitation {
+  entries : ArrayView[AppMemoryCitationEntry]
+  thread_ids : ArrayView[String]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMemoryCitation
+
+pub struct AppMemoryCitationEntry {
+  path : String
+  line_start : UInt
+  line_end : UInt
+  note : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMemoryCitationEntry
+
+pub(all) struct AppMemoryResetResponse {
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMemoryResetResponse
+
+pub(all) enum AppMergeStrategy {
+  AppMergeReplace
+  AppMergeUpsert
+} derive(@debug.Debug)
+pub impl ToJson for AppMergeStrategy
+
+pub enum AppMessagePhase {
+  AppMessageCommentary
+  AppMessageFinalAnswer
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMessagePhase
+
+pub(all) struct AppMigrationDetails {
+  plugins : ArrayView[AppPluginsMigration]
+  sessions : ArrayView[AppSessionMigration]
+  mcp_servers : ArrayView[AppNamedMigration]
+  hooks : ArrayView[AppNamedMigration]
+  subagents : ArrayView[AppNamedMigration]
+  commands : ArrayView[AppNamedMigration]
+} derive(@debug.Debug)
+pub impl ToJson for AppMigrationDetails
+pub impl @json.FromJson for AppMigrationDetails
+
+pub(all) struct AppMockExperimentalMethodParams {
+  value : String?
+} derive(@debug.Debug)
+pub impl ToJson for AppMockExperimentalMethodParams
+
+pub(all) struct AppMockExperimentalMethodResponse {
+  echoed : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMockExperimentalMethodResponse
+
+pub struct AppModel {
+  id : String
+  model : String
+  upgrade : String?
+  upgrade_info : AppModelUpgradeInfo?
+  availability_nux : AppModelAvailabilityNux?
+  display_name : String
+  description : String
+  hidden : Bool
+  supported_reasoning_efforts : ArrayView[AppReasoningEffortOption]
+  default_reasoning_effort : AppReasoningEffort
+  input_modalities : ArrayView[AppInputModality]
+  supports_personality : Bool
+  additional_speed_tiers : ArrayView[String]
+  service_tiers : ArrayView[AppModelServiceTier]
+  is_default : Bool
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppModel
+
+pub struct AppModelAvailabilityNux {
+  message : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppModelAvailabilityNux
+
+pub struct AppModelListParams {
+  cursor : String?
+  limit : UInt?
+  include_hidden : Bool?
+} derive(@debug.Debug)
+pub fn AppModelListParams::new(cursor? : String, limit? : UInt, include_hidden? : Bool) -> Self
+pub impl ToJson for AppModelListParams
+
+pub struct AppModelListResponse {
+  data : ArrayView[AppModel]
+  next_cursor : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppModelListResponse
+
+pub struct AppModelProviderCapabilitiesReadResponse {
+  namespace_tools : Bool
+  image_generation : Bool
+  web_search : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppModelProviderCapabilitiesReadResponse
+
+pub(all) enum AppModelRerouteReason {
+  AppModelRerouteHighRiskCyberActivity
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppModelRerouteReason
+
+pub struct AppModelServiceTier {
+  id : String
+  name : String
+  description : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppModelServiceTier
+
+pub struct AppModelUpgradeInfo {
+  model : String
+  upgrade_copy : String?
+  model_link : String?
+  migration_markdown : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppModelUpgradeInfo
+
+pub enum AppModelVerbosity {
+  AppVerbosityLow
+  AppVerbosityMedium
+  AppVerbosityHigh
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppModelVerbosity
+
+pub(all) enum AppModelVerification {
+  AppModelVerificationTrustedAccessForCyber
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppModelVerification
+
+pub(all) struct AppNamedMigration {
+  name : String
+} derive(@debug.Debug)
+pub impl ToJson for AppNamedMigration
+pub impl @json.FromJson for AppNamedMigration
+
+pub(all) enum AppNetworkAccess {
+  AppNetworkRestricted
+  AppNetworkEnabled
+} derive(@debug.Debug)
+pub impl ToJson for AppNetworkAccess
+pub impl @json.FromJson for AppNetworkAccess
+
+pub struct AppNetworkApprovalContext {
+  host : String
+  protocol : AppNetworkApprovalProtocol
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppNetworkApprovalContext
+
+pub enum AppNetworkApprovalProtocol {
+  AppNetworkApprovalHttp
+  AppNetworkApprovalHttps
+  AppNetworkApprovalSocks5Tcp
+  AppNetworkApprovalSocks5Udp
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppNetworkApprovalProtocol
+
+pub(all) struct AppNetworkPolicyAmendment {
+  host : String
+  action : AppNetworkPolicyRuleAction
+} derive(@debug.Debug)
+pub impl ToJson for AppNetworkPolicyAmendment
+pub impl @json.FromJson for AppNetworkPolicyAmendment
+
+pub(all) enum AppNetworkPolicyRuleAction {
+  AppNetworkPolicyAllow
+  AppNetworkPolicyDeny
+} derive(@debug.Debug)
+pub impl ToJson for AppNetworkPolicyRuleAction
+pub impl @json.FromJson for AppNetworkPolicyRuleAction
+
+pub enum AppNonSteerableTurnKind {
+  AppNonSteerableReview
+  AppNonSteerableCompact
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppNonSteerableTurnKind
+
+pub(all) enum AppNullableInt64 {
+  AppNullableInt64Null
+  AppNullableInt64Value(Int64)
+} derive(@debug.Debug)
+pub impl ToJson for AppNullableInt64
+
+pub(all) enum AppNullableString {
+  AppNullableStringNull
+  AppNullableStringValue(String)
+} derive(@debug.Debug)
+pub impl ToJson for AppNullableString
+
+pub enum AppOutputStream {
+  AppStdout
+  AppStderr
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppOutputStream
+
+pub(all) enum AppPermissionGrantScope {
+  AppPermissionGrantTurn
+  AppPermissionGrantSession
+} derive(@debug.Debug)
+pub impl ToJson for AppPermissionGrantScope
+pub impl @json.FromJson for AppPermissionGrantScope
+
+pub(all) struct AppPermissionsRequestApprovalRequest {
+  thread_id : String
+  turn_id : String
+  item_id : String
+  started_at_ms : Int64
+  cwd : String
+  reason : String?
+  permissions : AppRequestPermissionProfile
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPermissionsRequestApprovalRequest
+
+pub(all) enum AppPersonality {
+  AppNoPersonality
+  AppFriendlyPersonality
+  AppPragmaticPersonality
+} derive(@debug.Debug)
+pub impl ToJson for AppPersonality
+
+pub enum AppPlanType {
+  AppPlanFree
+  AppPlanGo
+  AppPlanPlus
+  AppPlanPro
+  AppPlanProlite
+  AppPlanTeam
+  AppPlanSelfServeBusinessUsageBased
+  AppPlanBusiness
+  AppPlanEnterpriseCbpUsageBased
+  AppPlanEnterprise
+  AppPlanEdu
+  AppPlanUnknown
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPlanType
+
+pub enum AppPluginAuthPolicy {
+  AppPluginAuthOnInstall
+  AppPluginAuthOnUse
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPluginAuthPolicy
+
+pub struct AppPluginDetail {
+  marketplace_name : String
+  marketplace_path : String?
+  summary : AppPluginSummary
+  description : String?
+  skills : ArrayView[AppSkillSummary]
+  apps : ArrayView[AppSummary]
+  mcp_servers : ArrayView[String]
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPluginDetail
+
+pub(all) struct AppPluginInstallParams {
+  marketplace_path : String?
+  remote_marketplace_name : String?
+  plugin_name : String
+} derive(@debug.Debug)
+pub impl ToJson for AppPluginInstallParams
+
+pub enum AppPluginInstallPolicy {
+  AppPluginInstallNotAvailable
+  AppPluginInstallAvailable
+  AppPluginInstallInstalledByDefault
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPluginInstallPolicy
+
+pub struct AppPluginInstallResponse {
+  auth_policy : AppPluginAuthPolicy
+  apps_needing_auth : ArrayView[AppSummary]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPluginInstallResponse
+
+pub struct AppPluginInterface {
+  display_name : String?
+  short_description : String?
+  long_description : String?
+  developer_name : String?
+  category : String?
+  capabilities : ArrayView[String]
+  website_url : String?
+  privacy_policy_url : String?
+  terms_of_service_url : String?
+  default_prompt : ArrayView[String]?
+  brand_color : String?
+  composer_icon : String?
+  composer_icon_url : String?
+  logo : String?
+  logo_url : String?
+  screenshots : ArrayView[String]
+  screenshot_urls : ArrayView[String]
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPluginInterface
+
+pub(all) enum AppPluginListMarketplaceKind {
+  AppPluginMarketplaceLocal
+  AppPluginMarketplaceWorkspaceDirectory
+  AppPluginMarketplaceSharedWithMe
+} derive(@debug.Debug)
+pub impl ToJson for AppPluginListMarketplaceKind
+
+pub(all) struct AppPluginListParams {
+  cwds : Array[String]?
+  marketplace_kinds : Array[AppPluginListMarketplaceKind]?
+} derive(@debug.Debug)
+pub impl ToJson for AppPluginListParams
+
+pub struct AppPluginListResponse {
+  marketplaces : ArrayView[AppPluginMarketplaceEntry]
+  marketplace_load_errors : ArrayView[AppMarketplaceLoadErrorInfo]
+  featured_plugin_ids : ArrayView[String]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPluginListResponse
+
+pub struct AppPluginMarketplaceEntry {
+  name : String
+  path : String?
+  interface : AppMarketplaceInterface?
+  plugins : ArrayView[AppPluginSummary]
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPluginMarketplaceEntry
+
+pub(all) struct AppPluginReadParams {
+  marketplace_path : String?
+  remote_marketplace_name : String?
+  plugin_name : String
+} derive(@debug.Debug)
+pub impl ToJson for AppPluginReadParams
+
+pub struct AppPluginReadResponse {
+  plugin : AppPluginDetail
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPluginReadResponse
+
+pub enum AppPluginSource {
+  AppPluginSourceLocal(path~ : String)
+  AppPluginSourceGit(url~ : String, path~ : String?, ref_name~ : String?, sha~ : String?)
+  AppPluginSourceRemote
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPluginSource
+
+pub struct AppPluginSummary {
+  id : String
+  name : String
+  source : AppPluginSource
+  installed : Bool
+  enabled : Bool
+  install_policy : AppPluginInstallPolicy
+  auth_policy : AppPluginAuthPolicy
+  interface : AppPluginInterface?
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppPluginSummary
+
+pub(all) struct AppPluginUninstallParams {
+  plugin_id : String
+} derive(@debug.Debug)
+pub impl ToJson for AppPluginUninstallParams
+
+pub struct AppPluginUninstallResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub(all) struct AppPluginsMigration {
+  marketplace_name : String
+  plugin_names : ArrayView[String]
+} derive(@debug.Debug)
+pub impl ToJson for AppPluginsMigration
+pub impl @json.FromJson for AppPluginsMigration
+
+pub struct AppProfileV2 {
+  model : String?
+  model_provider : String?
+  approval_policy : AppApprovalPolicy?
+  approvals_reviewer : AppApprovalsReviewer?
+  service_tier : String?
+  model_reasoning_effort : AppReasoningEffort?
+  model_reasoning_summary : AppReasoningSummary?
+  model_verbosity : AppModelVerbosity?
+  web_search : AppWebSearchMode?
+  tools : AppConfigToolsV2?
+  chatgpt_base_url : String?
+  additional : Map[String, Json]
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppProfileV2
+
+pub enum AppRateLimitReachedType {
+  AppRateLimitReached
+  AppWorkspaceOwnerCreditsDepleted
+  AppWorkspaceMemberCreditsDepleted
+  AppWorkspaceOwnerUsageLimitReached
+  AppWorkspaceMemberUsageLimitReached
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppRateLimitReachedType
+
+pub struct AppRateLimitSnapshot {
+  limit_id : String?
+  limit_name : String?
+  primary : AppRateLimitWindow?
+  secondary : AppRateLimitWindow?
+  credits : AppCreditsSnapshot?
+  plan_type : AppPlanType?
+  rate_limit_reached_type : AppRateLimitReachedType?
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppRateLimitSnapshot
+
+pub struct AppRateLimitWindow {
+  used_percent : Int
+  window_duration_mins : Int64?
+  resets_at : Int64?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppRateLimitWindow
+
+pub(all) enum AppRealtimeConversationVersion {
+  AppRealtimeConversationV1
+  AppRealtimeConversationV2
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppRealtimeConversationVersion
+
+pub(all) enum AppRealtimeOutputModality {
+  AppRealtimeText
+  AppRealtimeAudio
+} derive(@debug.Debug)
+pub impl ToJson for AppRealtimeOutputModality
+
+pub(all) enum AppRealtimeVoice {
+  AppRealtimeVoiceAlloy
+  AppRealtimeVoiceArbor
+  AppRealtimeVoiceAsh
+  AppRealtimeVoiceBallad
+  AppRealtimeVoiceBreeze
+  AppRealtimeVoiceCedar
+  AppRealtimeVoiceCoral
+  AppRealtimeVoiceCove
+  AppRealtimeVoiceEcho
+  AppRealtimeVoiceEmber
+  AppRealtimeVoiceJuniper
+  AppRealtimeVoiceMaple
+  AppRealtimeVoiceMarin
+  AppRealtimeVoiceSage
+  AppRealtimeVoiceShimmer
+  AppRealtimeVoiceSol
+  AppRealtimeVoiceSpruce
+  AppRealtimeVoiceVale
+  AppRealtimeVoiceVerse
+} derive(@debug.Debug)
+pub impl ToJson for AppRealtimeVoice
+pub impl @json.FromJson for AppRealtimeVoice
+
+pub(all) struct AppRealtimeVoicesList {
+  v1 : ArrayView[AppRealtimeVoice]
+  v2 : ArrayView[AppRealtimeVoice]
+  default_v1 : AppRealtimeVoice
+  default_v2 : AppRealtimeVoice
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppRealtimeVoicesList
+
+pub(all) enum AppReasoningEffort {
+  AppEffortNone
+  AppEffortMinimal
+  AppEffortLow
+  AppEffortMedium
+  AppEffortHigh
+  AppEffortXhigh
+} derive(@debug.Debug)
+pub impl ToJson for AppReasoningEffort
+pub impl @json.FromJson for AppReasoningEffort
+
+pub struct AppReasoningEffortOption {
+  reasoning_effort : AppReasoningEffort
+  description : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppReasoningEffortOption
+
+pub(all) enum AppReasoningSummary {
+  AppSummaryAuto
+  AppSummaryConcise
+  AppSummaryDetailed
+  AppSummaryNone
+} derive(@debug.Debug)
+pub impl ToJson for AppReasoningSummary
+pub impl @json.FromJson for AppReasoningSummary
+
+pub(all) enum AppRemoteControlConnectionStatus {
+  AppRemoteControlDisabled
+  AppRemoteControlConnecting
+  AppRemoteControlConnected
+  AppRemoteControlErrored
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppRemoteControlConnectionStatus
+
+pub(all) enum AppRequestId {
+  StringId(String)
+  IntId(Int64)
+} derive(Eq, @debug.Debug)
+pub impl ToJson for AppRequestId
+pub impl @json.FromJson for AppRequestId
+
+pub(all) struct AppRequestPermissionProfile {
+  network : AppAdditionalNetworkPermissions?
+  file_system : AppAdditionalFileSystemPermissions?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppRequestPermissionProfile
+
+pub enum AppResidencyRequirement {
+  AppResidencyUs
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResidencyRequirement
+
+pub(all) enum AppResponseContentItem {
+  AppResponseInputText(text~ : String)
+  AppResponseInputImage(image_url~ : String, detail~ : AppResponseImageDetail?)
+  AppResponseOutputText(text~ : String)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseContentItem
+
+pub(all) enum AppResponseFunctionCallOutputBody {
+  AppResponseFunctionOutputText(String)
+  AppResponseFunctionOutputContentItems(ArrayView[AppResponseFunctionCallOutputContentItem])
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseFunctionCallOutputBody
+
+pub(all) enum AppResponseFunctionCallOutputContentItem {
+  AppResponseFunctionOutputInputText(text~ : String)
+  AppResponseFunctionOutputInputImage(image_url~ : String, detail~ : AppResponseImageDetail?)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseFunctionCallOutputContentItem
+
+pub(all) enum AppResponseImageDetail {
+  AppResponseImageAuto
+  AppResponseImageLow
+  AppResponseImageHigh
+  AppResponseImageOriginal
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseImageDetail
+
+pub(all) enum AppResponseItem {
+  AppResponseMessage(role~ : String, content~ : ArrayView[AppResponseContentItem], phase~ : AppResponseMessagePhase?)
+  AppResponseReasoning(summary~ : ArrayView[AppResponseReasoningSummary], content~ : ArrayView[AppResponseReasoningContent]?, encrypted_content~ : String?)
+  AppResponseLocalShellCall(call_id~ : String?, status~ : AppResponseLocalShellStatus, action~ : AppResponseLocalShellAction)
+  AppResponseFunctionCall(name~ : String, tool_namespace~ : String?, arguments~ : String, call_id~ : String)
+  AppResponseToolSearchCall(call_id~ : String?, status~ : String?, execution~ : String, arguments~ : Json)
+  AppResponseFunctionCallOutput(call_id~ : String, output~ : AppResponseFunctionCallOutputBody)
+  AppResponseCustomToolCall(status~ : String?, call_id~ : String, name~ : String, input~ : String)
+  AppResponseCustomToolCallOutput(call_id~ : String, name~ : String?, output~ : AppResponseFunctionCallOutputBody)
+  AppResponseToolSearchOutput(call_id~ : String?, status~ : String, execution~ : String, tools~ : ArrayView[Json])
+  AppResponseWebSearchCall(status~ : String?, action~ : AppResponseWebSearchAction?)
+  AppResponseImageGenerationCall(id~ : String, status~ : String, revised_prompt~ : String?, result~ : String)
+  AppResponseCompaction(encrypted_content~ : String)
+  AppResponseContextCompaction(encrypted_content~ : String?)
+  AppResponseOther
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseItem
+
+pub(all) struct AppResponseLocalShellAction {
+  command : ArrayView[String]
+  timeout_ms : UInt64?
+  working_directory : String?
+  env : Map[String, String]?
+  user : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseLocalShellAction
+
+pub(all) enum AppResponseLocalShellStatus {
+  AppResponseLocalShellCompleted
+  AppResponseLocalShellInProgress
+  AppResponseLocalShellIncomplete
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseLocalShellStatus
+
+pub(all) enum AppResponseMessagePhase {
+  AppResponseCommentary
+  AppResponseFinalAnswer
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseMessagePhase
+
+pub(all) enum AppResponseReasoningContent {
+  AppResponseReasoningText(text~ : String)
+  AppResponseReasoningPlainText(text~ : String)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseReasoningContent
+
+pub(all) struct AppResponseReasoningSummary {
+  text : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseReasoningSummary
+
+pub(all) enum AppResponseWebSearchAction {
+  AppResponseWebSearchSearch(query~ : String?, queries~ : ArrayView[String]?)
+  AppResponseWebSearchOpenPage(url~ : String?)
+  AppResponseWebSearchFindInPage(url~ : String?, pattern~ : String?)
+  AppResponseWebSearchOther
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppResponseWebSearchAction
+
+pub(all) enum AppReviewDelivery {
+  AppReviewInline
+  AppReviewDetached
+} derive(@debug.Debug)
+pub impl ToJson for AppReviewDelivery
+
+pub(all) struct AppReviewStartParams {
+  thread_id : String
+  target : AppReviewTarget
+  delivery : AppReviewDelivery?
+} derive(@debug.Debug)
+pub impl ToJson for AppReviewStartParams
+
+pub struct AppReviewStartResponse {
+  turn : AppTurn
+  review_thread_id : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppReviewStartResponse
+
+pub(all) enum AppReviewTarget {
+  AppReviewUncommittedChanges
+  AppReviewBaseBranch(branch~ : String)
+  AppReviewCommit(sha~ : String, title~ : String?)
+  AppReviewCustom(instructions~ : String)
+} derive(@debug.Debug)
+pub impl ToJson for AppReviewTarget
+
+pub struct AppRpcError {
+  code : Int64
+  message : String
+  data : Json?
+} derive(@debug.Debug)
+pub impl ToJson for AppRpcError
+pub impl @json.FromJson for AppRpcError
+
+pub(all) enum AppSandboxPolicy {
+  AppDangerFullAccess
+  AppReadOnly(network_access~ : Bool)
+  AppExternalSandbox(network_access~ : AppNetworkAccess)
+  AppWorkspaceWrite(writable_roots~ : Array[String], network_access~ : Bool, exclude_tmpdir_env_var~ : Bool, exclude_slash_tmp~ : Bool)
+} derive(@debug.Debug)
+pub impl ToJson for AppSandboxPolicy
+pub impl @json.FromJson for AppSandboxPolicy
+
+pub struct AppSandboxWorkspaceWrite {
+  writable_roots : ArrayView[String]
+  network_access : Bool
+  exclude_tmpdir_env_var : Bool
+  exclude_slash_tmp : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSandboxWorkspaceWrite
+
+pub(all) struct AppSendAddCreditsNudgeEmailParams {
+  kind : AppAddCreditsNudgeKind
+} derive(@debug.Debug)
+pub impl ToJson for AppSendAddCreditsNudgeEmailParams
+
+pub enum AppServerEvent {
+  AppThreadStarted(AppThread)
+  AppThreadStatusChanged(thread_id~ : String, status~ : AppThreadStatus)
+  AppThreadArchived(thread_id~ : String)
+  AppThreadUnarchived(thread_id~ : String)
+  AppThreadClosed(thread_id~ : String)
+  AppSkillsChanged
+  AppThreadNameUpdated(thread_id~ : String, thread_name~ : String?)
+  AppThreadGoalUpdated(thread_id~ : String, turn_id~ : String?, goal~ : AppThreadGoal)
+  AppThreadGoalCleared(thread_id~ : String)
+  AppTurnStarted(thread_id~ : String, turn~ : AppTurn)
+  AppHookStarted(thread_id~ : String, turn_id~ : String?, run~ : AppHookRunSummary)
+  AppTurnCompleted(thread_id~ : String, turn~ : AppTurn)
+  AppHookCompleted(thread_id~ : String, turn_id~ : String?, run~ : AppHookRunSummary)
+  AppTurnDiffUpdated(thread_id~ : String, turn_id~ : String, diff~ : String)
+  AppTurnPlanUpdated(thread_id~ : String, turn_id~ : String, explanation~ : String?, plan~ : ArrayView[AppTurnPlanStep])
+  AppTurnError(thread_id~ : String, turn_id~ : String, error~ : AppTurnError, will_retry~ : Bool)
+  AppItemStarted(AppThreadItemEvent)
+  AppItemGuardianApprovalReviewStarted(thread_id~ : String, turn_id~ : String, started_at_ms~ : Int64, review_id~ : String, target_item_id~ : String?, review~ : AppGuardianApprovalReview, action~ : AppGuardianApprovalReviewAction)
+  AppItemGuardianApprovalReviewCompleted(thread_id~ : String, turn_id~ : String, started_at_ms~ : Int64, completed_at_ms~ : Int64, review_id~ : String, target_item_id~ : String?, decision_source~ : AppAutoReviewDecisionSource, review~ : AppGuardianApprovalReview, action~ : AppGuardianApprovalReviewAction)
+  AppItemCompleted(AppThreadItemEvent)
+  AppRawResponseItemCompleted(thread_id~ : String, turn_id~ : String, item~ : AppResponseItem)
+  AppAgentMessageDelta(thread_id~ : String, turn_id~ : String, item_id~ : String, delta~ : String)
+  AppPlanDelta(thread_id~ : String, turn_id~ : String, item_id~ : String, delta~ : String)
+  AppCommandExecOutputDelta(process_id~ : String, stream~ : AppOutputStream, delta_base64~ : String, cap_reached~ : Bool)
+  AppCommandExecutionOutputDelta(thread_id~ : String, turn_id~ : String, item_id~ : String, delta~ : String)
+  AppTerminalInteraction(thread_id~ : String, turn_id~ : String, item_id~ : String, process_id~ : String, stdin~ : String)
+  AppFileChangeOutputDelta(thread_id~ : String, turn_id~ : String, item_id~ : String, delta~ : String)
+  AppFileChangePatchUpdated(thread_id~ : String, turn_id~ : String, item_id~ : String, changes~ : ArrayView[AppThreadFileUpdateChange])
+  AppServerRequestResolved(thread_id~ : String, request_id~ : AppRequestId)
+  AppMcpToolCallProgress(thread_id~ : String, turn_id~ : String, item_id~ : String, message~ : String)
+  AppMcpServerOauthLoginCompleted(name~ : String, success~ : Bool, error~ : String?)
+  AppMcpServerStatusUpdated(name~ : String, status~ : AppMcpServerStartupState, error~ : String?)
+  AppAccountUpdated(auth_mode~ : AppAuthMode?, plan_type~ : AppPlanType?)
+  AppAccountRateLimitsUpdated(rate_limits~ : AppRateLimitSnapshot)
+  AppAppListUpdated(data~ : ArrayView[AppInfo])
+  AppRemoteControlStatusChanged(status~ : AppRemoteControlConnectionStatus, installation_id~ : String, environment_id~ : String?)
+  AppExternalAgentConfigImportCompleted
+  AppFsChanged(watch_id~ : String, changed_paths~ : ArrayView[String])
+  AppContextCompacted(thread_id~ : String, turn_id~ : String)
+  AppFuzzyFileSearchSessionUpdated(session_id~ : String, query~ : String, files~ : ArrayView[AppFuzzyFileSearchResult])
+  AppFuzzyFileSearchSessionCompleted(session_id~ : String)
+  AppReasoningSummaryTextDelta(thread_id~ : String, turn_id~ : String, item_id~ : String, delta~ : String, summary_index~ : Int64)
+  AppReasoningSummaryPartAdded(thread_id~ : String, turn_id~ : String, item_id~ : String, summary_index~ : Int64)
+  AppReasoningTextDelta(thread_id~ : String, turn_id~ : String, item_id~ : String, delta~ : String, content_index~ : Int64)
+  AppWindowsWorldWritableWarning(sample_paths~ : ArrayView[String], extra_count~ : UInt64, failed_scan~ : Bool)
+  AppWindowsSandboxSetupCompleted(mode~ : AppWindowsSandboxSetupMode, success~ : Bool, error~ : String?)
+  AppAccountLoginCompleted(login_id~ : String?, success~ : Bool, error~ : String?)
+  AppModelRerouted(thread_id~ : String, turn_id~ : String, from_model~ : String, to_model~ : String, reason~ : AppModelRerouteReason)
+  AppModelVerification(thread_id~ : String, turn_id~ : String, verifications~ : ArrayView[AppModelVerification])
+  AppWarning(thread_id~ : String?, message~ : String)
+  AppGuardianWarning(thread_id~ : String, message~ : String)
+  AppDeprecationNotice(summary~ : String, details~ : String?)
+  AppConfigWarning(summary~ : String, details~ : String?, path~ : String?, range~ : AppTextRange?)
+  AppThreadTokenUsageUpdated(thread_id~ : String, turn_id~ : String, token_usage~ : AppThreadTokenUsage)
+  AppThreadRealtimeStarted(thread_id~ : String, realtime_session_id~ : String?, version~ : AppRealtimeConversationVersion)
+  AppThreadRealtimeItemAdded(thread_id~ : String, item~ : Json)
+  AppThreadRealtimeTranscriptDelta(thread_id~ : String, role~ : String, delta~ : String)
+  AppThreadRealtimeTranscriptDone(thread_id~ : String, role~ : String, text~ : String)
+  AppThreadRealtimeOutputAudioDelta(thread_id~ : String, audio~ : AppThreadRealtimeAudioChunk)
+  AppThreadRealtimeSdp(thread_id~ : String, sdp~ : String)
+  AppThreadRealtimeError(thread_id~ : String, message~ : String)
+  AppThreadRealtimeClosed(thread_id~ : String, reason~ : String?)
+  AppRaw(rpc_method~ : String, params~ : Json?)
+} derive(@debug.Debug)
+pub fn AppServerEvent::thread_event(Self) -> Event?
+pub impl @json.FromJson for AppServerEvent
+
+pub enum AppServerMessage {
+  Notification(AppServerEvent)
+  Request(AppServerRequest)
+  Response(id~ : AppRequestId, result~ : Json)
+  ErrorResponse(id~ : AppRequestId, error~ : AppRpcError)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppServerMessage
+
+pub struct AppServerOptions {
+  executable_path_override : String?
+  client_info : AppClientInfo?
+  capabilities : AppInitializeCapabilities?
+} derive(Default)
+pub fn AppServerOptions::new(executable_path_override? : String, client_info? : AppClientInfo, capabilities? : AppInitializeCapabilities) -> Self
+
+pub struct AppServerRequest {
+  id : AppRequestId
+  rpc_method : String
+  params : Json?
+  details : AppServerRequestDetails
+} derive(@debug.Debug)
+
+pub enum AppServerRequestDetails {
+  AppCommandExecutionApprovalRequest(AppCommandExecutionApprovalRequest)
+  AppFileChangeApprovalRequest(AppFileChangeApprovalRequest)
+  AppToolRequestUserInputRequest(AppToolRequestUserInputRequest)
+  AppDynamicToolCallRequest(AppDynamicToolCallRequest)
+  AppPermissionsRequestApprovalRequest(AppPermissionsRequestApprovalRequest)
+  AppChatgptAuthTokensRefreshRequest(AppChatgptAuthTokensRefreshRequest)
+  AppMcpServerElicitationRequest(AppMcpServerElicitationRequest)
+  AppRawRequest
+} derive(@debug.Debug)
+
+pub(all) enum AppServerResponse {
+  AppCommandExecutionApprovalResponse(decision~ : AppCommandExecutionApprovalDecision)
+  AppFileChangeApprovalResponse(decision~ : AppFileChangeApprovalDecision)
+  AppToolRequestUserInputResponse(answers~ : Map[String, AppToolRequestUserInputAnswer])
+  AppDynamicToolCallResponse(content_items~ : ArrayView[AppDynamicToolCallOutputContentItem], success~ : Bool)
+  AppPermissionsRequestApprovalResponse(permissions~ : AppGrantedPermissionProfile, scope~ : AppPermissionGrantScope, strict_auto_review~ : Bool?)
+  AppChatgptAuthTokensRefreshResponse(access_token~ : String, chatgpt_account_id~ : String, chatgpt_plan_type~ : String?)
+  AppMcpServerElicitationResponse(action~ : AppMcpServerElicitationAction, content~ : Json?, meta~ : Json?)
+  AppRawResponse(Json)
+} derive(@debug.Debug)
+pub impl ToJson for AppServerResponse
+
+pub(all) struct AppSessionMigration {
+  path : String
+  cwd : String
+  title : String?
+} derive(@debug.Debug)
+pub impl ToJson for AppSessionMigration
+pub impl @json.FromJson for AppSessionMigration
+
+pub enum AppSessionSource {
+  AppSessionCli
+  AppSessionVsCode
+  AppSessionExec
+  AppSessionAppServer
+  AppSessionCustom(String)
+  AppSessionSubAgent(AppSubAgentSource)
+  AppSessionUnknown
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSessionSource
+
+pub struct AppSkillDependencies {
+  tools : ArrayView[AppSkillToolDependency]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSkillDependencies
+
+pub struct AppSkillErrorInfo {
+  path : String
+  message : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSkillErrorInfo
+
+pub struct AppSkillInterface {
+  display_name : String?
+  short_description : String?
+  icon_small : String?
+  icon_large : String?
+  brand_color : String?
+  default_prompt : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSkillInterface
+
+pub struct AppSkillMetadata {
+  name : String
+  description : String
+  short_description : String?
+  interface : AppSkillInterface?
+  dependencies : AppSkillDependencies?
+  path : String
+  scope : AppSkillScope
+  enabled : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSkillMetadata
+
+pub enum AppSkillScope {
+  AppSkillScopeUser
+  AppSkillScopeRepo
+  AppSkillScopeSystem
+  AppSkillScopeAdmin
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSkillScope
+
+pub struct AppSkillSummary {
+  name : String
+  description : String
+  short_description : String?
+  interface : AppSkillInterface?
+  path : String?
+  enabled : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSkillSummary
+
+pub struct AppSkillToolDependency {
+  dep_type : String
+  value : String
+  description : String?
+  transport : String?
+  command : String?
+  url : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSkillToolDependency
+
+pub(all) struct AppSkillsConfigWriteParams {
+  path : String?
+  name : String?
+  enabled : Bool
+} derive(@debug.Debug)
+pub impl ToJson for AppSkillsConfigWriteParams
+
+pub struct AppSkillsConfigWriteResponse {
+  effective_enabled : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSkillsConfigWriteResponse
+
+pub struct AppSkillsListEntry {
+  cwd : String
+  skills : ArrayView[AppSkillMetadata]
+  errors : ArrayView[AppSkillErrorInfo]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSkillsListEntry
+
+pub struct AppSkillsListParams {
+  cwds : Array[String]?
+  force_reload : Bool?
+} derive(@debug.Debug)
+pub fn AppSkillsListParams::new(cwds? : Array[String], force_reload? : Bool) -> Self
+pub impl ToJson for AppSkillsListParams
+
+pub struct AppSkillsListResponse {
+  data : ArrayView[AppSkillsListEntry]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSkillsListResponse
+
+pub(all) enum AppSortDirection {
+  SortAsc
+  SortDesc
+} derive(@debug.Debug)
+pub impl ToJson for AppSortDirection
+
+pub enum AppSubAgentSource {
+  AppSubAgentReview
+  AppSubAgentCompact
+  AppSubAgentThreadSpawn(parent_thread_id~ : String, depth~ : Int, agent_path~ : String?, agent_nickname~ : String?, agent_role~ : String?)
+  AppSubAgentMemoryConsolidation
+  AppSubAgentOther(String)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSubAgentSource
+
+pub struct AppSummary {
+  id : String
+  name : String
+  description : String?
+  install_url : String?
+  needs_auth : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppSummary
+
+pub struct AppTextElement {
+  byte_range : AppByteRange
+  placeholder : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTextElement
+
+pub(all) struct AppTextPosition {
+  line : UInt64
+  column : UInt64
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTextPosition
+
+pub(all) struct AppTextRange {
+  start : AppTextPosition
+  end : AppTextPosition
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTextRange
+
+pub struct AppThread {
+  id : String
+  forked_from_id : String?
+  preview : String
+  ephemeral : Bool
+  model_provider : String
+  created_at : Int64
+  updated_at : Int64
+  status : AppThreadStatus
+  path : String?
+  cwd : String
+  cli_version : String
+  source : AppSessionSource
+  agent_nickname : String?
+  agent_role : String?
+  git_info : AppConversationGitInfo?
+  name : String?
+  turns : ArrayView[AppTurn]
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThread
+
+pub enum AppThreadActiveFlag {
+  AppThreadWaitingOnApproval
+  AppThreadWaitingOnUserInput
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadActiveFlag
+
+pub(all) struct AppThreadApproveGuardianDeniedActionParams {
+  thread_id : String
+  event : Json
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadApproveGuardianDeniedActionParams
+
+pub struct AppThreadApproveGuardianDeniedActionResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub(all) struct AppThreadBackgroundTerminalsCleanResponse {
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadBackgroundTerminalsCleanResponse
+
+pub struct AppThreadCollabAgentState {
+  status : AppThreadCollabAgentStatus
+  message : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadCollabAgentState
+
+pub enum AppThreadCollabAgentStatus {
+  AppThreadCollabAgentPendingInit
+  AppThreadCollabAgentRunning
+  AppThreadCollabAgentInterrupted
+  AppThreadCollabAgentCompleted
+  AppThreadCollabAgentErrored
+  AppThreadCollabAgentShutdown
+  AppThreadCollabAgentNotFound
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadCollabAgentStatus
+
+pub enum AppThreadCollabAgentTool {
+  AppThreadCollabSpawnAgent
+  AppThreadCollabSendInput
+  AppThreadCollabResumeAgent
+  AppThreadCollabWait
+  AppThreadCollabCloseAgent
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadCollabAgentTool
+
+pub enum AppThreadCollabAgentToolCallStatus {
+  AppThreadCollabInProgress
+  AppThreadCollabCompleted
+  AppThreadCollabFailed
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadCollabAgentToolCallStatus
+
+pub enum AppThreadCommandExecutionSource {
+  AppThreadCommandSourceAgent
+  AppThreadCommandSourceUserShell
+  AppThreadCommandSourceUnifiedExecStartup
+  AppThreadCommandSourceUnifiedExecInteraction
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadCommandExecutionSource
+
+pub enum AppThreadCommandExecutionStatus {
+  AppThreadCommandInProgress
+  AppThreadCommandCompleted
+  AppThreadCommandFailed
+  AppThreadCommandDeclined
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadCommandExecutionStatus
+
+pub struct AppThreadCompactStartResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub enum AppThreadDynamicToolCallStatus {
+  AppThreadDynamicInProgress
+  AppThreadDynamicCompleted
+  AppThreadDynamicFailed
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadDynamicToolCallStatus
+
+pub(all) struct AppThreadElicitationCounterParams {
+  thread_id : String
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadElicitationCounterParams
+
+pub(all) struct AppThreadElicitationCounterResponse {
+  count : UInt64
+  paused : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadElicitationCounterResponse
+
+pub struct AppThreadFileUpdateChange {
+  path : String
+  kind : AppThreadPatchChangeKind
+  diff : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadFileUpdateChange
+
+pub(all) struct AppThreadForkParams {
+  thread_id : String
+  model : String?
+  model_provider : String?
+  service_tier : AppNullableString?
+  cwd : String?
+  approval_policy : AppApprovalPolicy?
+  approvals_reviewer : AppApprovalsReviewer?
+  sandbox : SandboxMode?
+  config : Map[String, Json]?
+  base_instructions : String?
+  developer_instructions : String?
+  ephemeral : Bool?
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadForkParams
+
+pub struct AppThreadForkResponse {
+  thread : AppThread
+  model : String
+  model_provider : String
+  service_tier : String?
+  cwd : String
+  instruction_sources : ArrayView[String]
+  approval_policy : AppApprovalPolicy
+  approvals_reviewer : AppApprovalsReviewer
+  sandbox : AppSandboxPolicy
+  reasoning_effort : AppReasoningEffort?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadForkResponse
+
+pub(all) struct AppThreadGoal {
+  thread_id : String
+  objective : String
+  status : AppThreadGoalStatus
+  token_budget : Int64?
+  tokens_used : Int64
+  time_used_seconds : Int64
+  created_at : Int64
+  updated_at : Int64
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadGoal
+
+pub(all) struct AppThreadGoalClearResponse {
+  cleared : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadGoalClearResponse
+
+pub(all) struct AppThreadGoalGetResponse {
+  goal : AppThreadGoal?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadGoalGetResponse
+
+pub(all) struct AppThreadGoalSetParams {
+  thread_id : String
+  objective : String?
+  status : AppThreadGoalStatus?
+  token_budget : AppNullableInt64?
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadGoalSetParams
+
+pub(all) struct AppThreadGoalSetResponse {
+  goal : AppThreadGoal
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadGoalSetResponse
+
+pub(all) enum AppThreadGoalStatus {
+  AppThreadGoalActive
+  AppThreadGoalPaused
+  AppThreadGoalBudgetLimited
+  AppThreadGoalComplete
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadGoalStatus
+pub impl @json.FromJson for AppThreadGoalStatus
+
+pub struct AppThreadIdParams {
+  thread_id : String
+} derive(@debug.Debug)
+pub fn AppThreadIdParams::new(String) -> Self
+pub impl ToJson for AppThreadIdParams
+
+pub(all) struct AppThreadInjectItemsParams {
+  thread_id : String
+  items : Array[Json]
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadInjectItemsParams
+
+pub struct AppThreadInjectItemsResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub enum AppThreadItem {
+  AppThreadUserMessageItem(id~ : String, content~ : ArrayView[AppThreadUserInput])
+  AppThreadHookPromptItem(id~ : String, fragments~ : ArrayView[AppHookPromptFragment])
+  AppThreadAgentMessageItem(id~ : String, text~ : String, phase~ : AppMessagePhase?, memory_citation~ : AppMemoryCitation?)
+  AppThreadPlanItem(id~ : String, text~ : String)
+  AppThreadReasoningItem(id~ : String, summary~ : ArrayView[String], content~ : ArrayView[String])
+  AppThreadCommandExecutionItem(id~ : String, command~ : String, cwd~ : String, process_id~ : String?, source~ : AppThreadCommandExecutionSource, status~ : AppThreadCommandExecutionStatus, command_actions~ : ArrayView[AppCommandAction], aggregated_output~ : String?, exit_code~ : Int?, duration_ms~ : Int64?)
+  AppThreadFileChangeItem(id~ : String, changes~ : ArrayView[AppThreadFileUpdateChange], status~ : AppThreadPatchApplyStatus)
+  AppThreadMcpToolCallItem(id~ : String, server~ : String, tool~ : String, status~ : AppThreadMcpToolCallStatus, arguments~ : Json, mcp_app_resource_uri~ : String?, result~ : AppThreadMcpToolCallResult?, error~ : AppThreadMcpToolCallError?, duration_ms~ : Int64?)
+  AppThreadDynamicToolCallItem(id~ : String, tool_namespace~ : String?, tool~ : String, arguments~ : Json, status~ : AppThreadDynamicToolCallStatus, content_items~ : ArrayView[AppDynamicToolCallOutputContentItem]?, success~ : Bool?, duration_ms~ : Int64?)
+  AppThreadCollabAgentToolCallItem(id~ : String, tool~ : AppThreadCollabAgentTool, status~ : AppThreadCollabAgentToolCallStatus, sender_thread_id~ : String, receiver_thread_ids~ : ArrayView[String], prompt~ : String?, model~ : String?, reasoning_effort~ : AppReasoningEffort?, agents_states~ : Map[String, AppThreadCollabAgentState])
+  AppThreadWebSearchItem(id~ : String, query~ : String, action~ : AppWebSearchAction?)
+  AppThreadImageViewItem(id~ : String, path~ : String)
+  AppThreadImageGenerationItem(id~ : String, status~ : String, revised_prompt~ : String?, result~ : String, saved_path~ : String?)
+  AppThreadEnteredReviewModeItem(id~ : String, review~ : String)
+  AppThreadExitedReviewModeItem(id~ : String, review~ : String)
+  AppThreadContextCompactionItem(id~ : String)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadItem
+
+pub struct AppThreadItemEvent {
+  thread_id : String
+  turn_id : String
+  app_item : AppThreadItem
+  item : ThreadItem?
+  raw_item : Json
+  timestamp_ms : Int64
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadItemEvent
+
+pub(all) enum AppThreadListCwd {
+  OneCwd(String)
+  ManyCwds(Array[String])
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadListCwd
+
+pub struct AppThreadListParams {
+  cursor : String?
+  limit : UInt?
+  sort_key : AppThreadSortKey?
+  sort_direction : AppSortDirection?
+  model_providers : Array[String]?
+  source_kinds : Array[AppThreadSourceKind]?
+  archived : Bool?
+  cwd : AppThreadListCwd?
+  use_state_db_only : Bool?
+  search_term : String?
+} derive(@debug.Debug)
+pub fn AppThreadListParams::new(cursor? : String, limit? : UInt, sort_key? : AppThreadSortKey, sort_direction? : AppSortDirection, model_providers? : Array[String], source_kinds? : Array[AppThreadSourceKind], archived? : Bool, cwd? : AppThreadListCwd, use_state_db_only? : Bool, search_term? : String) -> Self
+pub impl ToJson for AppThreadListParams
+
+pub struct AppThreadListResponse {
+  data : ArrayView[AppThread]
+  next_cursor : String?
+  backwards_cursor : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadListResponse
+
+pub struct AppThreadLoadedListParams {
+  cursor : String?
+  limit : UInt?
+} derive(@debug.Debug)
+pub fn AppThreadLoadedListParams::new(cursor? : String, limit? : UInt) -> Self
+pub impl ToJson for AppThreadLoadedListParams
+
+pub struct AppThreadLoadedListResponse {
+  data : ArrayView[String]
+  next_cursor : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadLoadedListResponse
+
+pub struct AppThreadMcpToolCallError {
+  message : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadMcpToolCallError
+
+pub struct AppThreadMcpToolCallResult {
+  content : ArrayView[Json]
+  structured_content : Json?
+  meta : Json?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadMcpToolCallResult
+
+pub enum AppThreadMcpToolCallStatus {
+  AppThreadMcpInProgress
+  AppThreadMcpCompleted
+  AppThreadMcpFailed
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadMcpToolCallStatus
+
+pub(all) enum AppThreadMemoryMode {
+  AppThreadMemoryEnabled
+  AppThreadMemoryDisabled
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadMemoryMode
+
+pub(all) struct AppThreadMemoryModeSetParams {
+  thread_id : String
+  mode : AppThreadMemoryMode
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadMemoryModeSetParams
+
+pub(all) struct AppThreadMemoryModeSetResponse {
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadMemoryModeSetResponse
+
+pub(all) struct AppThreadMetadataGitInfoUpdateParams {
+  sha : AppNullableString?
+  branch : AppNullableString?
+  origin_url : AppNullableString?
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadMetadataGitInfoUpdateParams
+
+pub(all) struct AppThreadMetadataUpdateParams {
+  thread_id : String
+  git_info : AppThreadMetadataGitInfoUpdateParams?
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadMetadataUpdateParams
+
+pub struct AppThreadMetadataUpdateResponse {
+  thread : AppThread
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadMetadataUpdateResponse
+
+pub enum AppThreadPatchApplyStatus {
+  AppThreadPatchInProgress
+  AppThreadPatchCompleted
+  AppThreadPatchFailed
+  AppThreadPatchDeclined
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadPatchApplyStatus
+
+pub enum AppThreadPatchChangeKind {
+  AppThreadPatchAdd
+  AppThreadPatchDelete
+  AppThreadPatchUpdate(move_path~ : String?)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadPatchChangeKind
+
+pub struct AppThreadReadParams {
+  thread_id : String
+  include_turns : Bool
+} derive(@debug.Debug)
+pub fn AppThreadReadParams::new(String, Bool) -> Self
+pub impl ToJson for AppThreadReadParams
+
+pub struct AppThreadReadResponse {
+  thread : AppThread
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadReadResponse
+
+pub(all) struct AppThreadRealtimeAppendAudioParams {
+  thread_id : String
+  audio : AppThreadRealtimeAudioChunk
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadRealtimeAppendAudioParams
+
+pub(all) struct AppThreadRealtimeAppendTextParams {
+  thread_id : String
+  text : String
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadRealtimeAppendTextParams
+
+pub(all) struct AppThreadRealtimeAudioChunk {
+  data : String
+  sample_rate : UInt
+  num_channels : UInt
+  samples_per_channel : UInt?
+  item_id : String?
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadRealtimeAudioChunk
+pub impl @json.FromJson for AppThreadRealtimeAudioChunk
+
+pub(all) struct AppThreadRealtimeEmptyResponse {
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadRealtimeEmptyResponse
+
+pub(all) struct AppThreadRealtimeListVoicesResponse {
+  voices : AppRealtimeVoicesList
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadRealtimeListVoicesResponse
+
+pub(all) struct AppThreadRealtimeStartParams {
+  thread_id : String
+  output_modality : AppRealtimeOutputModality
+  prompt : AppNullableString?
+  realtime_session_id : String?
+  transport : AppThreadRealtimeStartTransport?
+  voice : AppRealtimeVoice?
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadRealtimeStartParams
+
+pub(all) struct AppThreadRealtimeStartResponse {
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadRealtimeStartResponse
+
+pub(all) enum AppThreadRealtimeStartTransport {
+  AppThreadRealtimeWebsocket
+  AppThreadRealtimeWebrtc(sdp~ : String)
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadRealtimeStartTransport
+
+pub struct AppThreadResumeParams {
+  thread_id : String
+  model : String?
+  model_provider : String?
+  service_tier : AppNullableString?
+  cwd : String?
+  approval_policy : AppApprovalPolicy?
+  approvals_reviewer : AppApprovalsReviewer?
+  sandbox : SandboxMode?
+  config : Map[String, Json]?
+  base_instructions : String?
+  developer_instructions : String?
+  personality : AppPersonality?
+} derive(@debug.Debug)
+pub fn AppThreadResumeParams::new(String, model? : String, model_provider? : String, service_tier? : AppNullableString, cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox? : SandboxMode, config? : Map[String, Json], base_instructions? : String, developer_instructions? : String, personality? : AppPersonality) -> Self
+pub impl ToJson for AppThreadResumeParams
+
+pub struct AppThreadResumeResponse {
+  thread : AppThread
+  model : String
+  model_provider : String
+  service_tier : String?
+  cwd : String
+  instruction_sources : ArrayView[String]
+  approval_policy : AppApprovalPolicy
+  approvals_reviewer : AppApprovalsReviewer
+  sandbox : AppSandboxPolicy
+  reasoning_effort : AppReasoningEffort?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadResumeResponse
+
+pub(all) struct AppThreadRollbackParams {
+  thread_id : String
+  num_turns : UInt
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadRollbackParams
+
+pub struct AppThreadRollbackResponse {
+  thread : AppThread
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadRollbackResponse
+
+pub struct AppThreadSetNameParams {
+  thread_id : String
+  name : String
+} derive(@debug.Debug)
+pub fn AppThreadSetNameParams::new(String, String) -> Self
+pub impl ToJson for AppThreadSetNameParams
+
+pub(all) struct AppThreadShellCommandParams {
+  thread_id : String
+  command : String
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadShellCommandParams
+
+pub struct AppThreadShellCommandResponse {
+  // private fields
+} derive(@debug.Debug)
+
+pub(all) enum AppThreadSortKey {
+  ThreadCreatedAt
+  ThreadUpdatedAt
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadSortKey
+
+pub(all) enum AppThreadSourceKind {
+  SourceCli
+  SourceVscode
+  SourceExec
+  SourceAppServer
+  SourceSubAgent
+  SourceSubAgentReview
+  SourceSubAgentCompact
+  SourceSubAgentThreadSpawn
+  SourceSubAgentOther
+  SourceUnknown
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadSourceKind
+
+pub struct AppThreadStartParams {
+  model : String?
+  model_provider : String?
+  service_tier : AppNullableString?
+  cwd : String?
+  approval_policy : AppApprovalPolicy?
+  approvals_reviewer : AppApprovalsReviewer?
+  sandbox : SandboxMode?
+  config : Map[String, Json]?
+  service_name : String?
+  base_instructions : String?
+  developer_instructions : String?
+  personality : AppPersonality?
+  ephemeral : Bool?
+  session_start_source : AppThreadStartSource?
+} derive(@debug.Debug)
+pub fn AppThreadStartParams::new(model? : String, model_provider? : String, service_tier? : AppNullableString, cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox? : SandboxMode, config? : Map[String, Json], service_name? : String, base_instructions? : String, developer_instructions? : String, personality? : AppPersonality, ephemeral? : Bool, session_start_source? : AppThreadStartSource) -> Self
+pub impl ToJson for AppThreadStartParams
+
+pub struct AppThreadStartResponse {
+  thread : AppThread
+  model : String
+  model_provider : String
+  service_tier : String?
+  cwd : String
+  instruction_sources : ArrayView[String]
+  approval_policy : AppApprovalPolicy
+  approvals_reviewer : AppApprovalsReviewer
+  sandbox : AppSandboxPolicy
+  reasoning_effort : AppReasoningEffort?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadStartResponse
+
+pub(all) enum AppThreadStartSource {
+  AppThreadStartup
+  AppThreadClear
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadStartSource
+
+pub enum AppThreadStatus {
+  ThreadNotLoaded
+  ThreadIdle
+  ThreadSystemError
+  ThreadActive(active_flags~ : ArrayView[AppThreadActiveFlag])
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadStatus
+
+pub struct AppThreadTokenUsage {
+  total : AppTokenUsageBreakdown
+  last : AppTokenUsageBreakdown
+  model_context_window : Int64?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadTokenUsage
+
+pub(all) struct AppThreadTurnsListParams {
+  thread_id : String
+  cursor : String?
+  limit : UInt?
+  sort_direction : AppSortDirection?
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadTurnsListParams
+
+pub(all) struct AppThreadTurnsListResponse {
+  data : ArrayView[AppTurn]
+  next_cursor : String?
+  backwards_cursor : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadTurnsListResponse
+
+pub struct AppThreadUnsubscribeResponse {
+  status : AppThreadUnsubscribeStatus
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadUnsubscribeResponse
+
+pub(all) enum AppThreadUnsubscribeStatus {
+  AppThreadNotLoaded
+  AppThreadNotSubscribed
+  AppThreadUnsubscribed
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadUnsubscribeStatus
+
+pub enum AppThreadUserInput {
+  AppThreadInputText(text~ : String, text_elements~ : ArrayView[AppTextElement])
+  AppThreadInputImage(url~ : String)
+  AppThreadInputLocalImage(path~ : String)
+  AppThreadInputSkill(name~ : String, path~ : String)
+  AppThreadInputMention(name~ : String, path~ : String)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadUserInput
+
+pub struct AppTokenUsageBreakdown {
+  total_tokens : Int64
+  input_tokens : Int64
+  cached_input_tokens : Int64
+  output_tokens : Int64
+  reasoning_output_tokens : Int64
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTokenUsageBreakdown
+
+pub enum AppToolApproval {
+  AppToolApprovalAuto
+  AppToolApprovalPrompt
+  AppToolApprovalApprove
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppToolApproval
+
+pub struct AppToolConfig {
+  enabled : Bool?
+  approval_mode : AppToolApproval?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppToolConfig
+
+pub(all) struct AppToolRequestUserInputAnswer {
+  answers : ArrayView[String]
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct AppToolRequestUserInputOption {
+  label : String
+  description : String
+} derive(@debug.Debug, @json.FromJson)
+
+pub(all) struct AppToolRequestUserInputQuestion {
+  id : String
+  header : String
+  question : String
+  is_other : Bool
+  is_secret : Bool
+  options : ArrayView[AppToolRequestUserInputOption]?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppToolRequestUserInputQuestion
+
+pub(all) struct AppToolRequestUserInputRequest {
+  thread_id : String
+  turn_id : String
+  item_id : String
+  questions : ArrayView[AppToolRequestUserInputQuestion]
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppToolRequestUserInputRequest
+
+pub struct AppToolsConfig {
+  tools : Map[String, AppToolConfig]
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppToolsConfig
+
+pub struct AppTurn {
+  id : String
+  items : ArrayView[AppThreadItem]
+  status : AppTurnStatus
+  error : AppTurnError?
+  started_at : Int64?
+  completed_at : Int64?
+  duration_ms : Int64?
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTurn
+
+pub struct AppTurnError {
+  message : String
+  codex_error_info : AppCodexErrorInfo?
+  additional_details : String?
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTurnError
+
+pub struct AppTurnInterruptParams {
+  thread_id : String
+  turn_id : String
+} derive(@debug.Debug)
+pub fn AppTurnInterruptParams::new(String, String) -> Self
+pub impl ToJson for AppTurnInterruptParams
+
+pub struct AppTurnInterruptResponse {
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTurnInterruptResponse
+
+pub(all) struct AppTurnPlanStep {
+  step : String
+  status : AppTurnPlanStepStatus
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTurnPlanStep
+
+pub(all) enum AppTurnPlanStepStatus {
+  AppTurnPlanPending
+  AppTurnPlanInProgress
+  AppTurnPlanCompleted
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTurnPlanStepStatus
+
+pub struct AppTurnStartParams {
+  thread_id : String
+  input : Array[AppUserInput]
+  cwd : String?
+  approval_policy : AppApprovalPolicy?
+  approvals_reviewer : AppApprovalsReviewer?
+  sandbox_policy : AppSandboxPolicy?
+  model : String?
+  service_tier : AppNullableString?
+  effort : AppReasoningEffort?
+  summary : AppReasoningSummary?
+  personality : AppPersonality?
+  output_schema : Json?
+} derive(@debug.Debug)
+pub fn AppTurnStartParams::new(String, Array[AppUserInput], cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox_policy? : AppSandboxPolicy, model? : String, service_tier? : AppNullableString, effort? : AppReasoningEffort, summary? : AppReasoningSummary, personality? : AppPersonality, output_schema? : Json) -> Self
+pub impl ToJson for AppTurnStartParams
+
+pub struct AppTurnStartResponse {
+  turn : AppTurn
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTurnStartResponse
+
+pub enum AppTurnStatus {
+  AppTurnCompletedStatus
+  AppTurnInterruptedStatus
+  AppTurnFailedStatus
+  AppTurnInProgressStatus
+} derive(Eq, @debug.Debug)
+pub impl @json.FromJson for AppTurnStatus
+
+pub struct AppTurnSteerParams {
+  thread_id : String
+  input : Array[AppUserInput]
+  expected_turn_id : String
+} derive(@debug.Debug)
+pub fn AppTurnSteerParams::new(String, Array[AppUserInput], String) -> Self
+pub impl ToJson for AppTurnSteerParams
+
+pub struct AppTurnSteerResponse {
+  turn_id : String
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppTurnSteerResponse
+
+pub(all) enum AppUserInput {
+  AppInputText(text~ : String)
+  AppInputImage(url~ : String)
+  AppInputLocalImage(path~ : String)
+  AppInputSkill(name~ : String, path~ : String)
+  AppInputMention(name~ : String, path~ : String)
+} derive(@debug.Debug)
+pub impl ToJson for AppUserInput
+
+pub enum AppWebSearchAction {
+  AppWebSearchActionSearch(query~ : String?, queries~ : ArrayView[String]?)
+  AppWebSearchActionOpenPage(url~ : String?)
+  AppWebSearchActionFindInPage(url~ : String?, pattern~ : String?)
+  AppWebSearchActionOther
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppWebSearchAction
+
+pub enum AppWebSearchContextSize {
+  AppWebSearchContextLow
+  AppWebSearchContextMedium
+  AppWebSearchContextHigh
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppWebSearchContextSize
+
+pub struct AppWebSearchLocation {
+  country : String?
+  region : String?
+  city : String?
+  timezone : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppWebSearchLocation
+
+pub enum AppWebSearchMode {
+  AppWebSearchDisabled
+  AppWebSearchCached
+  AppWebSearchLive
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppWebSearchMode
+
+pub struct AppWebSearchToolConfig {
+  context_size : AppWebSearchContextSize?
+  allowed_domains : ArrayView[String]?
+  location : AppWebSearchLocation?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppWebSearchToolConfig
+
+pub(all) enum AppWindowsSandboxSetupMode {
+  AppWindowsSandboxElevated
+  AppWindowsSandboxUnelevated
+} derive(@debug.Debug)
+pub impl ToJson for AppWindowsSandboxSetupMode
+pub impl @json.FromJson for AppWindowsSandboxSetupMode
+
+pub(all) struct AppWindowsSandboxSetupStartParams {
+  mode : AppWindowsSandboxSetupMode
+  cwd : String?
+} derive(@debug.Debug)
+pub impl ToJson for AppWindowsSandboxSetupStartParams
+
+pub struct AppWindowsSandboxSetupStartResponse {
+  started : Bool
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppWindowsSandboxSetupStartResponse
+
 pub(all) enum ApprovalMode {
   Never
   OnRequest
@@ -22,9 +3118,115 @@ pub(all) enum ApprovalMode {
 pub impl Show for ApprovalMode
 
 type Codex
+pub fn Codex::app_server(Self) -> CodexApp
 pub fn Codex::new(options? : CodexOptions) -> Self
 pub fn Codex::resume_thread(Self, String, options? : ThreadOptions) -> Thread
+pub fn[G] Codex::spawn_app_server(Self, @async.TaskGroup[G], options? : AppServerOptions) -> CodexAppConnection raise
 pub fn Codex::start_thread(Self, options? : ThreadOptions) -> Thread
+pub async fn[R] Codex::with_app_server(Self, options? : AppServerOptions, request_handler? : async (AppServerRequest) -> AppServerResponse, async (CodexAppConnection) -> R) -> R
+
+pub struct CodexApp {
+  options : CodexOptions
+}
+pub fn[G] CodexApp::spawn(Self, @async.TaskGroup[G], options? : AppServerOptions) -> CodexAppConnection raise
+
+type CodexAppConnection
+pub async fn CodexAppConnection::account_login_cancel(Self, AppCancelLoginAccountParams) -> AppAccountLoginCancelResponse
+pub async fn CodexAppConnection::account_login_start(Self, AppLoginAccountParams) -> AppAccountLoginStartResponse
+pub async fn CodexAppConnection::account_logout(Self) -> AppAccountLogoutResponse
+pub async fn CodexAppConnection::account_rate_limits_read(Self) -> AppAccountRateLimitsReadResponse
+pub async fn CodexAppConnection::account_read(Self, AppAccountReadParams) -> AppAccountReadResponse
+pub async fn CodexAppConnection::account_send_add_credits_nudge_email(Self, AppSendAddCreditsNudgeEmailParams) -> AppAccountSendAddCreditsNudgeEmailResponse
+pub async fn CodexAppConnection::app_list(Self, params? : AppListParams) -> AppListResponse
+pub fn CodexAppConnection::close(Self) -> Unit
+pub async fn CodexAppConnection::collaboration_mode_list(Self) -> AppCollaborationModeListResponse
+pub async fn CodexAppConnection::command_exec(Self, AppCommandExecParams) -> AppCommandExecResponse
+pub async fn CodexAppConnection::command_exec_resize(Self, AppCommandExecResizeParams) -> AppCommandExecResizeResponse
+pub async fn CodexAppConnection::command_exec_terminate(Self, AppCommandExecProcessParams) -> AppCommandExecTerminateResponse
+pub async fn CodexAppConnection::command_exec_write(Self, AppCommandExecWriteParams) -> AppCommandExecWriteResponse
+pub async fn CodexAppConnection::config_batch_write(Self, AppConfigBatchWriteParams) -> AppConfigBatchWriteResponse
+pub async fn CodexAppConnection::config_mcp_server_reload(Self) -> AppConfigMcpServerReloadResponse
+pub async fn CodexAppConnection::config_read(Self, AppConfigReadParams) -> AppConfigReadResponse
+pub async fn CodexAppConnection::config_requirements_read(Self) -> AppConfigRequirementsReadResponse
+pub async fn CodexAppConnection::config_value_write(Self, AppConfigValueWriteParams) -> AppConfigValueWriteResponse
+pub async fn CodexAppConnection::experimental_feature_enablement_set(Self, AppExperimentalFeatureEnablementSetParams) -> AppExperimentalFeatureEnablementSetResponse
+pub async fn CodexAppConnection::experimental_feature_list(Self, AppCursorLimitParams) -> AppExperimentalFeatureListResponse
+pub async fn CodexAppConnection::external_agent_config_detect(Self, AppExternalAgentConfigDetectParams) -> AppExternalAgentConfigDetectResponse
+pub async fn CodexAppConnection::external_agent_config_import(Self, AppExternalAgentConfigImportParams) -> AppExternalAgentConfigImportResponse
+pub async fn CodexAppConnection::feedback_upload(Self, AppFeedbackUploadParams) -> AppFeedbackUploadResponse
+pub async fn CodexAppConnection::fs_copy(Self, AppFsCopyParams) -> AppFsCopyResponse
+pub async fn CodexAppConnection::fs_create_directory(Self, AppFsCreateDirectoryParams) -> AppFsCreateDirectoryResponse
+pub async fn CodexAppConnection::fs_get_metadata(Self, AppFsPathParams) -> AppFsGetMetadataResponse
+pub async fn CodexAppConnection::fs_read_directory(Self, AppFsPathParams) -> AppFsReadDirectoryResponse
+pub async fn CodexAppConnection::fs_read_file(Self, AppFsPathParams) -> AppFsReadFileResponse
+pub async fn CodexAppConnection::fs_remove(Self, AppFsRemoveParams) -> AppFsRemoveResponse
+pub async fn CodexAppConnection::fs_unwatch(Self, AppFsUnwatchParams) -> AppFsUnwatchResponse
+pub async fn CodexAppConnection::fs_watch(Self, AppFsWatchParams) -> AppFsWatchResponse
+pub async fn CodexAppConnection::fs_write_file(Self, AppFsWriteFileParams) -> AppFsWriteFileResponse
+pub async fn CodexAppConnection::fuzzy_file_search(Self, AppFuzzyFileSearchParams) -> AppFuzzyFileSearchResponse
+pub async fn CodexAppConnection::fuzzy_file_search_session_start(Self, AppFuzzyFileSearchSessionStartParams) -> AppFuzzyFileSearchSessionEmptyResponse
+pub async fn CodexAppConnection::fuzzy_file_search_session_stop(Self, AppFuzzyFileSearchSessionStopParams) -> AppFuzzyFileSearchSessionEmptyResponse
+pub async fn CodexAppConnection::fuzzy_file_search_session_update(Self, AppFuzzyFileSearchSessionUpdateParams) -> AppFuzzyFileSearchSessionEmptyResponse
+pub async fn CodexAppConnection::handle_next_request(Self, async (AppServerRequest) -> AppServerResponse) -> Bool
+pub async fn CodexAppConnection::handle_request(Self, AppServerRequest, async (AppServerRequest) -> AppServerResponse) -> Unit
+pub async fn CodexAppConnection::hooks_list(Self, AppHooksListParams) -> AppHooksListResponse
+pub async fn CodexAppConnection::initialize(Self, AppInitializeParams) -> AppInitializeResponse
+pub async fn CodexAppConnection::initialized(Self) -> Unit
+pub async fn CodexAppConnection::marketplace_add(Self, AppMarketplaceAddParams) -> AppMarketplaceAddResponse
+pub async fn CodexAppConnection::marketplace_remove(Self, AppMarketplaceRemoveParams) -> AppMarketplaceRemoveResponse
+pub async fn CodexAppConnection::marketplace_upgrade(Self, AppMarketplaceUpgradeParams) -> AppMarketplaceUpgradeResponse
+pub async fn CodexAppConnection::mcp_server_oauth_login(Self, AppMcpServerOauthLoginParams) -> AppMcpServerOauthLoginResponse
+pub async fn CodexAppConnection::mcp_server_resource_read(Self, AppMcpResourceReadParams) -> AppMcpServerResourceReadResponse
+pub async fn CodexAppConnection::mcp_server_status_list(Self, AppMcpServerStatusListParams) -> AppMcpServerStatusListResponse
+pub async fn CodexAppConnection::mcp_server_tool_call(Self, AppMcpServerToolCallParams) -> AppMcpServerToolCallResponse
+pub async fn CodexAppConnection::memory_reset(Self) -> AppMemoryResetResponse
+pub async fn CodexAppConnection::mock_experimental_method(Self, AppMockExperimentalMethodParams) -> AppMockExperimentalMethodResponse
+pub async fn CodexAppConnection::model_list(Self, params? : AppModelListParams) -> AppModelListResponse
+pub async fn CodexAppConnection::model_provider_capabilities_read(Self) -> AppModelProviderCapabilitiesReadResponse
+pub async fn CodexAppConnection::next(Self) -> AppServerMessage?
+pub async fn CodexAppConnection::next_event(Self) -> AppServerEvent?
+pub async fn CodexAppConnection::next_request(Self) -> AppServerRequest?
+pub async fn CodexAppConnection::plugin_install(Self, AppPluginInstallParams) -> AppPluginInstallResponse
+pub async fn CodexAppConnection::plugin_list(Self, AppPluginListParams) -> AppPluginListResponse
+pub async fn CodexAppConnection::plugin_read(Self, AppPluginReadParams) -> AppPluginReadResponse
+pub async fn CodexAppConnection::plugin_uninstall(Self, AppPluginUninstallParams) -> AppPluginUninstallResponse
+pub async fn CodexAppConnection::review_start(Self, AppReviewStartParams) -> AppReviewStartResponse
+pub async fn CodexAppConnection::serve_requests(Self, async (AppServerRequest) -> AppServerResponse) -> Unit
+pub async fn CodexAppConnection::skills_config_write(Self, AppSkillsConfigWriteParams) -> AppSkillsConfigWriteResponse
+pub async fn CodexAppConnection::skills_list(Self, params? : AppSkillsListParams) -> AppSkillsListResponse
+pub async fn CodexAppConnection::thread_approve_guardian_denied_action(Self, AppThreadApproveGuardianDeniedActionParams) -> AppThreadApproveGuardianDeniedActionResponse
+pub async fn CodexAppConnection::thread_archive(Self, AppThreadIdParams) -> AppEmptyResponse
+pub async fn CodexAppConnection::thread_background_terminals_clean(Self, AppThreadIdParams) -> AppThreadBackgroundTerminalsCleanResponse
+pub async fn CodexAppConnection::thread_compact_start(Self, AppThreadIdParams) -> AppThreadCompactStartResponse
+pub async fn CodexAppConnection::thread_decrement_elicitation(Self, AppThreadElicitationCounterParams) -> AppThreadElicitationCounterResponse
+pub async fn CodexAppConnection::thread_fork(Self, AppThreadForkParams) -> AppThreadForkResponse
+pub async fn CodexAppConnection::thread_goal_clear(Self, AppThreadIdParams) -> AppThreadGoalClearResponse
+pub async fn CodexAppConnection::thread_goal_get(Self, AppThreadIdParams) -> AppThreadGoalGetResponse
+pub async fn CodexAppConnection::thread_goal_set(Self, AppThreadGoalSetParams) -> AppThreadGoalSetResponse
+pub async fn CodexAppConnection::thread_increment_elicitation(Self, AppThreadElicitationCounterParams) -> AppThreadElicitationCounterResponse
+pub async fn CodexAppConnection::thread_inject_items(Self, AppThreadInjectItemsParams) -> AppThreadInjectItemsResponse
+pub async fn CodexAppConnection::thread_list(Self, params? : AppThreadListParams) -> AppThreadListResponse
+pub async fn CodexAppConnection::thread_loaded_list(Self, params? : AppThreadLoadedListParams) -> AppThreadLoadedListResponse
+pub async fn CodexAppConnection::thread_memory_mode_set(Self, AppThreadMemoryModeSetParams) -> AppThreadMemoryModeSetResponse
+pub async fn CodexAppConnection::thread_metadata_update(Self, AppThreadMetadataUpdateParams) -> AppThreadMetadataUpdateResponse
+pub async fn CodexAppConnection::thread_read(Self, AppThreadReadParams) -> AppThreadReadResponse
+pub async fn CodexAppConnection::thread_realtime_append_audio(Self, AppThreadRealtimeAppendAudioParams) -> AppThreadRealtimeEmptyResponse
+pub async fn CodexAppConnection::thread_realtime_append_text(Self, AppThreadRealtimeAppendTextParams) -> AppThreadRealtimeEmptyResponse
+pub async fn CodexAppConnection::thread_realtime_list_voices(Self) -> AppThreadRealtimeListVoicesResponse
+pub async fn CodexAppConnection::thread_realtime_start(Self, AppThreadRealtimeStartParams) -> AppThreadRealtimeStartResponse
+pub async fn CodexAppConnection::thread_realtime_stop(Self, AppThreadIdParams) -> AppThreadRealtimeEmptyResponse
+pub async fn CodexAppConnection::thread_resume(Self, AppThreadResumeParams) -> AppThreadResumeResponse
+pub async fn CodexAppConnection::thread_rollback(Self, AppThreadRollbackParams) -> AppThreadRollbackResponse
+pub async fn CodexAppConnection::thread_set_name(Self, AppThreadSetNameParams) -> AppEmptyResponse
+pub async fn CodexAppConnection::thread_shell_command(Self, AppThreadShellCommandParams) -> AppThreadShellCommandResponse
+pub async fn CodexAppConnection::thread_start(Self, params? : AppThreadStartParams) -> AppThreadStartResponse
+pub async fn CodexAppConnection::thread_turns_list(Self, AppThreadTurnsListParams) -> AppThreadTurnsListResponse
+pub async fn CodexAppConnection::thread_unarchive(Self, AppThreadIdParams) -> AppThreadReadResponse
+pub async fn CodexAppConnection::thread_unsubscribe(Self, AppThreadIdParams) -> AppThreadUnsubscribeResponse
+pub async fn CodexAppConnection::turn_interrupt(Self, AppTurnInterruptParams) -> AppEmptyResponse
+pub async fn CodexAppConnection::turn_start(Self, AppTurnStartParams) -> AppTurnStartResponse
+pub async fn CodexAppConnection::turn_steer(Self, AppTurnSteerParams) -> AppTurnSteerResponse
+pub async fn CodexAppConnection::windows_sandbox_setup_start(Self, AppWindowsSandboxSetupStartParams) -> AppWindowsSandboxSetupStartResponse
 
 type CodexOptions derive(Default)
 pub fn CodexOptions::new(codex_path_override? : String, base_url? : String, api_key? : String, env? : Map[String, String]) -> Self
@@ -52,6 +3254,7 @@ pub impl @json.FromJson for CollabAgentStatus
 pub enum CollabTool {
   SpawnAgent
   SendInput
+  ResumeAgent
   Wait
   CloseAgent
 } derive(@debug.Debug)
@@ -143,8 +3346,10 @@ pub(all) enum SandboxMode {
   ReadOnly
   WorkspaceWrite
   DangerFullAccess
-}
+} derive(@debug.Debug)
 pub impl Show for SandboxMode
+pub impl ToJson for SandboxMode
+pub impl @json.FromJson for SandboxMode
 
 #alias(RunStreamedResult)
 pub struct StreamedTurn {

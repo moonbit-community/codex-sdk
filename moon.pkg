@@ -5,6 +5,7 @@ import {
   "moonbitlang/async/io",
   "moonbitlang/x/sys",
   "moonbitlang/async/process",
+  "peter-jerry-ye/codex/internal",
   "peter-jerry-ye/codex/x/error",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
