@@ -226,9 +226,7 @@ persistent JSON-RPC process. Prefer `Codex::with_app_server` for scoped use:
 the SDK owns the task group, starts the app-server process, sends the required
 `initialize` request plus `initialized` notification, and closes stdin when your
 callback returns. If you pass `request_handler`, the SDK also runs a request
-serving loop for server-initiated requests. If your application already owns
-structured concurrency, use the lower-level `Codex::spawn_app_server` and pass
-your own task group.
+serving loop for server-initiated requests.
 
 The SDK starts the process through `codex app-server --listen stdio://`, using
 `CodexOptions::codex_path_override` or `AppServerOptions::executable_path_override`
@@ -240,11 +238,10 @@ Client-initiated requests are exposed through named methods:
 - `thread_list`, `thread_start`, `thread_read`, `turn_start`,
   `turn_interrupt`, and `model_list` for client-initiated RPCs. These named
   methods use typed `App*Params` values.
-- `initialize` / `initialized` for callers using the low-level spawn API.
 - `next_event` for server notifications.
-- `next_request`, `handle_next_request`, or `serve_requests` when the server
-  sends a request that your client must answer. Handler exceptions are
-  translated into JSON-RPC error responses by the SDK.
+- `request_handler` on `with_app_server` for server-initiated requests that your
+  client must answer. Handler exceptions are translated into JSON-RPC error
+  responses by the SDK.
 
 Because app-server carries more than turn-stream events, request handling is
 kept on a separate channel from notifications. When a notification is
@@ -264,7 +261,6 @@ The app-server surface currently targets the Codex app-server v2 schema.
 async test {
   @codex.Codex::new().with_app_server(
     request_handler=fn(request) {
-      println("server requested: \{request.rpc_method}")
       match request.details {
         @codex.AppServerRequestDetails::AppCommandExecutionApprovalRequest(_) =>
           @codex.AppServerResponse::AppCommandExecutionApprovalResponse(
@@ -274,7 +270,38 @@ async test {
           @codex.AppServerResponse::AppFileChangeApprovalResponse(
             decision=@codex.AppFileChangeApprovalDecision::AppFileChangeDecline,
           )
-        _ => @codex.AppServerResponse::AppRawResponse({})
+        @codex.AppServerRequestDetails::AppToolRequestUserInputRequest(_) =>
+          @codex.AppServerResponse::AppToolRequestUserInputResponse(answers={})
+        @codex.AppServerRequestDetails::AppDynamicToolCallRequest(_) =>
+          @codex.AppServerResponse::AppDynamicToolCallResponse(
+            content_items=[
+              @codex.AppDynamicToolCallOutputContentItem::AppDynamicToolCallOutputText(
+                text="declined",
+              ),
+            ],
+            success=false,
+          )
+        @codex.AppServerRequestDetails::AppPermissionsRequestApprovalRequest(_) =>
+          @codex.AppServerResponse::AppPermissionsRequestApprovalResponse(
+            permissions=@codex.AppGrantedPermissionProfile::{
+              network: None,
+              file_system: None,
+            },
+            scope=@codex.AppPermissionGrantScope::AppPermissionGrantTurn,
+            strict_auto_review=None,
+          )
+        @codex.AppServerRequestDetails::AppChatgptAuthTokensRefreshRequest(_) =>
+          @codex.AppServerResponse::AppChatgptAuthTokensRefreshResponse(
+            access_token="",
+            chatgpt_account_id="",
+            chatgpt_plan_type=None,
+          )
+        @codex.AppServerRequestDetails::AppMcpServerElicitationRequest(_) =>
+          @codex.AppServerResponse::AppMcpServerElicitationResponse(
+            action=@codex.AppMcpServerElicitationAction::AppMcpElicitationDecline,
+            content=None,
+            meta=None,
+          )
       }
     },
     async fn(connection) {

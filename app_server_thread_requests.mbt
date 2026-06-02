@@ -162,53 +162,6 @@ pub impl ToJson for AppThreadMemoryModeSetParams with fn to_json(params) {
 }
 
 ///|
-pub(all) struct AppThreadMemoryModeSetResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub impl FromJson for AppThreadMemoryModeSetResponse with fn from_json(
-  value,
-  path,
-) {
-  guard value is Object(_) else {
-    raise JsonDecodeError((path, "expected thread/memoryMode/set response"))
-  }
-  { raw: value }
-}
-
-///|
-pub(all) struct AppMemoryResetResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub impl FromJson for AppMemoryResetResponse with fn from_json(value, path) {
-  guard value is Object(_) else {
-    raise JsonDecodeError((path, "expected memory/reset response"))
-  }
-  { raw: value }
-}
-
-///|
-pub(all) struct AppThreadBackgroundTerminalsCleanResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub impl FromJson for AppThreadBackgroundTerminalsCleanResponse with fn from_json(
-  value,
-  path,
-) {
-  guard value is Object(_) else {
-    raise JsonDecodeError(
-      (path, "expected thread/backgroundTerminals/clean response"),
-    )
-  }
-  { raw: value }
-}
-
-///|
 pub(all) struct AppThreadTurnsListParams {
   thread_id : String
   cursor : String?
@@ -311,27 +264,23 @@ pub async fn CodexAppConnection::thread_goal_clear(
 pub async fn CodexAppConnection::thread_memory_mode_set(
   self : CodexAppConnection,
   params : AppThreadMemoryModeSetParams,
-) -> AppThreadMemoryModeSetResponse {
-  @json.from_json(
-    self.call_raw("thread/memoryMode/set", params=params.to_json()),
-  )
+) -> Unit {
+  self.call_empty("thread/memoryMode/set", params=params.to_json())
 }
 
 ///|
 pub async fn CodexAppConnection::memory_reset(
   self : CodexAppConnection,
-) -> AppMemoryResetResponse {
-  @json.from_json(self.call_raw("memory/reset"))
+) -> Unit {
+  self.call_empty("memory/reset")
 }
 
 ///|
 pub async fn CodexAppConnection::thread_background_terminals_clean(
   self : CodexAppConnection,
   params : AppThreadIdParams,
-) -> AppThreadBackgroundTerminalsCleanResponse {
-  @json.from_json(
-    self.call_raw("thread/backgroundTerminals/clean", params=params.to_json()),
-  )
+) -> Unit {
+  self.call_empty("thread/backgroundTerminals/clean", params=params.to_json())
 }
 
 ///|

@@ -1264,13 +1264,6 @@ test "parse app-server server request with raw params" {
   match message {
     Request(request) => {
       debug_inspect(request.id, content="IntId(7)")
-      debug_inspect(
-        request.rpc_method,
-        content=(
-          #|"item/commandExecution/requestApproval"
-        ),
-      )
-      guard request.params is Some(_) else { fail("expected raw params") }
       match request.details {
         AppCommandExecutionApprovalRequest(command_request) => {
           debug_inspect(
@@ -1469,7 +1462,7 @@ test "parse app-server ChatGPT auth token refresh request" {
 }
 
 ///|
-test "parse unsupported app-server requests as raw" {
+test "parse unsupported app-server requests as internal unsupported frames" {
   let methods = [
     "attestation/generate", "applyPatchApproval", "execCommandApproval",
   ]
@@ -1480,16 +1473,9 @@ test "parse unsupported app-server requests as raw" {
       "params": {},
     })
     match message {
-      Request(request) => {
-        guard request.rpc_method == rpc_method else {
-          fail("expected raw request method to be preserved")
-        }
-        match request.details {
-          AppRawRequest => ()
-          _ => fail("expected unsupported request to stay raw")
-        }
-      }
-      _ => fail("expected app-server request")
+      UnsupportedRequest(rpc_method=unsupported_method, ..) =>
+        debug_inspect(unsupported_method, content="\"\{rpc_method}\"")
+      _ => fail("expected unsupported app-server request")
     }
   }
 }
@@ -1627,8 +1613,8 @@ test "parse app-server MCP elicitation request" {
 }
 
 ///|
-test "parse app-server unknown notification as raw" {
-  let event : AppServerEvent = @json.from_json(
+test "parse app-server unknown notification as ignored frame" {
+  let message : AppServerMessage = @json.from_json(
     @json.parse(
       (
         #|{
@@ -1638,17 +1624,9 @@ test "parse app-server unknown notification as raw" {
       ),
     ),
   )
-  match event {
-    AppRaw(rpc_method~, params~) => {
-      debug_inspect(
-        rpc_method,
-        content=(
-          #|"future/event"
-        ),
-      )
-      guard params is Some(_) else { fail("expected preserved params") }
-    }
-    _ => fail("expected raw event")
+  match message {
+    IgnoredNotification => ()
+    _ => fail("expected ignored notification")
   }
 }
 

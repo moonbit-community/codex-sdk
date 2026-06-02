@@ -13,16 +13,6 @@
 // limitations under the License.
 
 ///|
-/// Entry point for low-level Codex app-server protocol handling.
-///
-/// This does not replace `Codex::start_thread` or `codex exec --json`; it is a
-/// separate surface for callers that need direct app-server JSON-RPC access.
-/// Prefer `Codex::with_app_server` unless you already own a task group.
-pub struct CodexApp {
-  options : CodexOptions
-}
-
-///|
 pub struct AppServerOptions {
   /// Override the path to the codex executable used for `codex app-server`.
   executable_path_override : String?
@@ -60,18 +50,11 @@ fn AppServerOptions::initialize_params(
 }
 
 ///|
-/// Create a low-level app-server protocol helper from the same Codex client
-/// configuration used for exec-based threads.
-pub fn Codex::app_server(self : Codex) -> CodexApp {
-  { options: self.options }
-}
-
-///|
 /// Run a scoped Codex app-server connection.
 ///
-/// This is the preferred app-server entry point. It creates a task group for
-/// the app-server process, writer pump, and reader pump, then closes the send
-/// side when the callback returns or raises.
+/// This is the app-server entry point. It creates a task group for the
+/// app-server process, writer pump, and reader pump, performs the bootstrap
+/// handshake, then closes the send side when the callback returns or raises.
 pub async fn[R] Codex::with_app_server(
   self : Codex,
   options? : AppServerOptions = AppServerOptions::default(),
@@ -91,26 +74,8 @@ pub async fn[R] Codex::with_app_server(
 }
 
 ///|
-/// Low-level app-server process spawn for callers that already own structured
-/// concurrency.
-///
-/// The caller-provided task group owns the app-server process, stdin writer,
-/// and stdout reader. Prefer `Codex::with_app_server` unless the surrounding
-/// application already has a longer-lived task group.
-pub fn[G] Codex::spawn_app_server(
+fn[G] Codex::spawn_app_server(
   self : Codex,
-  taskgroup : @async.TaskGroup[G],
-  options? : AppServerOptions = AppServerOptions::default(),
-) -> CodexAppConnection raise Error {
-  self.app_server().spawn(taskgroup, options~)
-}
-
-///|
-/// Start a Codex app-server process using stdio JSON-RPC transport.
-///
-/// This is the low-level builder method behind `Codex::spawn_app_server`.
-pub fn[G] CodexApp::spawn(
-  self : CodexApp,
   taskgroup : @async.TaskGroup[G],
   options? : AppServerOptions = AppServerOptions::default(),
 ) -> CodexAppConnection raise Error {
@@ -261,6 +226,13 @@ async fn CodexAppConnection::route_server_message(
         ()
       }
     Request(request) => self.requests.put(request)
+    UnsupportedRequest(id~, rpc_method~) =>
+      self.respond_error(id, {
+        code: -32601,
+        message: "Unsupported app-server request: \{rpc_method}",
+        data: None,
+      })
+    IgnoredNotification => ()
     Notification(event) => self.events.put(event)
   }
 }
@@ -316,17 +288,8 @@ fn CodexAppConnection::drop_pending_request(
 }
 
 ///|
-/// Call a request object that implements the internal app-server request trait.
-async fn CodexAppConnection::call_app(
-  self : CodexAppConnection,
-  call : &@internal.AppCall,
-) -> Json {
-  self.call(call.rpc_method(), params?=call.params())
-}
-
-///|
 /// Send the app-server `initialized` notification.
-pub async fn CodexAppConnection::initialized(self : CodexAppConnection) -> Unit {
+async fn CodexAppConnection::initialized(self : CodexAppConnection) -> Unit {
   self.notify("initialized")
 }
 
@@ -340,12 +303,7 @@ pub async fn CodexAppConnection::thread_list(
     Some(params) => params
     None => AppThreadListParams::new()
   }
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("thread/list", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("thread/list", params=params.to_json()))
 }
 
 ///|
@@ -358,12 +316,7 @@ pub async fn CodexAppConnection::thread_start(
     Some(params) => params
     None => AppThreadStartParams::new()
   }
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("thread/start", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("thread/start", params=params.to_json()))
 }
 
 ///|
@@ -372,12 +325,7 @@ pub async fn CodexAppConnection::thread_resume(
   self : CodexAppConnection,
   params : AppThreadResumeParams,
 ) -> AppThreadResumeResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("thread/resume", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("thread/resume", params=params.to_json()))
 }
 
 ///|
@@ -385,13 +333,8 @@ pub async fn CodexAppConnection::thread_resume(
 pub async fn CodexAppConnection::thread_archive(
   self : CodexAppConnection,
   params : AppThreadIdParams,
-) -> AppEmptyResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("thread/archive", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+) -> Unit {
+  self.call_empty("thread/archive", params=params.to_json())
 }
 
 ///|
@@ -400,12 +343,7 @@ pub async fn CodexAppConnection::thread_unarchive(
   self : CodexAppConnection,
   params : AppThreadIdParams,
 ) -> AppThreadReadResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("thread/unarchive", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("thread/unarchive", params=params.to_json()))
 }
 
 ///|
@@ -414,12 +352,7 @@ pub async fn CodexAppConnection::thread_unsubscribe(
   self : CodexAppConnection,
   params : AppThreadIdParams,
 ) -> AppThreadUnsubscribeResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("thread/unsubscribe", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("thread/unsubscribe", params=params.to_json()))
 }
 
 ///|
@@ -427,13 +360,8 @@ pub async fn CodexAppConnection::thread_unsubscribe(
 pub async fn CodexAppConnection::thread_set_name(
   self : CodexAppConnection,
   params : AppThreadSetNameParams,
-) -> AppEmptyResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("thread/name/set", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+) -> Unit {
+  self.call_empty("thread/name/set", params=params.to_json())
 }
 
 ///|
@@ -446,12 +374,7 @@ pub async fn CodexAppConnection::thread_loaded_list(
     Some(params) => params
     None => AppThreadLoadedListParams::new()
   }
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("thread/loaded/list", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("thread/loaded/list", params=params.to_json()))
 }
 
 ///|
@@ -460,12 +383,7 @@ pub async fn CodexAppConnection::thread_read(
   self : CodexAppConnection,
   params : AppThreadReadParams,
 ) -> AppThreadReadResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("thread/read", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("thread/read", params=params.to_json()))
 }
 
 ///|
@@ -474,12 +392,7 @@ pub async fn CodexAppConnection::turn_start(
   self : CodexAppConnection,
   params : AppTurnStartParams,
 ) -> AppTurnStartResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("turn/start", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("turn/start", params=params.to_json()))
 }
 
 ///|
@@ -488,12 +401,7 @@ pub async fn CodexAppConnection::turn_steer(
   self : CodexAppConnection,
   params : AppTurnSteerParams,
 ) -> AppTurnSteerResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("turn/steer", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("turn/steer", params=params.to_json()))
 }
 
 ///|
@@ -501,13 +409,8 @@ pub async fn CodexAppConnection::turn_steer(
 pub async fn CodexAppConnection::turn_interrupt(
   self : CodexAppConnection,
   params : AppTurnInterruptParams,
-) -> AppEmptyResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("turn/interrupt", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+) -> Unit {
+  self.call_empty("turn/interrupt", params=params.to_json())
 }
 
 ///|
@@ -520,12 +423,7 @@ pub async fn CodexAppConnection::skills_list(
     Some(params) => params
     None => AppSkillsListParams::new()
   }
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("skills/list", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("skills/list", params=params.to_json()))
 }
 
 ///|
@@ -538,12 +436,7 @@ pub async fn CodexAppConnection::app_list(
     Some(params) => params
     None => AppListParams::new()
   }
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("app/list", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("app/list", params=params.to_json()))
 }
 
 ///|
@@ -552,12 +445,7 @@ pub async fn CodexAppConnection::config_read(
   self : CodexAppConnection,
   params : AppConfigReadParams,
 ) -> AppConfigReadResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("config/read", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("config/read", params=params.to_json()))
 }
 
 ///|
@@ -565,12 +453,7 @@ pub async fn CodexAppConnection::config_read(
 pub async fn CodexAppConnection::model_provider_capabilities_read(
   self : CodexAppConnection,
 ) -> AppModelProviderCapabilitiesReadResponse {
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("modelProvider/capabilities/read", params={})
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("modelProvider/capabilities/read", params={}))
 }
 
 ///|
@@ -732,32 +615,6 @@ pub impl FromJson for AppTurnStartResponse with fn from_json(value, path) {
     raise JsonDecodeError((path, "expected turn/start response"))
   }
   { turn: @json.from_json(turn, path=path.add_key("turn")) }
-}
-
-///|
-pub struct AppTurnInterruptResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub impl FromJson for AppTurnInterruptResponse with fn from_json(value, path) {
-  guard value is Object(_) else {
-    raise JsonDecodeError((path, "expected turn/interrupt response"))
-  }
-  { raw: value }
-}
-
-///|
-pub struct AppEmptyResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub impl FromJson for AppEmptyResponse with fn from_json(value, path) {
-  guard value is Object(_) else {
-    raise JsonDecodeError((path, "expected empty object response"))
-  }
-  { raw: value }
 }
 
 ///|
@@ -2818,12 +2675,7 @@ pub async fn CodexAppConnection::model_list(
     Some(params) => params
     None => AppModelListParams::new()
   }
-  @json.from_json(
-    self.call_app(
-      @internal.AppRawCall::new("model/list", params=params.to_json())
-      as &@internal.AppCall,
-    ),
-  )
+  @json.from_json(self.call_raw("model/list", params=params.to_json()))
 }
 
 ///|
@@ -3098,7 +2950,7 @@ async fn CodexAppConnection::notify(
 ///
 /// If the handler returns normally, the SDK sends the JSON-RPC response. If the
 /// handler raises, the SDK catches the error and sends a JSON-RPC error response.
-pub async fn CodexAppConnection::handle_next_request(
+async fn CodexAppConnection::handle_next_request(
   self : CodexAppConnection,
   handler : async (AppServerRequest) -> AppServerResponse,
 ) -> Bool {
@@ -3112,7 +2964,7 @@ pub async fn CodexAppConnection::handle_next_request(
 }
 
 ///|
-pub async fn CodexAppConnection::handle_request(
+async fn CodexAppConnection::handle_request(
   self : CodexAppConnection,
   request : AppServerRequest,
   handler : async (AppServerRequest) -> AppServerResponse,
@@ -3137,7 +2989,7 @@ pub async fn CodexAppConnection::handle_request(
 /// This is intended for long-running app-server sessions that also consume
 /// notifications through `next_event`. The handler may raise; raised errors are
 /// caught by `handle_request` and sent back as JSON-RPC error responses.
-pub async fn CodexAppConnection::serve_requests(
+async fn CodexAppConnection::serve_requests(
   self : CodexAppConnection,
   handler : async (AppServerRequest) -> AppServerResponse,
 ) -> Unit {
@@ -3149,9 +3001,7 @@ pub async fn CodexAppConnection::serve_requests(
 ///|
 /// Server-initiated app-server request.
 pub struct AppServerRequest {
-  id : AppRequestId
-  rpc_method : String
-  params : Json?
+  priv id : AppRequestId
   details : AppServerRequestDetails
 } derive(Debug)
 
@@ -3164,7 +3014,6 @@ pub enum AppServerRequestDetails {
   AppPermissionsRequestApprovalRequest(AppPermissionsRequestApprovalRequest)
   AppChatgptAuthTokensRefreshRequest(AppChatgptAuthTokensRefreshRequest)
   AppMcpServerElicitationRequest(AppMcpServerElicitationRequest)
-  AppRawRequest
 } derive(Debug)
 
 ///|
@@ -3195,7 +3044,6 @@ pub(all) enum AppServerResponse {
     content~ : Json?,
     meta~ : Json?
   )
-  AppRawResponse(Json)
 } derive(Debug)
 
 ///|
@@ -3243,7 +3091,6 @@ pub impl ToJson for AppServerResponse with fn to_json(response) {
           None => Json::null()
         },
       }
-    AppRawResponse(value) => value
   }
 }
 
@@ -3700,8 +3547,7 @@ pub async fn CodexAppConnection::next_event(
 }
 
 ///|
-/// Receive the next server-initiated JSON-RPC request from the app server.
-pub async fn CodexAppConnection::next_request(
+async fn CodexAppConnection::next_request(
   self : CodexAppConnection,
 ) -> AppServerRequest? {
   let request = self.requests.get() catch { _ => return None }
@@ -3709,29 +3555,15 @@ pub async fn CodexAppConnection::next_request(
 }
 
 ///|
-/// Receive the next server notification as a JSON-RPC message.
-///
-/// Prefer `next_event` for notifications and `next_request` or
-/// `serve_requests` for server-initiated requests.
-pub async fn CodexAppConnection::next(
-  self : CodexAppConnection,
-) -> AppServerMessage? {
-  match self.next_event() {
-    Some(event) => Some(Notification(event))
-    None => None
-  }
-}
-
-///|
 /// Close the send channel. The app-server process exits after stdin closes.
-pub fn CodexAppConnection::close(self : CodexAppConnection) -> Unit {
+fn CodexAppConnection::close(self : CodexAppConnection) -> Unit {
   self.outgoing.close(clear=true)
   self.close_pending_requests()
 }
 
 ///|
 /// JSON-RPC request id used by the Codex app server protocol.
-pub(all) enum AppRequestId {
+pub enum AppRequestId {
   StringId(String)
   IntId(Int64)
 } derive(Debug, Eq)
@@ -3759,14 +3591,14 @@ pub impl FromJson for AppRequestId with fn from_json(value, path) {
 }
 
 ///|
-pub struct AppRpcError {
+priv struct AppRpcError {
   code : Int64
   message : String
   data : Json?
-} derive(Debug)
+}
 
 ///|
-pub impl ToJson for AppRpcError with fn to_json(error) {
+impl ToJson for AppRpcError with fn to_json(error) {
   let obj : Map[String, Json] = {
     "code": Json::number(error.code.to_double()),
     "message": error.message,
@@ -3778,7 +3610,7 @@ pub impl ToJson for AppRpcError with fn to_json(error) {
 }
 
 ///|
-pub impl FromJson for AppRpcError with fn from_json(value, path) {
+impl FromJson for AppRpcError with fn from_json(value, path) {
   guard value
     is {
       "code": Number(code, ..),
@@ -5036,6 +4868,15 @@ async fn CodexAppConnection::call_raw(
 }
 
 ///|
+async fn CodexAppConnection::call_empty(
+  self : CodexAppConnection,
+  rpc_method : String,
+  params? : Json,
+) -> Unit {
+  let _ = self.call(rpc_method, params?)
+}
+
+///|
 pub struct AppInitializeResponse {
   user_agent : String
   codex_home : String
@@ -5108,21 +4949,6 @@ pub impl FromJson for AppThreadMetadataUpdateResponse with fn from_json(
 }
 
 ///|
-pub struct AppThreadCompactStartResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub struct AppThreadShellCommandResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub struct AppThreadApproveGuardianDeniedActionResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
 pub struct AppThreadRollbackResponse {
   thread : AppThread
 } derive(Debug)
@@ -5134,11 +4960,6 @@ pub impl FromJson for AppThreadRollbackResponse with fn from_json(value, path) {
   }
   { thread: @json.from_json(thread, path=path.add_key("thread")) }
 }
-
-///|
-pub struct AppThreadInjectItemsResponse {
-  priv raw : Json
-} derive(Debug)
 
 ///|
 pub struct AppHookErrorInfo {
@@ -5985,16 +5806,6 @@ pub impl FromJson for AppFsReadFileResponse with fn from_json(value, path) {
 }
 
 ///|
-pub struct AppFsWriteFileResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub struct AppFsCreateDirectoryResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
 pub struct AppFsGetMetadataResponse {
   is_directory : Bool
   is_file : Bool
@@ -6064,16 +5875,6 @@ pub impl FromJson for AppFsReadDirectoryResponse with fn from_json(value, path) 
 }
 
 ///|
-pub struct AppFsRemoveResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub struct AppFsCopyResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
 pub struct AppFsWatchResponse {
   path : String
 } derive(Debug)
@@ -6085,11 +5886,6 @@ pub impl FromJson for AppFsWatchResponse with fn from_json(value, path) {
   }
   { path: watch_path }
 }
-
-///|
-pub struct AppFsUnwatchResponse {
-  priv raw : Json
-} derive(Debug)
 
 ///|
 pub struct AppSkillsConfigWriteResponse {
@@ -6132,11 +5928,6 @@ pub impl FromJson for AppPluginInstallResponse with fn from_json(value, path) {
     ),
   }
 }
-
-///|
-pub struct AppPluginUninstallResponse {
-  priv raw : Json
-} derive(Debug)
 
 ///|
 pub struct AppReviewStartResponse {
@@ -6267,11 +6058,6 @@ pub impl FromJson for AppMcpServerOauthLoginResponse with fn from_json(
   }
   { authorization_url, }
 }
-
-///|
-pub struct AppConfigMcpServerReloadResponse {
-  priv raw : Json
-} derive(Debug)
 
 ///|
 pub enum AppMcpAuthStatus {
@@ -6654,11 +6440,6 @@ pub impl FromJson for AppAccountLoginCancelResponse with fn from_json(
 }
 
 ///|
-pub struct AppAccountLogoutResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
 pub struct AppRateLimitSnapshot {
   limit_id : String?
   limit_name : String?
@@ -6928,21 +6709,6 @@ pub impl FromJson for AppCommandExecResponse with fn from_json(value, path) {
 }
 
 ///|
-pub struct AppCommandExecWriteResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub struct AppCommandExecTerminateResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub struct AppCommandExecResizeResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
 pub struct AppExternalAgentConfigDetectResponse {
   items : ArrayView[AppExternalAgentConfigMigrationItem]
 } derive(Debug)
@@ -6987,11 +6753,6 @@ pub impl FromJson for AppExternalAgentConfigDetectResponse with fn from_json(
   }
   { items: @json.from_json(items, path=path.add_key("items")) }
 }
-
-///|
-pub struct AppExternalAgentConfigImportResponse {
-  priv raw : Json
-} derive(Debug)
 
 ///|
 pub enum AppConfigWriteStatus {
@@ -7418,7 +7179,7 @@ pub impl FromJson for AppFuzzyFileSearchResponse with fn from_json(value, path) 
 
 ///|
 /// Call `initialize`.
-pub async fn CodexAppConnection::initialize(
+async fn CodexAppConnection::initialize(
   self : CodexAppConnection,
   params : AppInitializeParams,
 ) -> AppInitializeResponse {
@@ -7450,8 +7211,8 @@ pub async fn CodexAppConnection::thread_metadata_update(
 pub async fn CodexAppConnection::thread_compact_start(
   self : CodexAppConnection,
   params : AppThreadIdParams,
-) -> AppThreadCompactStartResponse {
-  { raw: self.call_raw("thread/compact/start", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("thread/compact/start", params=params.to_json())
 }
 
 ///|
@@ -7459,8 +7220,8 @@ pub async fn CodexAppConnection::thread_compact_start(
 pub async fn CodexAppConnection::thread_shell_command(
   self : CodexAppConnection,
   params : AppThreadShellCommandParams,
-) -> AppThreadShellCommandResponse {
-  { raw: self.call_raw("thread/shellCommand", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("thread/shellCommand", params=params.to_json())
 }
 
 ///|
@@ -7468,13 +7229,8 @@ pub async fn CodexAppConnection::thread_shell_command(
 pub async fn CodexAppConnection::thread_approve_guardian_denied_action(
   self : CodexAppConnection,
   params : AppThreadApproveGuardianDeniedActionParams,
-) -> AppThreadApproveGuardianDeniedActionResponse {
-  {
-    raw: self.call_raw(
-      "thread/approveGuardianDeniedAction",
-      params=params.to_json(),
-    ),
-  }
+) -> Unit {
+  self.call_empty("thread/approveGuardianDeniedAction", params=params.to_json())
 }
 
 ///|
@@ -7491,8 +7247,8 @@ pub async fn CodexAppConnection::thread_rollback(
 pub async fn CodexAppConnection::thread_inject_items(
   self : CodexAppConnection,
   params : AppThreadInjectItemsParams,
-) -> AppThreadInjectItemsResponse {
-  { raw: self.call_raw("thread/inject_items", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("thread/inject_items", params=params.to_json())
 }
 
 ///|
@@ -7563,8 +7319,8 @@ pub async fn CodexAppConnection::fs_read_file(
 pub async fn CodexAppConnection::fs_write_file(
   self : CodexAppConnection,
   params : AppFsWriteFileParams,
-) -> AppFsWriteFileResponse {
-  { raw: self.call_raw("fs/writeFile", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("fs/writeFile", params=params.to_json())
 }
 
 ///|
@@ -7572,8 +7328,8 @@ pub async fn CodexAppConnection::fs_write_file(
 pub async fn CodexAppConnection::fs_create_directory(
   self : CodexAppConnection,
   params : AppFsCreateDirectoryParams,
-) -> AppFsCreateDirectoryResponse {
-  { raw: self.call_raw("fs/createDirectory", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("fs/createDirectory", params=params.to_json())
 }
 
 ///|
@@ -7599,8 +7355,8 @@ pub async fn CodexAppConnection::fs_read_directory(
 pub async fn CodexAppConnection::fs_remove(
   self : CodexAppConnection,
   params : AppFsRemoveParams,
-) -> AppFsRemoveResponse {
-  { raw: self.call_raw("fs/remove", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("fs/remove", params=params.to_json())
 }
 
 ///|
@@ -7608,8 +7364,8 @@ pub async fn CodexAppConnection::fs_remove(
 pub async fn CodexAppConnection::fs_copy(
   self : CodexAppConnection,
   params : AppFsCopyParams,
-) -> AppFsCopyResponse {
-  { raw: self.call_raw("fs/copy", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("fs/copy", params=params.to_json())
 }
 
 ///|
@@ -7626,8 +7382,8 @@ pub async fn CodexAppConnection::fs_watch(
 pub async fn CodexAppConnection::fs_unwatch(
   self : CodexAppConnection,
   params : AppFsUnwatchParams,
-) -> AppFsUnwatchResponse {
-  { raw: self.call_raw("fs/unwatch", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("fs/unwatch", params=params.to_json())
 }
 
 ///|
@@ -7653,8 +7409,8 @@ pub async fn CodexAppConnection::plugin_install(
 pub async fn CodexAppConnection::plugin_uninstall(
   self : CodexAppConnection,
   params : AppPluginUninstallParams,
-) -> AppPluginUninstallResponse {
-  { raw: self.call_raw("plugin/uninstall", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("plugin/uninstall", params=params.to_json())
 }
 
 ///|
@@ -7703,8 +7459,8 @@ pub async fn CodexAppConnection::mcp_server_oauth_login(
 /// Call `config/mcpServer/reload`.
 pub async fn CodexAppConnection::config_mcp_server_reload(
   self : CodexAppConnection,
-) -> AppConfigMcpServerReloadResponse {
-  { raw: self.call_raw("config/mcpServer/reload") }
+) -> Unit {
+  self.call_empty("config/mcpServer/reload")
 }
 
 ///|
@@ -7773,8 +7529,8 @@ pub async fn CodexAppConnection::account_login_cancel(
 /// Call `account/logout`.
 pub async fn CodexAppConnection::account_logout(
   self : CodexAppConnection,
-) -> AppAccountLogoutResponse {
-  { raw: self.call_raw("account/logout") }
+) -> Unit {
+  self.call_empty("account/logout")
 }
 
 ///|
@@ -7819,8 +7575,8 @@ pub async fn CodexAppConnection::command_exec(
 pub async fn CodexAppConnection::command_exec_write(
   self : CodexAppConnection,
   params : AppCommandExecWriteParams,
-) -> AppCommandExecWriteResponse {
-  { raw: self.call_raw("command/exec/write", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("command/exec/write", params=params.to_json())
 }
 
 ///|
@@ -7828,8 +7584,8 @@ pub async fn CodexAppConnection::command_exec_write(
 pub async fn CodexAppConnection::command_exec_terminate(
   self : CodexAppConnection,
   params : AppCommandExecProcessParams,
-) -> AppCommandExecTerminateResponse {
-  { raw: self.call_raw("command/exec/terminate", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("command/exec/terminate", params=params.to_json())
 }
 
 ///|
@@ -7837,8 +7593,8 @@ pub async fn CodexAppConnection::command_exec_terminate(
 pub async fn CodexAppConnection::command_exec_resize(
   self : CodexAppConnection,
   params : AppCommandExecResizeParams,
-) -> AppCommandExecResizeResponse {
-  { raw: self.call_raw("command/exec/resize", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("command/exec/resize", params=params.to_json())
 }
 
 ///|
@@ -7857,8 +7613,8 @@ pub async fn CodexAppConnection::external_agent_config_detect(
 pub async fn CodexAppConnection::external_agent_config_import(
   self : CodexAppConnection,
   params : AppExternalAgentConfigImportParams,
-) -> AppExternalAgentConfigImportResponse {
-  { raw: self.call_raw("externalAgentConfig/import", params=params.to_json()) }
+) -> Unit {
+  self.call_empty("externalAgentConfig/import", params=params.to_json())
 }
 
 ///|
@@ -7907,24 +7663,26 @@ pub async fn CodexAppConnection::fuzzy_file_search(
 
 ///|
 /// Raw JSON-RPC message received from a Codex app server.
-pub enum AppServerMessage {
+priv enum AppServerMessage {
   Notification(AppServerEvent)
+  IgnoredNotification
   Request(AppServerRequest)
+  UnsupportedRequest(id~ : AppRequestId, rpc_method~ : String)
   Response(id~ : AppRequestId, result~ : Json)
   ErrorResponse(id~ : AppRequestId, error~ : AppRpcError)
-} derive(Debug)
+}
 
 ///|
 /// JSON-RPC frame sent from this SDK to the Codex app server.
-pub(all) enum AppClientMessage {
+priv enum AppClientMessage {
   ClientRequest(id~ : AppRequestId, rpc_method~ : String, params~ : Json?)
   ClientNotification(rpc_method~ : String, params~ : Json?)
   ClientResponse(id~ : AppRequestId, result~ : Json)
   ClientErrorResponse(id~ : AppRequestId, error~ : AppRpcError)
-} derive(Debug)
+}
 
 ///|
-pub impl ToJson for AppClientMessage with fn to_json(message) {
+impl ToJson for AppClientMessage with fn to_json(message) {
   match message {
     ClientRequest(id~, rpc_method~, params~) => {
       let obj : Map[String, Json] = { "id": id, "method": rpc_method }
@@ -7946,21 +7704,30 @@ pub impl ToJson for AppClientMessage with fn to_json(message) {
 }
 
 ///|
-pub impl FromJson for AppServerMessage with fn from_json(value, path) {
+impl FromJson for AppServerMessage with fn from_json(value, path) {
   guard value is Object(obj) else {
     raise JsonDecodeError((path, "expected JSON-RPC object"))
   }
   match obj {
     { "method": String(rpc_method), "id": id_json, "params"? : params, .. } =>
-      Request(
+      match
         app_server_request(
           @json.from_json(id_json, path=path.add_key("id")),
           rpc_method,
           params,
           path.add_key("params"),
-        ),
-      )
-    { "method": String(_), .. } => Notification(@json.from_json(value, path~))
+        ) {
+        Some(request) => Request(request)
+        None =>
+          UnsupportedRequest(
+            id=@json.from_json(id_json, path=path.add_key("id")),
+            rpc_method~,
+          )
+      }
+    { "method": String(_), .. } =>
+      Notification(@json.from_json(value, path~)) catch {
+        _ => IgnoredNotification
+      }
     { "id": id_json, "result": result, .. } =>
       Response(id=@json.from_json(id_json, path=path.add_key("id")), result~)
     { "id": id_json, "error": error_json, .. } =>
@@ -7978,53 +7745,62 @@ fn app_server_request(
   rpc_method : String,
   params : Json?,
   path : @json.JsonPath,
-) -> AppServerRequest raise @json.JsonDecodeError {
+) -> AppServerRequest? raise @json.JsonDecodeError {
   let details = match rpc_method {
     "item/commandExecution/requestApproval" =>
       match params {
         Some(params) =>
-          AppCommandExecutionApprovalRequest(@json.from_json(params, path~))
-        None => AppRawRequest
+          Some(
+            AppCommandExecutionApprovalRequest(@json.from_json(params, path~)),
+          )
+        None => None
       }
     "item/fileChange/requestApproval" =>
       match params {
         Some(params) =>
-          AppFileChangeApprovalRequest(@json.from_json(params, path~))
-        None => AppRawRequest
+          Some(AppFileChangeApprovalRequest(@json.from_json(params, path~)))
+        None => None
       }
     "item/tool/requestUserInput" =>
       match params {
         Some(params) =>
-          AppToolRequestUserInputRequest(@json.from_json(params, path~))
-        None => AppRawRequest
+          Some(AppToolRequestUserInputRequest(@json.from_json(params, path~)))
+        None => None
       }
     "item/tool/call" =>
       match params {
         Some(params) =>
-          AppDynamicToolCallRequest(@json.from_json(params, path~))
-        None => AppRawRequest
+          Some(AppDynamicToolCallRequest(@json.from_json(params, path~)))
+        None => None
       }
     "item/permissions/requestApproval" =>
       match params {
         Some(params) =>
-          AppPermissionsRequestApprovalRequest(@json.from_json(params, path~))
-        None => AppRawRequest
+          Some(
+            AppPermissionsRequestApprovalRequest(@json.from_json(params, path~)),
+          )
+        None => None
       }
     "account/chatgptAuthTokens/refresh" =>
       match params {
         Some(params) =>
-          AppChatgptAuthTokensRefreshRequest(@json.from_json(params, path~))
-        None => AppRawRequest
+          Some(
+            AppChatgptAuthTokensRefreshRequest(@json.from_json(params, path~)),
+          )
+        None => None
       }
     "mcpServer/elicitation/request" =>
       match params {
         Some(params) =>
-          AppMcpServerElicitationRequest(@json.from_json(params, path~))
-        None => AppRawRequest
+          Some(AppMcpServerElicitationRequest(@json.from_json(params, path~)))
+        None => None
       }
-    _ => AppRawRequest
+    _ => None
   }
-  { id, rpc_method, params, details }
+  match details {
+    Some(details) => Some({ id, details })
+    None => None
+  }
 }
 
 ///|
@@ -8256,7 +8032,6 @@ pub enum AppServerEvent {
   AppThreadRealtimeSdp(thread_id~ : String, sdp~ : String)
   AppThreadRealtimeError(thread_id~ : String, message~ : String)
   AppThreadRealtimeClosed(thread_id~ : String, reason~ : String?)
-  AppRaw(rpc_method~ : String, params~ : Json?)
 } derive(Debug)
 
 ///|
@@ -9335,7 +9110,8 @@ pub impl FromJson for AppServerEvent with fn from_json(value, path) {
         ),
       )
     }
-    _ => AppRaw(rpc_method~, params~)
+    _ =>
+      raise JsonDecodeError((path, "expected app-server notification method"))
   }
 }
 

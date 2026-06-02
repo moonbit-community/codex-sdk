@@ -175,22 +175,6 @@ pub impl ToJson for AppThreadRealtimeStartParams with fn to_json(params) {
 }
 
 ///|
-pub(all) struct AppThreadRealtimeStartResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub impl FromJson for AppThreadRealtimeStartResponse with fn from_json(
-  value,
-  path,
-) {
-  guard value is Object(_) else {
-    raise JsonDecodeError((path, "expected thread/realtime/start response"))
-  }
-  { raw: value }
-}
-
-///|
 pub impl ToJson for AppThreadRealtimeAudioChunk with fn to_json(audio) {
   let obj : Map[String, Json] = {
     "data": audio.data,
@@ -246,22 +230,6 @@ pub impl FromJson for AppThreadRealtimeListVoicesResponse with fn from_json(
     )
   }
   { voices: @json.from_json(voices, path=path.add_key("voices")) }
-}
-
-///|
-pub(all) struct AppThreadRealtimeEmptyResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub impl FromJson for AppThreadRealtimeEmptyResponse with fn from_json(
-  value,
-  path,
-) {
-  guard value is Object(_) else {
-    raise JsonDecodeError((path, "expected thread realtime empty response"))
-  }
-  { raw: value }
 }
 
 ///|
@@ -396,59 +364,35 @@ pub impl ToJson for AppFuzzyFileSearchSessionStopParams with fn to_json(params) 
 }
 
 ///|
-pub(all) struct AppFuzzyFileSearchSessionEmptyResponse {
-  priv raw : Json
-} derive(Debug)
-
-///|
-pub impl FromJson for AppFuzzyFileSearchSessionEmptyResponse with fn from_json(
-  value,
-  path,
-) {
-  guard value is Object(_) else {
-    raise JsonDecodeError((path, "expected fuzzy search session response"))
-  }
-  { raw: value }
-}
-
-///|
 pub async fn CodexAppConnection::thread_realtime_start(
   self : CodexAppConnection,
   params : AppThreadRealtimeStartParams,
-) -> AppThreadRealtimeStartResponse {
-  @json.from_json(
-    self.call_raw("thread/realtime/start", params=params.to_json()),
-  )
+) -> Unit {
+  self.call_empty("thread/realtime/start", params=params.to_json())
 }
 
 ///|
 pub async fn CodexAppConnection::thread_realtime_append_audio(
   self : CodexAppConnection,
   params : AppThreadRealtimeAppendAudioParams,
-) -> AppThreadRealtimeEmptyResponse {
-  @json.from_json(
-    self.call_raw("thread/realtime/appendAudio", params=params.to_json()),
-  )
+) -> Unit {
+  self.call_empty("thread/realtime/appendAudio", params=params.to_json())
 }
 
 ///|
 pub async fn CodexAppConnection::thread_realtime_append_text(
   self : CodexAppConnection,
   params : AppThreadRealtimeAppendTextParams,
-) -> AppThreadRealtimeEmptyResponse {
-  @json.from_json(
-    self.call_raw("thread/realtime/appendText", params=params.to_json()),
-  )
+) -> Unit {
+  self.call_empty("thread/realtime/appendText", params=params.to_json())
 }
 
 ///|
 pub async fn CodexAppConnection::thread_realtime_stop(
   self : CodexAppConnection,
   params : AppThreadIdParams,
-) -> AppThreadRealtimeEmptyResponse {
-  @json.from_json(
-    self.call_raw("thread/realtime/stop", params=params.to_json()),
-  )
+) -> Unit {
+  self.call_empty("thread/realtime/stop", params=params.to_json())
 }
 
 ///|
@@ -479,28 +423,22 @@ pub async fn CodexAppConnection::mock_experimental_method(
 pub async fn CodexAppConnection::fuzzy_file_search_session_start(
   self : CodexAppConnection,
   params : AppFuzzyFileSearchSessionStartParams,
-) -> AppFuzzyFileSearchSessionEmptyResponse {
-  @json.from_json(
-    self.call_raw("fuzzyFileSearch/sessionStart", params=params.to_json()),
-  )
+) -> Unit {
+  self.call_empty("fuzzyFileSearch/sessionStart", params=params.to_json())
 }
 
 ///|
 pub async fn CodexAppConnection::fuzzy_file_search_session_update(
   self : CodexAppConnection,
   params : AppFuzzyFileSearchSessionUpdateParams,
-) -> AppFuzzyFileSearchSessionEmptyResponse {
-  @json.from_json(
-    self.call_raw("fuzzyFileSearch/sessionUpdate", params=params.to_json()),
-  )
+) -> Unit {
+  self.call_empty("fuzzyFileSearch/sessionUpdate", params=params.to_json())
 }
 
 ///|
 pub async fn CodexAppConnection::fuzzy_file_search_session_stop(
   self : CodexAppConnection,
   params : AppFuzzyFileSearchSessionStopParams,
-) -> AppFuzzyFileSearchSessionEmptyResponse {
-  @json.from_json(
-    self.call_raw("fuzzyFileSearch/sessionStop", params=params.to_json()),
-  )
+) -> Unit {
+  self.call_empty("fuzzyFileSearch/sessionStop", params=params.to_json())
 }
