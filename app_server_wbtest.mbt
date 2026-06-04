@@ -1481,6 +1481,209 @@ test "parse unsupported app-server requests as internal unsupported frames" {
 }
 
 ///|
+test "runtime turn options attach thread id" {
+  let options = AppTurnStartOptions::new(model="gpt-5", effort=AppEffortHigh)
+  let params = options.params("thread-1", [AppInputText(text="hello")])
+  guard params.to_json()
+    is {
+      "threadId": String("thread-1"),
+      "input": Array([{ "text": String("hello"), .. }]),
+      "model": String("gpt-5"),
+      "effort": String("high"),
+      ..
+    } else {
+    fail("expected turn options to build thread-scoped params")
+  }
+}
+
+///|
+async test "runtime routes early turn events to pending stream" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::new(kind=Unbounded),
+    events: @async.Queue::new(kind=Unbounded),
+    requests: @async.Queue::new(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+  }
+  let runtime = CodexAppServerRuntime::new(connection)
+  let events : @async.Queue[AppServerEvent] = @async.Queue::new(kind=Unbounded)
+  let stream_id = runtime.register_pending_turn_stream("thread-1", events, None)
+  let turn : AppTurn = {
+    id: "turn-1",
+    items: [],
+    status: AppTurnInProgressStatus,
+    error: None,
+    started_at: Some(10),
+    completed_at: None,
+    duration_ms: None,
+    raw: {},
+  }
+  guard runtime.dispatch_turn_event(AppTurnStarted(thread_id="thread-1", turn~)) else {
+    fail("expected runtime to route pending turn event")
+  }
+  runtime.bind_turn_stream(stream_id, "turn-1")
+  let stream : AppTurnStream = {
+    thread_id: "thread-1",
+    turn_id: "turn-1",
+    runtime,
+    stream_id,
+    events,
+  }
+  match stream.next() {
+    Some(AppTurnStarted(thread_id~, turn~)) => {
+      debug_inspect(thread_id, content="\"thread-1\"")
+      debug_inspect(turn.id, content="\"turn-1\"")
+    }
+    _ => fail("expected turn started event")
+  }
+}
+
+///|
+async test "runtime closes turn stream on terminal event" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::new(kind=Unbounded),
+    events: @async.Queue::new(kind=Unbounded),
+    requests: @async.Queue::new(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+  }
+  let runtime = CodexAppServerRuntime::new(connection)
+  let events : @async.Queue[AppServerEvent] = @async.Queue::new(kind=Unbounded)
+  let stream_id = runtime.register_pending_turn_stream("thread-1", events, None)
+  runtime.bind_turn_stream(stream_id, "turn-1")
+  let stream : AppTurnStream = {
+    thread_id: "thread-1",
+    turn_id: "turn-1",
+    runtime,
+    stream_id,
+    events,
+  }
+  let turn : AppTurn = {
+    id: "turn-1",
+    items: [],
+    status: AppTurnCompletedStatus,
+    error: None,
+    started_at: Some(10),
+    completed_at: Some(20),
+    duration_ms: Some(10),
+    raw: {},
+  }
+  guard runtime.dispatch_turn_event(
+    AppTurnCompleted(thread_id="thread-1", turn~),
+  ) else {
+    fail("expected runtime to route completed turn event")
+  }
+  match stream.next() {
+    Some(AppTurnCompleted(thread_id~, turn~)) => {
+      debug_inspect(thread_id, content="\"thread-1\"")
+      debug_inspect(turn.status, content="AppTurnCompletedStatus")
+    }
+    _ => fail("expected turn completed event")
+  }
+  guard stream.next() is None else {
+    fail("expected terminal event to close the stream")
+  }
+}
+
+///|
+async test "runtime binds pending stream on early turn request" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::new(kind=Unbounded),
+    events: @async.Queue::new(kind=Unbounded),
+    requests: @async.Queue::new(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+  }
+  let runtime = CodexAppServerRuntime::new(connection)
+  let events : @async.Queue[AppServerEvent] = @async.Queue::new(kind=Unbounded)
+  let _ = runtime.register_pending_turn_stream(
+    "thread-1",
+    events,
+    Some(fn(_) {
+      AppCommandExecutionApprovalResponse(decision=AppCommandDecline)
+    }),
+  )
+  let request : AppServerRequest = {
+    id: StringId("approval-1"),
+    details: AppCommandExecutionApprovalRequest({
+      thread_id: "thread-1",
+      turn_id: "turn-1",
+      item_id: "item-1",
+      started_at_ms: 1,
+      approval_id: None,
+      reason: None,
+      network_approval_context: None,
+      command: None,
+      cwd: None,
+      command_actions: None,
+      proposed_execpolicy_amendment: None,
+      proposed_network_policy_amendments: None,
+      raw: {},
+    }),
+  }
+  runtime.handle_runtime_request(request, None)
+  let response = connection.outgoing.get()
+  guard response
+    is {
+      "id": String("approval-1"),
+      "result": { "decision": String("decline"), .. },
+      ..
+    } else {
+    fail("expected declined approval response")
+  }
+  debug_inspect(runtime.turn_streams[0].turn_id, content="Some(\"turn-1\")")
+}
+
+///|
+async test "runtime routes turn request to stream handler" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::new(kind=Unbounded),
+    events: @async.Queue::new(kind=Unbounded),
+    requests: @async.Queue::new(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+  }
+  let runtime = CodexAppServerRuntime::new(connection)
+  let events : @async.Queue[AppServerEvent] = @async.Queue::new(kind=Unbounded)
+  let stream_id = runtime.register_pending_turn_stream(
+    "thread-1",
+    events,
+    Some(fn(_) {
+      AppCommandExecutionApprovalResponse(decision=AppCommandDecline)
+    }),
+  )
+  runtime.bind_turn_stream(stream_id, "turn-1")
+  let request : AppServerRequest = {
+    id: StringId("approval-1"),
+    details: AppCommandExecutionApprovalRequest({
+      thread_id: "thread-1",
+      turn_id: "turn-1",
+      item_id: "item-1",
+      started_at_ms: 1,
+      approval_id: None,
+      reason: None,
+      network_approval_context: None,
+      command: None,
+      cwd: None,
+      command_actions: None,
+      proposed_execpolicy_amendment: None,
+      proposed_network_policy_amendments: None,
+      raw: {},
+    }),
+  }
+  runtime.handle_runtime_request(request, None)
+  let response = connection.outgoing.get()
+  guard response
+    is {
+      "id": String("approval-1"),
+      "result": { "decision": String("decline"), .. },
+      ..
+    } else {
+    fail("expected declined approval response")
+  }
+}
+
+///|
 test "parse app-server MCP elicitation request" {
   let message : AppServerMessage = @json.from_json(
     @json.parse(

@@ -222,36 +222,41 @@ everything in the SDK is expressed as plain MoonBit structs and async functions.
 ### Connect to Codex app-server
 
 The app-server surface is separate from `codex exec --json`. It runs as a
-persistent JSON-RPC process. Prefer `Codex::with_app_server` for scoped use:
-the SDK owns the task group, starts the app-server process, sends the required
-`initialize` request plus `initialized` notification, and closes stdin when your
-callback returns. If you pass `request_handler`, the SDK also runs a request
-serving loop for server-initiated requests.
+persistent JSON-RPC process. Prefer `Codex::with_app_server_runtime` for app
+integrations: the SDK owns the task group, starts the app-server process, sends
+the required `initialize` request plus `initialized` notification, runs the
+shared notification pump, and closes stdin when your callback returns.
 
 The SDK starts the process through `codex app-server --listen stdio://`, using
 `CodexOptions::codex_path_override` or `AppServerOptions::executable_path_override`
 when you need a non-default Codex CLI path. Request handlers are async, so
 approval flows may do I/O before returning a JSON-RPC response.
 
-Client-initiated requests are exposed through named methods:
+The runtime is the ergonomic concurrency layer:
 
-- `thread_list`, `thread_start`, `thread_read`, `turn_start`,
-  `turn_interrupt`, and `model_list` for client-initiated RPCs. These named
-  methods use typed `App*Params` values.
-- `next_event` for server notifications.
-- `request_handler` on `with_app_server` for server-initiated requests that your
-  client must answer. Handler exceptions are translated into JSON-RPC error
-  responses by the SDK.
+- `start_thread` and `resume_thread` return thread handles that own their
+  thread id.
+- `CodexAppRuntimeThread::run_streamed` starts a turn and returns a per-turn
+  stream. It registers the stream before sending `turn/start`, so early
+  notifications are not lost while the RPC response is in flight.
+- `CodexAppRuntimeThread::start_turn_stream` remains available when app-server
+  method naming is clearer for low-level integrations.
+- Turn-scoped server requests, such as approvals and user-input requests, are
+  routed to the handler passed to the thread's streamed turn.
+- Connection-level server requests fall back to the optional `request_handler`
+  passed to `with_app_server_runtime`.
+- `next_global_event` on the runtime receives non-turn or unregistered
+  app-server notifications.
 
 Because app-server carries more than turn-stream events, request handling is
 kept on a separate channel from notifications. When a notification is
 semantically the same as the existing exec stream, use
 `AppServerEvent::thread_event` to bridge it back to `Event`.
 
-The connection uses one stdout reader pump internally and routes JSON-RPC
-responses by request id, server notifications to the event channel, and
-server-initiated requests to the request channel. Multiple typed client RPCs may
-be in flight at the same time.
+For lower-level integrations, `Codex::with_app_server` exposes the raw
+`CodexAppConnection`. Its `next_event` method is a shared connection-level
+stream: use a single consumer and fan events out yourself if multiple turns are
+active.
 
 The app-server surface currently targets the Codex app-server v2 schema.
 
@@ -259,8 +264,11 @@ The app-server surface currently targets the Codex app-server v2 schema.
 ///|
 #skip
 async test {
-  @codex.Codex::new().with_app_server(
-    request_handler=fn(request) {
+  @codex.Codex::new().with_app_server_runtime(async fn(runtime) {
+    let thread = runtime.start_thread()
+    let review_thread = runtime.start_thread()
+    let turn_input = [@codex.AppUserInput::AppInputText(text="hello")]
+    let turn = thread.run_streamed(turn_input, request_handler=fn(request) {
       match request.details {
         @codex.AppServerRequestDetails::AppCommandExecutionApprovalRequest(_) =>
           @codex.AppServerResponse::AppCommandExecutionApprovalResponse(
@@ -303,21 +311,35 @@ async test {
             meta=None,
           )
       }
-    },
-    async fn(connection) {
-      let response = connection.thread_list(
-        params=@codex.AppThreadListParams::new(limit=20),
-      )
-      println("threads: \{response.data.length()}")
+    })
+    let review_turn = review_thread.run_streamed([
+      @codex.AppUserInput::AppInputText(text="review this"),
+    ])
 
-      while connection.next_event() is Some(event) {
-        match event.thread_event() {
-          Some(@codex.Event::ItemStarted(item)) =>
-            println(item.to_json().stringify())
-          _ => ()
-        }
+    while turn.next() is Some(event) {
+      match event.thread_event() {
+        Some(@codex.Event::ItemStarted(item)) =>
+          println(item.to_json().stringify())
+        _ => ()
       }
-    },
-  )
+    }
+    review_turn.close()
+
+    while runtime.next_global_event() is Some(event) {
+      ignore(event)
+    }
+  })
+}
+```
+
+```mbt check
+///|
+#skip
+async test {
+  @codex.Codex::new().with_app_server(async fn(connection) {
+    while connection.next_event() is Some(event) {
+      ignore(event)
+    }
+  })
 }
 ```

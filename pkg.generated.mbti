@@ -2869,6 +2869,20 @@ pub(all) enum AppTurnPlanStepStatus {
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppTurnPlanStepStatus
 
+pub struct AppTurnStartOptions {
+  cwd : String?
+  approval_policy : AppApprovalPolicy?
+  approvals_reviewer : AppApprovalsReviewer?
+  sandbox_policy : AppSandboxPolicy?
+  model : String?
+  service_tier : AppNullableString?
+  effort : AppReasoningEffort?
+  summary : AppReasoningSummary?
+  personality : AppPersonality?
+  output_schema : Json?
+} derive(Default, @debug.Debug)
+pub fn AppTurnStartOptions::new(cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox_policy? : AppSandboxPolicy, model? : String, service_tier? : AppNullableString, effort? : AppReasoningEffort, summary? : AppReasoningSummary, personality? : AppPersonality, output_schema? : Json) -> Self
+
 pub struct AppTurnStartParams {
   thread_id : String
   input : Array[AppUserInput]
@@ -2911,6 +2925,15 @@ pub struct AppTurnSteerResponse {
   turn_id : String
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppTurnSteerResponse
+
+pub struct AppTurnStream {
+  thread_id : String
+  turn_id : String
+  // private fields
+}
+pub fn AppTurnStream::close(Self) -> Unit
+pub async fn AppTurnStream::interrupt(Self) -> Unit
+pub async fn AppTurnStream::next(Self) -> AppServerEvent?
 
 pub(all) enum AppUserInput {
   AppInputText(text~ : String)
@@ -2989,6 +3012,7 @@ pub fn Codex::new(options? : CodexOptions) -> Self
 pub fn Codex::resume_thread(Self, String, options? : ThreadOptions) -> Thread
 pub fn Codex::start_thread(Self, options? : ThreadOptions) -> Thread
 pub async fn[R] Codex::with_app_server(Self, options? : AppServerOptions, request_handler? : async (AppServerRequest) -> AppServerResponse, async (CodexAppConnection) -> R) -> R
+pub async fn[R] Codex::with_app_server_runtime(Self, options? : AppServerOptions, request_handler? : async (AppServerRequest) -> AppServerResponse, async (CodexAppServerRuntime) -> R) -> R
 
 type CodexAppConnection
 pub async fn CodexAppConnection::account_login_cancel(Self, AppCancelLoginAccountParams) -> AppAccountLoginCancelResponse
@@ -3079,6 +3103,38 @@ pub async fn CodexAppConnection::turn_interrupt(Self, AppTurnInterruptParams) ->
 pub async fn CodexAppConnection::turn_start(Self, AppTurnStartParams) -> AppTurnStartResponse
 pub async fn CodexAppConnection::turn_steer(Self, AppTurnSteerParams) -> AppTurnSteerResponse
 pub async fn CodexAppConnection::windows_sandbox_setup_start(Self, AppWindowsSandboxSetupStartParams) -> AppWindowsSandboxSetupStartResponse
+
+pub struct CodexAppRuntimeThread {
+  thread : AppThread
+  model : String
+  model_provider : String
+  service_tier : String?
+  cwd : String
+  instruction_sources : ArrayView[String]
+  approval_policy : AppApprovalPolicy
+  approvals_reviewer : AppApprovalsReviewer
+  sandbox : AppSandboxPolicy
+  reasoning_effort : AppReasoningEffort?
+  // private fields
+}
+pub fn CodexAppRuntimeThread::id(Self) -> String
+pub async fn CodexAppRuntimeThread::read(Self, include_turns? : Bool) -> AppThreadReadResponse
+pub async fn CodexAppRuntimeThread::run_streamed(Self, Array[AppUserInput], options? : AppTurnStartOptions, request_handler? : async (AppServerRequest) -> AppServerResponse) -> AppTurnStream
+pub async fn CodexAppRuntimeThread::start_turn(Self, Array[AppUserInput], options? : AppTurnStartOptions) -> AppTurnStartResponse
+pub async fn CodexAppRuntimeThread::start_turn_stream(Self, Array[AppUserInput], options? : AppTurnStartOptions, request_handler? : async (AppServerRequest) -> AppServerResponse) -> AppTurnStream
+
+pub struct CodexAppServerRuntime {
+  // private fields
+}
+pub async fn CodexAppServerRuntime::model_list(Self, params? : AppModelListParams) -> AppModelListResponse
+pub async fn CodexAppServerRuntime::next_global_event(Self) -> AppServerEvent?
+pub async fn CodexAppServerRuntime::resume_thread(Self, AppThreadResumeParams) -> CodexAppRuntimeThread
+pub async fn CodexAppServerRuntime::start_thread(Self, params? : AppThreadStartParams) -> CodexAppRuntimeThread
+pub async fn CodexAppServerRuntime::thread_list(Self, params? : AppThreadListParams) -> AppThreadListResponse
+pub async fn CodexAppServerRuntime::thread_read(Self, AppThreadReadParams) -> AppThreadReadResponse
+pub async fn CodexAppServerRuntime::thread_start(Self, params? : AppThreadStartParams) -> AppThreadStartResponse
+pub async fn CodexAppServerRuntime::turn_interrupt(Self, AppTurnInterruptParams) -> Unit
+pub async fn CodexAppServerRuntime::turn_start(Self, AppTurnStartParams) -> AppTurnStartResponse
 
 type CodexOptions derive(Default)
 pub fn CodexOptions::new(codex_path_override? : String, base_url? : String, api_key? : String, env? : Map[String, String]) -> Self
@@ -3263,6 +3319,8 @@ pub(all) enum UserInput {
 }
 
 // Type aliases
+pub type AppServerRequestHandler = async (AppServerRequest) -> AppServerResponse
+
 pub type Input = Array[UserInput]
 
 // Traits
