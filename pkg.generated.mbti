@@ -120,6 +120,11 @@ pub struct AppAppsDefaultConfig {
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppAppsDefaultConfig
 
+pub(all) struct AppAttestationGenerateRequest {
+  // private fields
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppAttestationGenerateRequest
+
 pub enum AppAuthMode {
   AppAuthApiKey
   AppAuthChatGPT
@@ -963,8 +968,10 @@ pub impl @json.FromJson for AppInfo
 
 pub(all) struct AppInitializeCapabilities {
   experimental_api : Bool
+  request_attestation : Bool?
   opt_out_notification_methods : Array[String]?
 } derive(@debug.Debug)
+pub fn AppInitializeCapabilities::new(experimental_api? : Bool, request_attestation? : Bool, opt_out_notification_methods? : Array[String]) -> Self
 pub impl ToJson for AppInitializeCapabilities
 
 pub(all) struct AppInitializeParams {
@@ -2058,6 +2065,7 @@ pub enum AppServerRequestDetails {
   AppDynamicToolCallRequest(AppDynamicToolCallRequest)
   AppPermissionsRequestApprovalRequest(AppPermissionsRequestApprovalRequest)
   AppChatgptAuthTokensRefreshRequest(AppChatgptAuthTokensRefreshRequest)
+  AppAttestationGenerateRequest(AppAttestationGenerateRequest)
   AppMcpServerElicitationRequest(AppMcpServerElicitationRequest)
 } derive(@debug.Debug)
 
@@ -2068,6 +2076,7 @@ pub(all) enum AppServerResponse {
   AppDynamicToolCallResponse(content_items~ : ArrayView[AppDynamicToolCallOutputContentItem], success~ : Bool)
   AppPermissionsRequestApprovalResponse(permissions~ : AppGrantedPermissionProfile, scope~ : AppPermissionGrantScope, strict_auto_review~ : Bool?)
   AppChatgptAuthTokensRefreshResponse(access_token~ : String, chatgpt_account_id~ : String, chatgpt_plan_type~ : String?)
+  AppAttestationGenerateResponse(token~ : String)
   AppMcpServerElicitationResponse(action~ : AppMcpServerElicitationAction, content~ : Json?, meta~ : Json?)
 } derive(@debug.Debug)
 pub impl ToJson for AppServerResponse

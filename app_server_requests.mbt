@@ -438,6 +438,19 @@ pub impl FromJson for AppChatgptAuthTokensRefreshReason with fn from_json(
 }
 
 ///|
+pub(all) struct AppAttestationGenerateRequest {
+  priv raw : Json
+} derive(Debug)
+
+///|
+pub impl FromJson for AppAttestationGenerateRequest with fn from_json(
+  value,
+  _path,
+) {
+  { raw: value }
+}
+
+///|
 pub(all) struct AppMcpServerElicitationRequest {
   thread_id : String
   turn_id : String?

@@ -317,6 +317,8 @@ async test {
             chatgpt_account_id="",
             chatgpt_plan_type=None,
           )
+        @codex.AppServerRequestDetails::AppAttestationGenerateRequest(_) =>
+          @codex.AppServerResponse::AppAttestationGenerateResponse(token="")
         @codex.AppServerRequestDetails::AppMcpServerElicitationRequest(_) =>
           @codex.AppServerResponse::AppMcpServerElicitationResponse(
             action=@codex.AppMcpServerElicitationAction::AppMcpElicitationDecline,

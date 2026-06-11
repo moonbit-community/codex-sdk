@@ -675,6 +675,7 @@ fn AppServerRequest::turn_stream_key(
         None => None
       }
     AppChatgptAuthTokensRefreshRequest(_) => None
+    AppAttestationGenerateRequest(_) => None
   }
 }
 
@@ -688,6 +689,7 @@ fn AppServerRequest::thread_id(self : AppServerRequest) -> String? {
     AppPermissionsRequestApprovalRequest(request) => Some(request.thread_id)
     AppMcpServerElicitationRequest(request) => Some(request.thread_id)
     AppChatgptAuthTokensRefreshRequest(_) => None
+    AppAttestationGenerateRequest(_) => None
   }
 }
 
@@ -763,8 +765,8 @@ fn AppServerEvent::ends_turn_stream(
   match self {
     AppTurnCompleted(thread_id~, turn~) =>
       thread_id == key.thread_id && turn.id == key.turn_id
-    AppTurnError(thread_id~, turn_id~, ..) =>
-      thread_id == key.thread_id && turn_id == key.turn_id
+    AppTurnError(thread_id~, turn_id~, will_retry~, ..) =>
+      thread_id == key.thread_id && turn_id == key.turn_id && !will_retry
     _ => false
   }
 }

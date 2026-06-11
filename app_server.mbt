@@ -42,7 +42,7 @@ fn AppServerOptions::initialize_params(
         {
           name: "moonbit-codex-sdk",
           title: Some("MoonBit Codex SDK"),
-          version: "0.128.0",
+          version: "0.129.0",
         }
     },
     capabilities: self.capabilities,
@@ -3024,6 +3024,7 @@ pub enum AppServerRequestDetails {
   AppDynamicToolCallRequest(AppDynamicToolCallRequest)
   AppPermissionsRequestApprovalRequest(AppPermissionsRequestApprovalRequest)
   AppChatgptAuthTokensRefreshRequest(AppChatgptAuthTokensRefreshRequest)
+  AppAttestationGenerateRequest(AppAttestationGenerateRequest)
   AppMcpServerElicitationRequest(AppMcpServerElicitationRequest)
 } derive(Debug)
 
@@ -3050,6 +3051,7 @@ pub(all) enum AppServerResponse {
     chatgpt_account_id~ : String,
     chatgpt_plan_type~ : String?
   )
+  AppAttestationGenerateResponse(token~ : String)
   AppMcpServerElicitationResponse(
     action~ : AppMcpServerElicitationAction,
     content~ : Json?,
@@ -3090,6 +3092,7 @@ pub impl ToJson for AppServerResponse with fn to_json(response) {
           None => Json::null()
         },
       }
+    AppAttestationGenerateResponse(token~) => { "token": token }
     AppMcpServerElicitationResponse(action~, content~, meta~) =>
       {
         "action": action.to_json(),
@@ -3779,14 +3782,25 @@ pub impl ToJson for AppClientInfo with fn to_json(info) {
 ///|
 pub(all) struct AppInitializeCapabilities {
   experimental_api : Bool
+  request_attestation : Bool?
   opt_out_notification_methods : Array[String]?
 } derive(Debug)
+
+///|
+pub fn AppInitializeCapabilities::new(
+  experimental_api? : Bool = false,
+  request_attestation? : Bool,
+  opt_out_notification_methods? : Array[String],
+) -> AppInitializeCapabilities {
+  { experimental_api, request_attestation, opt_out_notification_methods }
+}
 
 ///|
 pub impl ToJson for AppInitializeCapabilities with fn to_json(capabilities) {
   let obj : Map[String, Json] = {
     "experimentalApi": capabilities.experimental_api,
   }
+  app_put_bool(obj, "requestAttestation", capabilities.request_attestation)
   app_put_strings(
     obj,
     "optOutNotificationMethods",
@@ -7814,6 +7828,15 @@ fn app_server_request(
           )
         None => None
       }
+    "attestation/generate" =>
+      Some(
+        AppAttestationGenerateRequest(
+          @json.from_json(
+            params.unwrap_or(Json::object({})),
+            path=path.add_key("params"),
+          ),
+        ),
+      )
     "mcpServer/elicitation/request" =>
       match params {
         Some(params) =>

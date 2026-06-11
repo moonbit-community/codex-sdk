@@ -35,6 +35,7 @@ async test "app-server session e2e talks to real app-server" {
             AppPermissionsRequestApprovalRequest(_) => "permissions approval"
             AppChatgptAuthTokensRefreshRequest(_) =>
               "ChatGPT auth token refresh"
+            AppAttestationGenerateRequest(_) => "attestation generation"
             AppMcpServerElicitationRequest(_) => "MCP elicitation"
           },
         )

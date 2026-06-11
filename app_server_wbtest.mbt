@@ -20,6 +20,37 @@ test "serialize app-server client request" {
 }
 
 ///|
+test "serialize app-server initialize capabilities" {
+  let params = AppInitializeParams::{
+    client_info: AppClientInfo::{
+      name: "moonbit-codex-sdk",
+      title: None,
+      version: "0.129.0",
+    },
+    capabilities: Some(
+      AppInitializeCapabilities::new(
+        experimental_api=true,
+        request_attestation=true,
+        opt_out_notification_methods=["thread/name/updated"],
+      ),
+    ),
+  }
+  guard params.to_json()
+    is {
+      "clientInfo": { "version": String("0.129.0"), .. },
+      "capabilities": {
+        "experimentalApi": True,
+        "requestAttestation": True,
+        "optOutNotificationMethods": Array([String("thread/name/updated")]),
+        ..
+      },
+      ..
+    } else {
+    fail("expected request attestation capability")
+  }
+}
+
+///|
 test "serialize model list params" {
   let params = AppModelListParams::new(
     cursor="next-page",
@@ -468,6 +499,10 @@ test "serialize app-server typed request responses" {
       ..
     } else {
     fail("expected typed ChatGPT auth token refresh response")
+  }
+  guard AppServerResponse::AppAttestationGenerateResponse(token="jwt-1").to_json()
+    is { "token": String("jwt-1"), .. } else {
+    fail("expected typed attestation generation response")
   }
   guard AppServerResponse::AppMcpServerElicitationResponse(
       action=AppMcpElicitationDecline,
@@ -1495,10 +1530,32 @@ test "parse app-server ChatGPT auth token refresh request" {
 }
 
 ///|
+test "parse app-server attestation generate request" {
+  let message : AppServerMessage = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "id": "attestation-1",
+        #|  "method": "attestation/generate",
+        #|  "params": {}
+        #|}
+      ),
+    ),
+  )
+  match message {
+    Request(request) =>
+      match request.details {
+        AppAttestationGenerateRequest(_) =>
+          debug_inspect(request.id, content="StringId(\"attestation-1\")")
+        _ => fail("expected typed attestation generation request")
+      }
+    _ => fail("expected app-server request")
+  }
+}
+
+///|
 test "parse unsupported app-server requests as internal unsupported frames" {
-  let methods = [
-    "attestation/generate", "applyPatchApproval", "execCommandApproval",
-  ]
+  let methods = ["applyPatchApproval", "execCommandApproval"]
   for rpc_method in methods {
     let message : AppServerMessage = @json.from_json({
       "id": rpc_method,
@@ -1660,6 +1717,79 @@ async test "session closes turn stream on terminal event" {
   }
   guard stream.next() is None else {
     fail("expected terminal event to close the stream")
+  }
+}
+
+///|
+async test "session keeps turn stream open on retryable turn error" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+    events_closed: false,
+  }
+  let session = CodexAppSession::new(connection)
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
+    kind=Unbounded,
+  )
+  let stream_id = session.register_pending_turn_stream("thread-1", events, None)
+  session.bind_turn_stream(stream_id, "turn-1")
+  let stream : AppTurnStream = {
+    thread_id: "thread-1",
+    turn_id: "turn-1",
+    session,
+    stream_id,
+    events,
+    events_closed: false,
+  }
+  let error : AppTurnError = {
+    message: "temporary failure",
+    codex_error_info: None,
+    additional_details: None,
+    raw: {},
+  }
+  guard session.dispatch_turn_event(
+    AppTurnError(
+      thread_id="thread-1",
+      turn_id="turn-1",
+      error~,
+      will_retry=true,
+    ),
+  ) else {
+    fail("expected session to route retryable turn error")
+  }
+  let turn : AppTurn = {
+    id: "turn-1",
+    items: [],
+    status: AppTurnCompletedStatus,
+    error: None,
+    started_at: Some(10),
+    completed_at: Some(20),
+    duration_ms: Some(10),
+    raw: {},
+  }
+  guard session.dispatch_turn_event(
+    AppTurnCompleted(thread_id="thread-1", turn~),
+  ) else {
+    fail("expected session to route completed turn event after retry")
+  }
+  match stream.next() {
+    Some(AppTurnError(will_retry~, ..)) => {
+      guard will_retry else { fail("expected retryable turn error") }
+    }
+    _ => fail("expected retryable turn error event")
+  }
+  match stream.next() {
+    Some(AppTurnCompleted(thread_id~, turn~)) => {
+      debug_inspect(thread_id, content="\"thread-1\"")
+      debug_inspect(turn.status, content="AppTurnCompletedStatus")
+    }
+    _ => fail("expected turn completed event after retry")
+  }
+  guard stream.next() is None else {
+    fail("expected final completion to close the stream")
   }
 }
 
