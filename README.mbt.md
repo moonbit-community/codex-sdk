@@ -222,7 +222,7 @@ everything in the SDK is expressed as plain MoonBit structs and async functions.
 ### Connect to Codex app-server
 
 The app-server surface is separate from `codex exec --json`. It runs as a
-persistent JSON-RPC process. Prefer `Codex::with_app_server_runtime` for app
+persistent JSON-RPC process. Prefer `Codex::with_app_server_session` for app
 integrations: the SDK owns the task group, starts the app-server process, sends
 the required `initialize` request plus `initialized` notification, runs the
 shared notification pump, and closes stdin when your callback returns.
@@ -232,20 +232,22 @@ The SDK starts the process through `codex app-server --listen stdio://`, using
 when you need a non-default Codex CLI path. Request handlers are async, so
 approval flows may do I/O before returning a JSON-RPC response.
 
-The runtime is the ergonomic concurrency layer:
+The session is the ergonomic concurrency layer:
 
 - `start_thread` and `resume_thread` return thread handles that own their
   thread id.
-- `CodexAppRuntimeThread::run_streamed` starts a turn and returns a per-turn
+- Session-level RPCs such as `plugin_list`, `marketplace_add`, `config_read`,
+  and `fs_read_file` are available directly on the session without exposing the
+  raw shared event stream.
+- `CodexAppThread::run_streamed` starts a turn and returns a per-turn
   stream. It registers the stream before sending `turn/start`, so early
   notifications are not lost while the RPC response is in flight.
-- `CodexAppRuntimeThread::start_turn_stream` remains available when app-server
-  method naming is clearer for low-level integrations.
 - Turn-scoped server requests, such as approvals and user-input requests, are
   routed to the handler passed to the thread's streamed turn.
-- Connection-level server requests fall back to the optional `request_handler`
-  passed to `with_app_server_runtime`.
-- `next_global_event` on the runtime receives non-turn or unregistered
+- Thread-scoped server requests fall back to the handler set on the thread.
+- Session-level server requests fall back to the optional `request_handler`
+  passed to `with_app_server_session`.
+- `next_global_event` on the session receives non-turn or unregistered
   app-server notifications.
 
 Because app-server carries more than turn-stream events, request handling is
@@ -260,13 +262,24 @@ active.
 
 The app-server surface currently targets the Codex app-server v2 schema.
 
+The real app-server e2e test is marked `#skip` because it uses the local Codex
+CLI and can make authenticated model requests. It reads `skills/list` and runs
+a tiny streamed `hello` turn. Run it explicitly with
+`moon test app_server_e2e_test.mbt --include-skipped`. Set
+`CODEX_SDK_E2E_CODEX_PATH` when testing a non-default binary, and
+`CODEX_SDK_E2E_MODEL` when testing a specific model.
+
 ```mbt check
 ///|
 #skip
 async test {
-  @codex.Codex::new().with_app_server_runtime(async fn(runtime) {
-    let thread = runtime.start_thread()
-    let review_thread = runtime.start_thread()
+  @codex.Codex::new().with_app_server_session(async fn(session) {
+    let _ = session.plugin_list(@codex.AppPluginListParams::{
+      cwds: None,
+      marketplace_kinds: None,
+    })
+    let thread = session.start_thread()
+    let review_thread = session.start_thread()
     let turn_input = [@codex.AppUserInput::AppInputText(text="hello")]
     let turn = thread.run_streamed(turn_input, request_handler=fn(request) {
       match request.details {
@@ -325,7 +338,7 @@ async test {
     }
     review_turn.close()
 
-    while runtime.next_global_event() is Some(event) {
+    while session.next_global_event() is Some(event) {
       ignore(event)
     }
   })

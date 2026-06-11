@@ -16,46 +16,46 @@
 pub type AppServerRequestHandler = async (AppServerRequest) -> AppServerResponse
 
 ///|
-/// Run a scoped Codex app-server runtime.
+/// Run a scoped Codex app-server session.
 ///
-/// The runtime is the ergonomic app-server layer. It owns the shared
+/// The session is the ergonomic app-server layer. It owns the shared
 /// notification stream, routes turn-scoped events into per-turn streams, and
 /// routes server-initiated requests to turn-scoped handlers before falling back
-/// to the optional connection-level request handler.
-pub async fn[R] Codex::with_app_server_runtime(
+/// to the optional session-level request handler.
+pub async fn[R] Codex::with_app_server_session(
   self : Codex,
   options? : AppServerOptions = AppServerOptions::default(),
   request_handler? : AppServerRequestHandler,
-  body : async (CodexAppServerRuntime) -> R,
+  body : async (CodexAppSession) -> R,
 ) -> R {
   @async.with_task_group(tg => {
     let connection = self.spawn_app_server(tg, options~)
     defer connection.close()
     let _ = connection.initialize(options.initialize_params())
     connection.initialized()
-    let runtime = CodexAppServerRuntime::new(connection)
-    tg.spawn_bg(() => runtime.pump_events())
-    tg.spawn_bg(() => runtime.serve_requests(request_handler))
-    body(runtime)
+    let session = CodexAppSession::new(connection)
+    tg.spawn_bg(() => session.pump_events())
+    tg.spawn_bg(() => session.serve_requests(request_handler))
+    body(session)
   })
 }
 
 ///|
-pub struct CodexAppServerRuntime {
+pub struct CodexAppSession {
   priv connection : CodexAppConnection
   priv global_events : @async.Queue[AppServerEvent]
   priv mut turn_streams : Array[AppRegisteredTurnStream]
+  priv mut thread_request_handlers : Array[AppRegisteredThreadRequestHandler]
   priv mut next_stream_id : Int
 }
 
 ///|
-fn CodexAppServerRuntime::new(
-  connection : CodexAppConnection,
-) -> CodexAppServerRuntime {
+fn CodexAppSession::new(connection : CodexAppConnection) -> CodexAppSession {
   {
     connection,
     global_events: @async.Queue::new(kind=Unbounded),
     turn_streams: [],
+    thread_request_handlers: [],
     next_stream_id: 1,
   }
 }
@@ -65,12 +65,24 @@ priv struct AppRegisteredTurnStream {
   stream_id : Int
   thread_id : String
   mut turn_id : String?
-  events : @async.Queue[AppServerEvent]
+  events : @async.Queue[AppQueuedTurnEvent]
   request_handler : AppServerRequestHandler?
 }
 
 ///|
-pub struct CodexAppRuntimeThread {
+priv enum AppQueuedTurnEvent {
+  AppQueuedTurnEvent(AppServerEvent)
+  AppQueuedTurnClosed
+}
+
+///|
+priv struct AppRegisteredThreadRequestHandler {
+  thread_id : String
+  request_handler : AppServerRequestHandler
+}
+
+///|
+pub struct CodexAppThread {
   thread : AppThread
   model : String
   model_provider : String
@@ -81,7 +93,7 @@ pub struct CodexAppRuntimeThread {
   approvals_reviewer : AppApprovalsReviewer
   sandbox : AppSandboxPolicy
   reasoning_effort : AppReasoningEffort?
-  priv runtime : CodexAppServerRuntime
+  priv session : CodexAppSession
 }
 
 ///|
@@ -151,22 +163,25 @@ fn AppTurnStartOptions::params(
 pub struct AppTurnStream {
   thread_id : String
   turn_id : String
-  priv runtime : CodexAppServerRuntime
+  priv session : CodexAppSession
   priv stream_id : Int
-  priv events : @async.Queue[AppServerEvent]
+  priv events : @async.Queue[AppQueuedTurnEvent]
+  priv mut events_closed : Bool
 }
 
 ///|
 /// Start a turn and return a turn-scoped event stream.
 ///
-/// The runtime registers the stream before sending `turn/start`, so early
+/// The session registers the stream before sending `turn/start`, so early
 /// notifications cannot be lost while the RPC response is still in flight.
-async fn CodexAppServerRuntime::start_turn_stream(
-  self : CodexAppServerRuntime,
+async fn CodexAppSession::run_turn_stream(
+  self : CodexAppSession,
   params : AppTurnStartParams,
   request_handler? : AppServerRequestHandler,
 ) -> AppTurnStream raise Error {
-  let events : @async.Queue[AppServerEvent] = @async.Queue::new(kind=Unbounded)
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::new(
+    kind=Unbounded,
+  )
   let stream_id = self.register_pending_turn_stream(
     params.thread_id,
     events,
@@ -182,29 +197,44 @@ async fn CodexAppServerRuntime::start_turn_stream(
   {
     thread_id: params.thread_id,
     turn_id: response.turn.id,
-    runtime: self,
+    session: self,
     stream_id,
     events,
+    events_closed: false,
   }
 }
 
 ///|
 /// Receive the next event for this turn.
 pub async fn AppTurnStream::next(self : AppTurnStream) -> AppServerEvent? {
-  let event = self.events.get() catch { _ => return None }
-  Some(event)
+  if self.events_closed {
+    return None
+  }
+  let queued = self.events.get() catch {
+    _ => {
+      self.events_closed = true
+      return None
+    }
+  }
+  match queued {
+    AppQueuedTurnEvent(event) => Some(event)
+    AppQueuedTurnClosed => {
+      self.events_closed = true
+      None
+    }
+  }
 }
 
 ///|
 /// Close this client-side turn stream without interrupting the server-side turn.
 pub fn AppTurnStream::close(self : AppTurnStream) -> Unit {
-  self.runtime.close_turn_stream(self)
+  self.session.close_turn_stream(self)
 }
 
 ///|
 /// Interrupt the server-side turn and close this client-side stream.
 pub async fn AppTurnStream::interrupt(self : AppTurnStream) -> Unit {
-  self.runtime.turn_interrupt(
+  self.session.turn_interrupt(
     AppTurnInterruptParams::new(self.thread_id, self.turn_id),
   )
   self.close()
@@ -212,8 +242,8 @@ pub async fn AppTurnStream::interrupt(self : AppTurnStream) -> Unit {
 
 ///|
 /// Receive the next non-turn or unregistered app-server event.
-pub async fn CodexAppServerRuntime::next_global_event(
-  self : CodexAppServerRuntime,
+pub async fn CodexAppSession::next_global_event(
+  self : CodexAppSession,
 ) -> AppServerEvent? {
   let event = self.global_events.get() catch { _ => return None }
   Some(event)
@@ -221,137 +251,133 @@ pub async fn CodexAppServerRuntime::next_global_event(
 
 ///|
 /// Close a turn stream registration without interrupting the server-side turn.
-fn CodexAppServerRuntime::close_turn_stream(
-  self : CodexAppServerRuntime,
+fn CodexAppSession::close_turn_stream(
+  self : CodexAppSession,
   stream : AppTurnStream,
 ) -> Unit {
   self.close_turn_stream_by_id(stream.stream_id, false)
 }
 
 ///|
-pub async fn CodexAppServerRuntime::start_thread(
-  self : CodexAppServerRuntime,
+pub async fn CodexAppSession::start_thread(
+  self : CodexAppSession,
   params? : AppThreadStartParams,
-) -> CodexAppRuntimeThread {
-  self.thread_start(params?).runtime_thread(self)
+  request_handler? : AppServerRequestHandler,
+) -> CodexAppThread {
+  self.thread_start(params?).session_thread(self, request_handler?)
 }
 
 ///|
-pub async fn CodexAppServerRuntime::resume_thread(
-  self : CodexAppServerRuntime,
+pub async fn CodexAppSession::resume_thread(
+  self : CodexAppSession,
   params : AppThreadResumeParams,
-) -> CodexAppRuntimeThread {
-  self.connection.thread_resume(params).runtime_thread(self)
+  request_handler? : AppServerRequestHandler,
+) -> CodexAppThread {
+  self.connection.thread_resume(params).session_thread(self, request_handler?)
 }
 
 ///|
-pub fn CodexAppRuntimeThread::id(self : CodexAppRuntimeThread) -> String {
+pub fn CodexAppThread::id(self : CodexAppThread) -> String {
   self.thread.id
 }
 
 ///|
-pub async fn CodexAppRuntimeThread::read(
-  self : CodexAppRuntimeThread,
+pub async fn CodexAppThread::read(
+  self : CodexAppThread,
   include_turns? : Bool = false,
 ) -> AppThreadReadResponse {
-  self.runtime.thread_read(
+  self.session.thread_read(
     AppThreadReadParams::new(self.thread.id, include_turns),
   )
 }
 
 ///|
-pub async fn CodexAppRuntimeThread::start_turn(
-  self : CodexAppRuntimeThread,
-  input : Array[AppUserInput],
-  options? : AppTurnStartOptions = AppTurnStartOptions::default(),
-) -> AppTurnStartResponse {
-  self.runtime.turn_start(options.params(self.thread.id, input))
+/// Set or clear the thread-scoped fallback request handler.
+pub fn CodexAppThread::set_request_handler(
+  self : CodexAppThread,
+  request_handler? : AppServerRequestHandler,
+) -> Unit {
+  self.session.set_thread_request_handler(self.thread.id, request_handler)
 }
 
 ///|
-/// Start a streamed turn using app-server method naming.
-///
-/// Prefer `run_streamed` for application code that is organized around thread
-/// handles rather than JSON-RPC method names.
-pub async fn CodexAppRuntimeThread::start_turn_stream(
-  self : CodexAppRuntimeThread,
+pub async fn CodexAppThread::start_turn(
+  self : CodexAppThread,
   input : Array[AppUserInput],
   options? : AppTurnStartOptions = AppTurnStartOptions::default(),
-  request_handler? : AppServerRequestHandler,
-) -> AppTurnStream raise Error {
-  self.runtime.start_turn_stream(
-    options.params(self.thread.id, input),
-    request_handler?,
-  )
+) -> AppTurnStartResponse {
+  self.session.turn_start(options.params(self.thread.id, input))
 }
 
 ///|
 /// Start a turn on this thread and return a turn-scoped event stream.
-pub async fn CodexAppRuntimeThread::run_streamed(
-  self : CodexAppRuntimeThread,
+pub async fn CodexAppThread::run_streamed(
+  self : CodexAppThread,
   input : Array[AppUserInput],
   options? : AppTurnStartOptions = AppTurnStartOptions::default(),
   request_handler? : AppServerRequestHandler,
 ) -> AppTurnStream raise Error {
-  self.runtime.start_turn_stream(
+  self.session.run_turn_stream(
     options.params(self.thread.id, input),
     request_handler?,
   )
 }
 
 ///|
-pub async fn CodexAppServerRuntime::thread_list(
-  self : CodexAppServerRuntime,
+pub async fn CodexAppSession::thread_list(
+  self : CodexAppSession,
   params? : AppThreadListParams,
 ) -> AppThreadListResponse {
   self.connection.thread_list(params?)
 }
 
 ///|
-pub async fn CodexAppServerRuntime::thread_start(
-  self : CodexAppServerRuntime,
+pub async fn CodexAppSession::thread_start(
+  self : CodexAppSession,
   params? : AppThreadStartParams,
 ) -> AppThreadStartResponse {
   self.connection.thread_start(params?)
 }
 
 ///|
-pub async fn CodexAppServerRuntime::thread_read(
-  self : CodexAppServerRuntime,
+pub async fn CodexAppSession::thread_read(
+  self : CodexAppSession,
   params : AppThreadReadParams,
 ) -> AppThreadReadResponse {
   self.connection.thread_read(params)
 }
 
 ///|
-pub async fn CodexAppServerRuntime::turn_start(
-  self : CodexAppServerRuntime,
+pub async fn CodexAppSession::turn_start(
+  self : CodexAppSession,
   params : AppTurnStartParams,
 ) -> AppTurnStartResponse {
   self.connection.turn_start(params)
 }
 
 ///|
-pub async fn CodexAppServerRuntime::turn_interrupt(
-  self : CodexAppServerRuntime,
+pub async fn CodexAppSession::turn_interrupt(
+  self : CodexAppSession,
   params : AppTurnInterruptParams,
 ) -> Unit {
   self.connection.turn_interrupt(params)
 }
 
 ///|
-pub async fn CodexAppServerRuntime::model_list(
-  self : CodexAppServerRuntime,
+pub async fn CodexAppSession::model_list(
+  self : CodexAppSession,
   params? : AppModelListParams,
 ) -> AppModelListResponse {
   self.connection.model_list(params?)
 }
 
 ///|
-fn AppThreadStartResponse::runtime_thread(
+fn AppThreadStartResponse::session_thread(
   self : AppThreadStartResponse,
-  runtime : CodexAppServerRuntime,
-) -> CodexAppRuntimeThread {
+  session : CodexAppSession,
+  request_handler? : AppServerRequestHandler,
+) -> CodexAppThread {
+  session.set_thread_request_handler(self.thread.id, request_handler)
   {
     thread: self.thread,
     model: self.model,
@@ -363,15 +389,17 @@ fn AppThreadStartResponse::runtime_thread(
     approvals_reviewer: self.approvals_reviewer,
     sandbox: self.sandbox,
     reasoning_effort: self.reasoning_effort,
-    runtime,
+    session,
   }
 }
 
 ///|
-fn AppThreadResumeResponse::runtime_thread(
+fn AppThreadResumeResponse::session_thread(
   self : AppThreadResumeResponse,
-  runtime : CodexAppServerRuntime,
-) -> CodexAppRuntimeThread {
+  session : CodexAppSession,
+  request_handler? : AppServerRequestHandler,
+) -> CodexAppThread {
+  session.set_thread_request_handler(self.thread.id, request_handler)
   {
     thread: self.thread,
     model: self.model,
@@ -383,14 +411,12 @@ fn AppThreadResumeResponse::runtime_thread(
     approvals_reviewer: self.approvals_reviewer,
     sandbox: self.sandbox,
     reasoning_effort: self.reasoning_effort,
-    runtime,
+    session,
   }
 }
 
 ///|
-async fn CodexAppServerRuntime::pump_events(
-  self : CodexAppServerRuntime,
-) -> Unit {
+async fn CodexAppSession::pump_events(self : CodexAppSession) -> Unit {
   while self.connection.next_event() is Some(event) {
     if self.dispatch_turn_event(event) {
       ()
@@ -403,41 +429,63 @@ async fn CodexAppServerRuntime::pump_events(
 }
 
 ///|
-async fn CodexAppServerRuntime::serve_requests(
-  self : CodexAppServerRuntime,
+async fn CodexAppSession::serve_requests(
+  self : CodexAppSession,
   request_handler : AppServerRequestHandler?,
 ) -> Unit {
   while self.connection.next_request() is Some(request) {
-    self.handle_runtime_request(request, request_handler)
+    self.handle_session_request(request, request_handler)
   }
 }
 
 ///|
-async fn CodexAppServerRuntime::handle_runtime_request(
-  self : CodexAppServerRuntime,
+async fn CodexAppSession::handle_session_request(
+  self : CodexAppSession,
   request : AppServerRequest,
   request_handler : AppServerRequestHandler?,
 ) -> Unit {
   match self.turn_request_handler(request) {
     Some(handler) => self.connection.handle_request(request, handler)
     None =>
-      match request_handler {
+      match self.thread_request_handler(request) {
         Some(handler) => self.connection.handle_request(request, handler)
         None =>
-          self.connection.respond_error(request.id, {
-            code: -32601,
-            message: "Unhandled app-server request",
-            data: None,
-          })
+          match request_handler {
+            Some(handler) => self.connection.handle_request(request, handler)
+            None =>
+              self.connection.respond_error(request.id, {
+                code: -32601,
+                message: "Unhandled app-server request",
+                data: None,
+              })
+          }
       }
   }
 }
 
 ///|
-fn CodexAppServerRuntime::register_pending_turn_stream(
-  self : CodexAppServerRuntime,
+fn CodexAppSession::set_thread_request_handler(
+  self : CodexAppSession,
   thread_id : String,
-  events : @async.Queue[AppServerEvent],
+  request_handler : AppServerRequestHandler?,
+) -> Unit {
+  let remaining : Array[AppRegisteredThreadRequestHandler] = []
+  for handler in self.thread_request_handlers {
+    if handler.thread_id != thread_id {
+      remaining.push(handler)
+    }
+  }
+  if request_handler is Some(handler) {
+    remaining.push({ thread_id, request_handler: handler })
+  }
+  self.thread_request_handlers = remaining
+}
+
+///|
+fn CodexAppSession::register_pending_turn_stream(
+  self : CodexAppSession,
+  thread_id : String,
+  events : @async.Queue[AppQueuedTurnEvent],
   request_handler : AppServerRequestHandler?,
 ) -> Int raise Error {
   for stream in self.turn_streams {
@@ -458,8 +506,8 @@ fn CodexAppServerRuntime::register_pending_turn_stream(
 }
 
 ///|
-fn CodexAppServerRuntime::bind_turn_stream(
-  self : CodexAppServerRuntime,
+fn CodexAppSession::bind_turn_stream(
+  self : CodexAppSession,
   stream_id : Int,
   turn_id : String,
 ) -> Unit raise Error {
@@ -481,8 +529,8 @@ fn CodexAppServerRuntime::bind_turn_stream(
 }
 
 ///|
-async fn CodexAppServerRuntime::dispatch_turn_event(
-  self : CodexAppServerRuntime,
+async fn CodexAppSession::dispatch_turn_event(
+  self : CodexAppSession,
   event : AppServerEvent,
 ) -> Bool {
   match event.turn_stream_key() {
@@ -490,9 +538,9 @@ async fn CodexAppServerRuntime::dispatch_turn_event(
       for stream in self.turn_streams {
         if stream.thread_id == key.thread_id &&
           stream.turn_id == Some(key.turn_id) {
-          stream.events.put(event)
+          stream.events.put(AppQueuedTurnEvent(event))
           if event.ends_turn_stream(key) {
-            self.close_turn_stream_by_id(stream.stream_id, false)
+            self.finish_turn_stream_by_id(stream.stream_id)
           }
           return true
         }
@@ -500,9 +548,9 @@ async fn CodexAppServerRuntime::dispatch_turn_event(
       for stream in self.turn_streams {
         if stream.thread_id == key.thread_id && stream.turn_id is None {
           stream.turn_id = Some(key.turn_id)
-          stream.events.put(event)
+          stream.events.put(AppQueuedTurnEvent(event))
           if event.ends_turn_stream(key) {
-            self.close_turn_stream_by_id(stream.stream_id, false)
+            self.finish_turn_stream_by_id(stream.stream_id)
           }
           return true
         }
@@ -514,8 +562,8 @@ async fn CodexAppServerRuntime::dispatch_turn_event(
 }
 
 ///|
-fn CodexAppServerRuntime::turn_request_handler(
-  self : CodexAppServerRuntime,
+fn CodexAppSession::turn_request_handler(
+  self : CodexAppSession,
   request : AppServerRequest,
 ) -> AppServerRequestHandler? {
   match request.turn_stream_key() {
@@ -539,8 +587,26 @@ fn CodexAppServerRuntime::turn_request_handler(
 }
 
 ///|
-fn CodexAppServerRuntime::close_turn_stream_by_id(
-  self : CodexAppServerRuntime,
+fn CodexAppSession::thread_request_handler(
+  self : CodexAppSession,
+  request : AppServerRequest,
+) -> AppServerRequestHandler? {
+  match request.thread_id() {
+    Some(thread_id) => {
+      for handler in self.thread_request_handlers {
+        if handler.thread_id == thread_id {
+          return Some(handler.request_handler)
+        }
+      }
+      None
+    }
+    None => None
+  }
+}
+
+///|
+fn CodexAppSession::close_turn_stream_by_id(
+  self : CodexAppSession,
   stream_id : Int,
   clear : Bool,
 ) -> Unit {
@@ -556,13 +622,29 @@ fn CodexAppServerRuntime::close_turn_stream_by_id(
 }
 
 ///|
-fn CodexAppServerRuntime::close_all_turn_streams(
-  self : CodexAppServerRuntime,
+async fn CodexAppSession::finish_turn_stream_by_id(
+  self : CodexAppSession,
+  stream_id : Int,
+) -> Unit {
+  let remaining : Array[AppRegisteredTurnStream] = []
+  for stream in self.turn_streams {
+    if stream.stream_id == stream_id {
+      stream.events.put(AppQueuedTurnClosed)
+    } else {
+      remaining.push(stream)
+    }
+  }
+  self.turn_streams = remaining
+}
+
+///|
+async fn CodexAppSession::close_all_turn_streams(
+  self : CodexAppSession,
 ) -> Unit {
   let streams = self.turn_streams
   self.turn_streams = []
   for stream in streams {
-    stream.events.close(clear=false)
+    stream.events.put(AppQueuedTurnClosed)
   }
 }
 
@@ -592,6 +674,19 @@ fn AppServerRequest::turn_stream_key(
         Some(turn_id) => Some({ thread_id: request.thread_id, turn_id })
         None => None
       }
+    AppChatgptAuthTokensRefreshRequest(_) => None
+  }
+}
+
+///|
+fn AppServerRequest::thread_id(self : AppServerRequest) -> String? {
+  match self.details {
+    AppCommandExecutionApprovalRequest(request) => Some(request.thread_id)
+    AppFileChangeApprovalRequest(request) => Some(request.thread_id)
+    AppToolRequestUserInputRequest(request) => Some(request.thread_id)
+    AppDynamicToolCallRequest(request) => Some(request.thread_id)
+    AppPermissionsRequestApprovalRequest(request) => Some(request.thread_id)
+    AppMcpServerElicitationRequest(request) => Some(request.thread_id)
     AppChatgptAuthTokensRefreshRequest(_) => None
   }
 }

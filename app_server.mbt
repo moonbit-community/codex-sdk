@@ -84,7 +84,9 @@ fn[G] Codex::spawn_app_server(
     None => self.options.codex_path_override.unwrap_or("codex")
   }
   let outgoing : @async.Queue[Json] = @async.Queue::new(kind=Unbounded)
-  let events : @async.Queue[AppServerEvent] = @async.Queue::new(kind=Unbounded)
+  let events : @async.Queue[AppQueuedServerEvent] = @async.Queue::new(
+    kind=Unbounded,
+  )
   let requests : @async.Queue[AppServerRequest] = @async.Queue::new(
     kind=Unbounded,
   )
@@ -107,6 +109,7 @@ fn[G] Codex::spawn_app_server(
     requests,
     pending: [],
     next_request_id: 1,
+    events_closed: false,
   }
   taskgroup.spawn_bg(() => {
     let (exit_code, stderr) = @process.collect_stderr(
@@ -141,15 +144,16 @@ fn[G] Codex::spawn_app_server(
         connection.route_server_message(message)
       }
     } catch {
+      e if @async.is_cancellation_error(e) => raise e
       e => {
         connection.close_pending_requests()
-        events.close(clear=false)
+        events.put(AppQueuedClosed)
         requests.close(clear=false)
         raise @error.reraise(e)
       }
     }
     connection.close_pending_requests()
-    events.close(clear=false)
+    events.put(AppQueuedClosed)
     requests.close(clear=false)
   })
   connection
@@ -158,10 +162,11 @@ fn[G] Codex::spawn_app_server(
 ///|
 struct CodexAppConnection {
   outgoing : @async.Queue[Json]
-  events : @async.Queue[AppServerEvent]
+  events : @async.Queue[AppQueuedServerEvent]
   requests : @async.Queue[AppServerRequest]
   mut pending : Array[AppPendingRequest]
   mut next_request_id : Int
+  mut events_closed : Bool
 }
 
 ///|
@@ -174,6 +179,12 @@ priv struct AppPendingRequest {
 priv enum AppPendingResponse {
   AppPendingResult(Json)
   AppPendingError(AppRpcError)
+}
+
+///|
+priv enum AppQueuedServerEvent {
+  AppQueuedEvent(AppServerEvent)
+  AppQueuedClosed
 }
 
 ///|
@@ -233,7 +244,7 @@ async fn CodexAppConnection::route_server_message(
         data: None,
       })
     IgnoredNotification => ()
-    Notification(event) => self.events.put(event)
+    Notification(event) => self.events.put(AppQueuedEvent(event))
   }
 }
 
@@ -3542,8 +3553,22 @@ async fn CodexAppConnection::send(
 pub async fn CodexAppConnection::next_event(
   self : CodexAppConnection,
 ) -> AppServerEvent? {
-  let event = self.events.get() catch { _ => return None }
-  Some(event)
+  if self.events_closed {
+    return None
+  }
+  let queued = self.events.get() catch {
+    _ => {
+      self.events_closed = true
+      return None
+    }
+  }
+  match queued {
+    AppQueuedEvent(event) => Some(event)
+    AppQueuedClosed => {
+      self.events_closed = true
+      None
+    }
+  }
 }
 
 ///|
@@ -10388,6 +10413,7 @@ pub impl FromJson for AppCodexErrorInfo with fn from_json(value, path) {
         ),
       )
     String("other") => AppCodexOtherError
+    String(_) => AppCodexOtherError
     _ => raise JsonDecodeError((path, "expected codex error info"))
   }
 }
