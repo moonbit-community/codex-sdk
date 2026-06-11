@@ -60,7 +60,7 @@ pub enum ThreadItem {
 } derive(Debug)
 
 ///|
-pub impl ToJson for ThreadItem with to_json(item) {
+pub impl ToJson for ThreadItem with fn to_json(item) {
   match item {
     AgentMessageItem(id~, text~) =>
       { "type": "agent_message", "id": id, "text": text }
@@ -137,7 +137,7 @@ pub impl ToJson for ThreadItem with to_json(item) {
 }
 
 ///|
-pub impl @json.FromJson for ThreadItem with from_json(value, path) {
+pub impl @json.FromJson for ThreadItem with fn from_json(value, path) {
   guard value is Object({ "type": String(ty), .. } as obj) else {
     raise JsonDecodeError((path, "expected ThreadItem"))
   }
@@ -313,7 +313,7 @@ pub struct FileUpdateChange {
 } derive(ToJson, FromJson, Debug)
 
 ///|
-pub impl Show for FileUpdateChange with output(self, logger) {
+pub impl Show for FileUpdateChange with fn output(self, logger) {
   logger.write_string("{path: \"\{self.path}\", kind: \{self.kind}}")
 }
 
@@ -325,7 +325,7 @@ pub struct TodoItem {
 } derive(ToJson, FromJson, Debug)
 
 ///|
-pub impl Show for TodoItem with output(self, logger) {
+pub impl Show for TodoItem with fn output(self, logger) {
   logger.write_string("{text: \"\{self.text}\", completed: \{self.completed}}")
 }
 
@@ -339,7 +339,7 @@ pub enum CommandExecutionStatus {
 } derive(Debug)
 
 ///|
-pub impl Show for CommandExecutionStatus with output(status, logger) {
+pub impl Show for CommandExecutionStatus with fn output(status, logger) {
   match status {
     InProgress => logger.write_string("InProgress")
     Completed => logger.write_string("Completed")
@@ -349,7 +349,7 @@ pub impl Show for CommandExecutionStatus with output(status, logger) {
 }
 
 ///|
-pub impl ToJson for CommandExecutionStatus with to_json(status) {
+pub impl ToJson for CommandExecutionStatus with fn to_json(status) {
   match status {
     Completed => "completed"
     InProgress => "in_progress"
@@ -359,7 +359,10 @@ pub impl ToJson for CommandExecutionStatus with to_json(status) {
 }
 
 ///|
-pub impl @json.FromJson for CommandExecutionStatus with from_json(value, path) {
+pub impl @json.FromJson for CommandExecutionStatus with fn from_json(
+  value,
+  path,
+) {
   match value {
     String("completed") => Completed
     String("in_progress") => InProgress
@@ -384,7 +387,7 @@ pub enum CollabToolCallStatus {
 } derive(Debug)
 
 ///|
-pub impl Show for CollabToolCallStatus with output(status, logger) {
+pub impl Show for CollabToolCallStatus with fn output(status, logger) {
   match status {
     InProgress => logger.write_string("InProgress")
     Completed => logger.write_string("Completed")
@@ -393,7 +396,7 @@ pub impl Show for CollabToolCallStatus with output(status, logger) {
 }
 
 ///|
-pub impl ToJson for CollabToolCallStatus with to_json(status) {
+pub impl ToJson for CollabToolCallStatus with fn to_json(status) {
   match status {
     Completed => "completed"
     InProgress => "in_progress"
@@ -402,7 +405,7 @@ pub impl ToJson for CollabToolCallStatus with to_json(status) {
 }
 
 ///|
-pub impl @json.FromJson for CollabToolCallStatus with from_json(value, path) {
+pub impl @json.FromJson for CollabToolCallStatus with fn from_json(value, path) {
   match value {
     String("completed") => Completed
     String("in_progress") => InProgress
@@ -422,42 +425,46 @@ pub impl @json.FromJson for CollabToolCallStatus with from_json(value, path) {
 pub enum CollabTool {
   SpawnAgent
   SendInput
+  ResumeAgent
   Wait
   CloseAgent
 } derive(Debug)
 
 ///|
-pub impl Show for CollabTool with output(tool, logger) {
+pub impl Show for CollabTool with fn output(tool, logger) {
   match tool {
     SpawnAgent => logger.write_string("SpawnAgent")
     SendInput => logger.write_string("SendInput")
+    ResumeAgent => logger.write_string("ResumeAgent")
     Wait => logger.write_string("Wait")
     CloseAgent => logger.write_string("CloseAgent")
   }
 }
 
 ///|
-pub impl ToJson for CollabTool with to_json(tool) {
+pub impl ToJson for CollabTool with fn to_json(tool) {
   match tool {
     SpawnAgent => "spawn_agent"
     SendInput => "send_input"
+    ResumeAgent => "resume_agent"
     Wait => "wait"
     CloseAgent => "close_agent"
   }
 }
 
 ///|
-pub impl @json.FromJson for CollabTool with from_json(value, path) {
+pub impl @json.FromJson for CollabTool with fn from_json(value, path) {
   match value {
     String("spawn_agent") => SpawnAgent
     String("send_input") => SendInput
+    String("resume_agent") => ResumeAgent
     String("wait") => Wait
     String("close_agent") => CloseAgent
     _ =>
       raise JsonDecodeError(
         (
           path,
-          "expected string 'spawn_agent', 'send_input', 'wait', or 'close_agent' for CollabTool. Got \{@debug.to_repr(value)}",
+          "expected string 'spawn_agent', 'send_input', 'resume_agent', 'wait', or 'close_agent' for CollabTool. Got \{@debug.to_repr(value)}",
         ),
       )
   }
@@ -476,7 +483,7 @@ pub enum CollabAgentStatus {
 } derive(Debug)
 
 ///|
-pub impl Show for CollabAgentStatus with output(status, logger) {
+pub impl Show for CollabAgentStatus with fn output(status, logger) {
   match status {
     PendingInit => logger.write_string("PendingInit")
     Running => logger.write_string("Running")
@@ -489,7 +496,7 @@ pub impl Show for CollabAgentStatus with output(status, logger) {
 }
 
 ///|
-pub impl ToJson for CollabAgentStatus with to_json(status) {
+pub impl ToJson for CollabAgentStatus with fn to_json(status) {
   match status {
     PendingInit => "pending_init"
     Running => "running"
@@ -502,7 +509,7 @@ pub impl ToJson for CollabAgentStatus with to_json(status) {
 }
 
 ///|
-pub impl @json.FromJson for CollabAgentStatus with from_json(value, path) {
+pub impl @json.FromJson for CollabAgentStatus with fn from_json(value, path) {
   match value {
     String("pending_init") => PendingInit
     String("running") => Running
@@ -529,7 +536,7 @@ pub struct CollabAgentState {
 } derive(Debug)
 
 ///|
-pub impl ToJson for CollabAgentState with to_json(state) {
+pub impl ToJson for CollabAgentState with fn to_json(state) {
   let obj : Map[String, Json] = { "status": state.status }
   if state.message is Some(message) {
     obj.set("message", message.to_json())
@@ -538,7 +545,7 @@ pub impl ToJson for CollabAgentState with to_json(state) {
 }
 
 ///|
-pub impl @json.FromJson for CollabAgentState with from_json(value, path) {
+pub impl @json.FromJson for CollabAgentState with fn from_json(value, path) {
   guard value is Object({ "status": status, "message"? : message, .. }) else {
     raise JsonDecodeError((path, "expected CollabAgentState"))
   }
@@ -565,7 +572,7 @@ pub enum PatchChangeKind {
 } derive(Debug)
 
 ///|
-pub impl Show for PatchChangeKind with output(kind, logger) {
+pub impl Show for PatchChangeKind with fn output(kind, logger) {
   match kind {
     Add => logger.write_string("Add")
     Delete => logger.write_string("Delete")
@@ -574,7 +581,7 @@ pub impl Show for PatchChangeKind with output(kind, logger) {
 }
 
 ///|
-pub impl ToJson for PatchChangeKind with to_json(kind) {
+pub impl ToJson for PatchChangeKind with fn to_json(kind) {
   match kind {
     Add => "add"
     Delete => "delete"
@@ -583,7 +590,7 @@ pub impl ToJson for PatchChangeKind with to_json(kind) {
 }
 
 ///|
-pub impl @json.FromJson for PatchChangeKind with from_json(value, path) {
+pub impl @json.FromJson for PatchChangeKind with fn from_json(value, path) {
   match value {
     String("add") => Add
     String("delete") => Delete
@@ -607,7 +614,7 @@ pub enum PatchApplyStatus {
 } derive(Debug)
 
 ///|
-pub impl Show for PatchApplyStatus with output(status, logger) {
+pub impl Show for PatchApplyStatus with fn output(status, logger) {
   match status {
     InProgress => logger.write_string("InProgress")
     Completed => logger.write_string("Completed")
@@ -616,7 +623,7 @@ pub impl Show for PatchApplyStatus with output(status, logger) {
 }
 
 ///|
-pub impl ToJson for PatchApplyStatus with to_json(status) {
+pub impl ToJson for PatchApplyStatus with fn to_json(status) {
   match status {
     InProgress => "in_progress"
     Completed => "completed"
@@ -625,7 +632,7 @@ pub impl ToJson for PatchApplyStatus with to_json(status) {
 }
 
 ///|
-pub impl @json.FromJson for PatchApplyStatus with from_json(value, path) {
+pub impl @json.FromJson for PatchApplyStatus with fn from_json(value, path) {
   match value {
     String("in_progress") => InProgress
     String("completed") => Completed
@@ -649,7 +656,7 @@ pub enum McpToolCallStatus {
 } derive(Debug)
 
 ///|
-pub impl Show for McpToolCallStatus with output(status, logger) {
+pub impl Show for McpToolCallStatus with fn output(status, logger) {
   match status {
     InProgress => logger.write_string("InProgress")
     Completed => logger.write_string("Completed")
@@ -658,7 +665,7 @@ pub impl Show for McpToolCallStatus with output(status, logger) {
 }
 
 ///|
-pub impl ToJson for McpToolCallStatus with to_json(status) {
+pub impl ToJson for McpToolCallStatus with fn to_json(status) {
   match status {
     Completed => "completed"
     InProgress => "in_progress"
@@ -667,7 +674,7 @@ pub impl ToJson for McpToolCallStatus with to_json(status) {
 }
 
 ///|
-pub impl @json.FromJson for McpToolCallStatus with from_json(value, path) {
+pub impl @json.FromJson for McpToolCallStatus with fn from_json(value, path) {
   match value {
     String("completed") => Completed
     String("in_progress") => InProgress
@@ -689,12 +696,12 @@ pub struct McpToolCallResult {
 } derive(Debug)
 
 ///|
-pub impl ToJson for McpToolCallResult with to_json(result) {
+pub impl ToJson for McpToolCallResult with fn to_json(result) {
   { "content": result.content, "structured_content": result.structured_content }
 }
 
 ///|
-pub impl FromJson for McpToolCallResult with from_json(value, path) {
+pub impl FromJson for McpToolCallResult with fn from_json(value, path) {
   guard value
     is {
       "content": Array(content),

@@ -90,7 +90,7 @@ pub fn[A] fail(message : String, loc~ : SourceLoc) -> A raise {
 }
 
 ///|
-impl Show for Reraise with output(error, logger) {
+impl Show for Reraise with fn output(error, logger) {
   guard error is Reraise((msg, cause))
   logger.write_string(msg + "\n")
   if cause is Some(error) {
