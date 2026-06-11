@@ -83,11 +83,11 @@ fn[G] Codex::spawn_app_server(
     Some(path) => path
     None => self.options.codex_path_override.unwrap_or("codex")
   }
-  let outgoing : @async.Queue[Json] = @async.Queue::new(kind=Unbounded)
-  let events : @async.Queue[AppQueuedServerEvent] = @async.Queue::new(
+  let outgoing : @async.Queue[Json] = @async.Queue::Queue(kind=Unbounded)
+  let events : @async.Queue[AppQueuedServerEvent] = @async.Queue::Queue(
     kind=Unbounded,
   )
-  let requests : @async.Queue[AppServerRequest] = @async.Queue::new(
+  let requests : @async.Queue[AppServerRequest] = @async.Queue::Queue(
     kind=Unbounded,
   )
   let stdin = @process.write_to_process() catch {
@@ -202,7 +202,7 @@ async fn CodexAppConnection::call(
 ) -> Json {
   let id = AppRequestId::IntId(self.next_request_id.to_int64())
   self.next_request_id += 1
-  let replies : @async.Queue[AppPendingResponse] = @async.Queue::new(
+  let replies : @async.Queue[AppPendingResponse] = @async.Queue::Queue(
     kind=Unbounded,
   )
   self.pending.push({ id, replies })

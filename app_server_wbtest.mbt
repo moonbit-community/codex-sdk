@@ -1532,9 +1532,9 @@ test "session turn options attach thread id" {
 ///|
 async test "connection drains queued events before eof" {
   let connection : CodexAppConnection = {
-    outgoing: @async.Queue::new(kind=Unbounded),
-    events: @async.Queue::new(kind=Unbounded),
-    requests: @async.Queue::new(kind=Unbounded),
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
     pending: [],
     next_request_id: 1,
     events_closed: false,
@@ -1569,15 +1569,15 @@ async test "connection drains queued events before eof" {
 ///|
 async test "session routes early turn events to pending stream" {
   let connection : CodexAppConnection = {
-    outgoing: @async.Queue::new(kind=Unbounded),
-    events: @async.Queue::new(kind=Unbounded),
-    requests: @async.Queue::new(kind=Unbounded),
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
     pending: [],
     next_request_id: 1,
     events_closed: false,
   }
   let session = CodexAppSession::new(connection)
-  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::new(
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
     kind=Unbounded,
   )
   let stream_id = session.register_pending_turn_stream("thread-1", events, None)
@@ -1615,15 +1615,15 @@ async test "session routes early turn events to pending stream" {
 ///|
 async test "session closes turn stream on terminal event" {
   let connection : CodexAppConnection = {
-    outgoing: @async.Queue::new(kind=Unbounded),
-    events: @async.Queue::new(kind=Unbounded),
-    requests: @async.Queue::new(kind=Unbounded),
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
     pending: [],
     next_request_id: 1,
     events_closed: false,
   }
   let session = CodexAppSession::new(connection)
-  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::new(
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
     kind=Unbounded,
   )
   let stream_id = session.register_pending_turn_stream("thread-1", events, None)
@@ -1666,15 +1666,15 @@ async test "session closes turn stream on terminal event" {
 ///|
 async test "session binds pending stream on early turn request" {
   let connection : CodexAppConnection = {
-    outgoing: @async.Queue::new(kind=Unbounded),
-    events: @async.Queue::new(kind=Unbounded),
-    requests: @async.Queue::new(kind=Unbounded),
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
     pending: [],
     next_request_id: 1,
     events_closed: false,
   }
   let session = CodexAppSession::new(connection)
-  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::new(
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
     kind=Unbounded,
   )
   let _ = session.register_pending_turn_stream(
@@ -1718,15 +1718,15 @@ async test "session binds pending stream on early turn request" {
 ///|
 async test "session routes turn request to stream handler" {
   let connection : CodexAppConnection = {
-    outgoing: @async.Queue::new(kind=Unbounded),
-    events: @async.Queue::new(kind=Unbounded),
-    requests: @async.Queue::new(kind=Unbounded),
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
     pending: [],
     next_request_id: 1,
     events_closed: false,
   }
   let session = CodexAppSession::new(connection)
-  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::new(
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
     kind=Unbounded,
   )
   let stream_id = session.register_pending_turn_stream(
@@ -1770,9 +1770,9 @@ async test "session routes turn request to stream handler" {
 ///|
 async test "session routes thread request to thread handler" {
   let connection : CodexAppConnection = {
-    outgoing: @async.Queue::new(kind=Unbounded),
-    events: @async.Queue::new(kind=Unbounded),
-    requests: @async.Queue::new(kind=Unbounded),
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
     pending: [],
     next_request_id: 1,
     events_closed: false,
@@ -1817,9 +1817,9 @@ async test "session routes thread request to thread handler" {
 ///|
 async test "session prefers turn request handler over thread handler" {
   let connection : CodexAppConnection = {
-    outgoing: @async.Queue::new(kind=Unbounded),
-    events: @async.Queue::new(kind=Unbounded),
-    requests: @async.Queue::new(kind=Unbounded),
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
     pending: [],
     next_request_id: 1,
     events_closed: false,
@@ -1831,7 +1831,7 @@ async test "session prefers turn request handler over thread handler" {
       AppCommandExecutionApprovalResponse(decision=AppCommandAccept)
     }),
   )
-  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::new(
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
     kind=Unbounded,
   )
   let stream_id = session.register_pending_turn_stream(

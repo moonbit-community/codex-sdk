@@ -28,23 +28,35 @@ struct AsyncGenerator[T] {
 priv struct OutMsg[T](T?)
 
 ///|
+// The ack confirms that the generator consumed this control message, so callers
+// do not issue the next command while the previous yield is still unwinding.
 priv enum InMsg {
-  Next
-  Throw(Error)
+  Next(@async.Queue[Unit])
+  Throw(Error, @async.Queue[Unit])
+}
+
+///|
+async fn[T] AsyncGenerator::read_after_control(
+  self : AsyncGenerator[T],
+  ack : @async.Queue[Unit],
+) -> T? {
+  let value = self.out.get().0 catch {
+      Return => return None
+      e => raise e
+    }
+  ignore(ack.get())
+  value
 }
 
 ///|
 pub async fn[T] AsyncGenerator::next(self : AsyncGenerator[T]) -> T? {
-  try self.in_.try_put(Next) catch {
+  let ack = @async.Queue::Queue(kind=Unbounded)
+  try self.in_.try_put(Next(ack)) catch {
     Return => None
     e => raise e
   } noraise {
     false => raise Running
-    true =>
-      self.out.get().0 catch {
-        Return => None
-        e => raise e
-      }
+    true => self.read_after_control(ack)
   }
 }
 
@@ -55,16 +67,13 @@ pub async fn[T] AsyncGenerator::throws(
   self : AsyncGenerator[T],
   e : Error,
 ) -> T? {
-  try self.in_.try_put(Throw(e)) catch {
+  let ack = @async.Queue::Queue(kind=Unbounded)
+  try self.in_.try_put(Throw(e, ack)) catch {
     Return => None
     e => raise e
   } noraise {
     false => raise Running
-    true =>
-      self.out.get().0 catch {
-        Return => None
-        e => raise e
-      }
+    true => self.read_after_control(ack)
   }
 }
 
@@ -72,7 +81,17 @@ pub async fn[T] AsyncGenerator::throws(
 /// Signals the async generator to return, indicating normal completion.
 /// Returns the next value or None if the generator completes.
 pub async fn[T] AsyncGenerator::returns(self : AsyncGenerator[T]) -> T? {
-  self.throws(Return)
+  let ack = @async.Queue::Queue(kind=Unbounded)
+  try self.in_.try_put(Throw(Return, ack)) catch {
+    Return => None
+    e => raise e
+  } noraise {
+    false => raise Running
+    true => {
+      ignore(ack.get())
+      None
+    }
+  }
 }
 
 ///|
@@ -99,24 +118,36 @@ pub fn[T, G] AsyncGenerator::new(
   taskgroup : @async.TaskGroup[G],
   no_wait? : Bool = true,
 ) -> AsyncGenerator[T] {
-  let in_ = @async.Queue::new(kind=Blocking(1))
-  let out = @async.Queue::new(kind=Unbounded)
+  let in_ = @async.Queue::Queue(kind=Blocking(1))
+  let out = @async.Queue::Queue(kind=Unbounded)
   let generator = { in_, out }
   taskgroup.spawn_bg(no_wait~, () => {
     try
       f(value => {
         out.put(OutMsg(Some(value)))
         match in_.get() {
-          Next => ()
-          Throw(e) => raise e
+          Next(ack) => ack.put(())
+          Throw(e, ack) => {
+            ack.put(())
+            raise e
+          }
         }
       })
     catch {
-      e => out.close(error=e)
+      Return => {
+        in_.close(error=Return)
+        out.close(error=Return, clear=true)
+      }
+      e => {
+        in_.close(error=Return)
+        out.close(error=e)
+      }
     } noraise {
-      _ => out.close(error=Return)
+      _ => {
+        in_.close(error=Return)
+        out.close(error=Return)
+      }
     }
-    in_.close(error=Return)
   })
   generator
 }

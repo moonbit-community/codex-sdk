@@ -53,7 +53,7 @@ pub struct CodexAppSession {
 fn CodexAppSession::new(connection : CodexAppConnection) -> CodexAppSession {
   {
     connection,
-    global_events: @async.Queue::new(kind=Unbounded),
+    global_events: @async.Queue::Queue(kind=Unbounded),
     turn_streams: [],
     thread_request_handlers: [],
     next_stream_id: 1,
@@ -179,7 +179,7 @@ async fn CodexAppSession::run_turn_stream(
   params : AppTurnStartParams,
   request_handler? : AppServerRequestHandler,
 ) -> AppTurnStream raise Error {
-  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::new(
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
     kind=Unbounded,
   )
   let stream_id = self.register_pending_turn_stream(

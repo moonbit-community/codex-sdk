@@ -3,7 +3,7 @@ name = "peter-jerry-ye/codex"
 version = "0.128.0"
 
 import {
-  "moonbitlang/async@0.18.0",
+  "moonbitlang/async@0.19.3",
   "moonbitlang/x@0.4.38",
 }
 
