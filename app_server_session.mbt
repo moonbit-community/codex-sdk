@@ -220,6 +220,7 @@ pub async fn AppTurnStream::next(self : AppTurnStream) -> AppServerEvent? {
     AppQueuedTurnEvent(event) => Some(event)
     AppQueuedTurnClosed => {
       self.events_closed = true
+      self.session.close_turn_stream_by_id(self.stream_id, false)
       None
     }
   }
@@ -550,7 +551,7 @@ async fn CodexAppSession::dispatch_turn_event(
           stream.turn_id = Some(key.turn_id)
           stream.events.put(AppQueuedTurnEvent(event))
           if event.ends_turn_stream(key) {
-            self.finish_turn_stream_by_id(stream.stream_id)
+            stream.events.put(AppQueuedTurnClosed)
           }
           return true
         }

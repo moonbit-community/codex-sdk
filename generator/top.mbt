@@ -87,10 +87,7 @@ pub async fn[T] AsyncGenerator::returns(self : AsyncGenerator[T]) -> T? {
     e => raise e
   } noraise {
     false => raise Running
-    true => {
-      ignore(ack.get())
-      None
-    }
+    true => self.read_after_control(ack)
   }
 }
 
@@ -136,7 +133,7 @@ pub fn[T, G] AsyncGenerator::new(
     catch {
       Return => {
         in_.close(error=Return)
-        out.close(error=Return, clear=true)
+        out.close(error=Return)
       }
       e => {
         in_.close(error=Return)

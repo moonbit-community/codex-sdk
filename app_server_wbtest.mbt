@@ -1721,6 +1721,59 @@ async test "session closes turn stream on terminal event" {
 }
 
 ///|
+async test "session preserves pending stream when terminal event arrives before response" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+    events_closed: false,
+  }
+  let session = CodexAppSession::new(connection)
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
+    kind=Unbounded,
+  )
+  let stream_id = session.register_pending_turn_stream("thread-1", events, None)
+  let turn : AppTurn = {
+    id: "turn-1",
+    items: [],
+    status: AppTurnCompletedStatus,
+    error: None,
+    started_at: Some(10),
+    completed_at: Some(20),
+    duration_ms: Some(10),
+    raw: {},
+  }
+  guard session.dispatch_turn_event(
+    AppTurnCompleted(thread_id="thread-1", turn~),
+  ) else {
+    fail("expected session to route early terminal turn event")
+  }
+  session.bind_turn_stream(stream_id, "turn-1")
+  debug_inspect(session.turn_streams.length(), content="1")
+  let stream : AppTurnStream = {
+    thread_id: "thread-1",
+    turn_id: "turn-1",
+    session,
+    stream_id,
+    events,
+    events_closed: false,
+  }
+  match stream.next() {
+    Some(AppTurnCompleted(thread_id~, turn~)) => {
+      debug_inspect(thread_id, content="\"thread-1\"")
+      debug_inspect(turn.status, content="AppTurnCompletedStatus")
+    }
+    _ => fail("expected queued terminal turn event")
+  }
+  guard stream.next() is None else {
+    fail("expected queued close after terminal turn event")
+  }
+  debug_inspect(session.turn_streams.length(), content="0")
+}
+
+///|
 async test "session keeps turn stream open on retryable turn error" {
   let connection : CodexAppConnection = {
     outgoing: @async.Queue::Queue(kind=Unbounded),

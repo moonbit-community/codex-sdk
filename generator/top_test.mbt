@@ -31,7 +31,23 @@ async test {
     )
     debug_inspect(iterator.next(), content="Some(0)")
     debug_inspect(iterator.throws(Failure::Failure("error")), content="Some(1)")
-    debug_inspect(iterator.returns(), content="None")
+    debug_inspect(iterator.returns(), content="Some(2)")
+    debug_inspect(iterator.next(), content="None")
+  })
+}
+
+///|
+async test "returns yields pending value before closing" {
+  @async.with_task_group(tg => {
+    let iterator = AsyncGenerator::new(
+      async fn(yield_) {
+        for i = 0; ; i = i + 1 {
+          yield_(i)
+        }
+      },
+      tg,
+    )
+    debug_inspect(iterator.returns(), content="Some(0)")
     debug_inspect(iterator.next(), content="None")
   })
 }
