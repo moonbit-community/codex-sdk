@@ -26,4 +26,6 @@ jobs:
           moon version --all
           moon update
       - name: Validate skills examples
+        env:
+          MOON_WORK: ${{ github.workspace }}/skills/moon.work
         run: python scripts/check_skills_examples.py
