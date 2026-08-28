@@ -45,3 +45,8 @@ jobs:
           moon info
           moon fmt
           git diff --exit-code
+          changes="$(git status --porcelain)"
+          if [[ -n "$changes" ]]; then
+            printf '%s\n' "$changes"
+            exit 1
+          fi
