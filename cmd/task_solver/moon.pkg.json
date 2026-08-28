@@ -1,9 +1,9 @@
 {
   "is-main": true,
   "import": [
-    "peter-jerry-ye/codex",
-    "peter-jerry-ye/codex/x/args",
-    "peter-jerry-ye/codex/x/error",
+    "moonbit-community/codex",
+    "moonbit-community/codex/x/args",
+    "moonbit-community/codex/x/error",
     "moonbitlang/async",
     "moonbitlang/async/stdio",
     "moonbitlang/async/io",

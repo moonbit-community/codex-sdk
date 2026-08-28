@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex/x/git"
+package "moonbit-community/codex/x/git"
 
 // Values
 pub fn extract_repo_name(String) -> String
@@ -43,4 +43,3 @@ pub async fn IsolatedWorkspace::cleanup(Self) -> Unit
 // Type aliases
 
 // Traits
-

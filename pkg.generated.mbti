@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex"
+package "moonbit-community/codex"
 
 import {
+  "moonbit-community/codex/generator",
   "moonbitlang/async",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
-  "peter-jerry-ye/codex/generator",
 }
 
 // Values

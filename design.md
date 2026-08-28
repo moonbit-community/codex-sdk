@@ -27,29 +27,29 @@ This replaces manual: git setup, parallelism, retries, validation, cleanup, erro
 ## Architecture
 
 ```
-peter-jerry-ye/codex (core SDK - exists)
+moonbit-community/codex (core SDK - exists)
 ├── Codex, Thread, Turn, Events (✓ exists)
 ├── CodexOptions, ThreadOptions (✓ exists)
 
-peter-jerry-ye/codex/moonbit (new - MoonBit project abstractions)
+moonbit-community/codex/moonbit (new - MoonBit project abstractions)
 ├── MoonProject - project discovery & management
 ├── Package - package-level operations  
 ├── ValidationResult - check/test/format results
 └── Validator - composable validation rules
 
-peter-jerry-ye/codex/git (new - Git workflow patterns)
+moonbit-community/codex/git (new - Git workflow patterns)
 ├── GitRepo - repository operations
 ├── GitWorkflow - branch/worktree management
 ├── IsolatedWorkspace - temporary workspace with cleanup
 └── with_workspace() - RAII pattern for safe operations
 
-peter-jerry-ye/codex/tasks (new - high-level task templates)
+moonbit-community/codex/tasks (new - high-level task templates)
 ├── TaskDefinition - declarative task specification
 ├── ParallelExecutor - concurrent execution with semaphore
 ├── run_per_package() - common package iteration pattern
 └── Built-in templates: add_docs, migrate_api, add_tests, refactor
 
-peter-jerry-ye/codex/utils (new - common utilities)
+moonbit-community/codex/utils (new - common utilities)
 ├── TaskLogger - consistent progress reporting
 ├── RetryPolicy - configurable retry logic
 └── ResultCollector - aggregate results from parallel tasks

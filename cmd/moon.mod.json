@@ -1,8 +1,8 @@
 {
-  "name": "peter-jerry-ye/codex-example",
+  "name": "moonbit-community/codex-example",
   "deps": {
     "moonbitlang/async": "0.16.0",
-    "peter-jerry-ye/codex": {
+    "moonbit-community/codex": {
       "path": ".."
     },
     "moonbitlang/x": "0.4.38"

@@ -174,7 +174,7 @@ async fn run_production_task(
 ```json
 {
   "import": [
-    "peter-jerry-ye/codex",
+    "moonbit-community/codex",
     "moonbitlang/async",
     "moonbitlang/async/stdio",
     "moonbitlang/x/sys",

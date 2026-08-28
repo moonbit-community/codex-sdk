@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex/x/moon"
+package "moonbit-community/codex/x/moon"
 
 // Values
 pub fn get_errors(Array[Diagnostic]) -> Array[Diagnostic]
@@ -53,4 +53,3 @@ pub(all) enum Validator {
 // Type aliases
 
 // Traits
-

@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex/x/tasks"
+package "moonbit-community/codex/x/tasks"
 
 import {
-  "peter-jerry-ye/codex",
-  "peter-jerry-ye/codex/x/moon",
+  "moonbit-community/codex",
+  "moonbit-community/codex/x/moon",
 }
 
 // Values
@@ -18,4 +18,3 @@ pub async fn run_simple_task(String, String, model? : String) -> @codex.Turn
 // Type aliases
 
 // Traits
-

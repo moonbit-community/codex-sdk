@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex-example/naive"
+package "moonbit-community/codex-example/naive"
 
 // Values
 
@@ -10,4 +10,3 @@ package "peter-jerry-ye/codex-example/naive"
 // Type aliases
 
 // Traits
-

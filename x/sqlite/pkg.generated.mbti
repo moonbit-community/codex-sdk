@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex/x/sqlite"
+package "moonbit-community/codex/x/sqlite"
 
 // Values
 pub async fn ensure() -> Unit
@@ -24,4 +24,3 @@ pub async fn Database::transaction(Self, Array[String]) -> Unit
 // Type aliases
 
 // Traits
-

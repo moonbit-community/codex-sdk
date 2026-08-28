@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex-example/object"
+package "moonbit-community/codex-example/object"
 
 // Values
 
@@ -10,4 +10,3 @@ package "peter-jerry-ye/codex-example/object"
 // Type aliases
 
 // Traits
-

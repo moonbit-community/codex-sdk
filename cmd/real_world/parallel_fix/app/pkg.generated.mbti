@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex-example/real_world/parallel_fix/app"
+package "moonbit-community/codex-example/real_world/parallel_fix/app"
 
 import(
-  "peter-jerry-ye/codex"
-  "peter-jerry-ye/codex/x/sqlite"
+  "moonbit-community/codex"
+  "moonbit-community/codex/x/sqlite"
 )
 
 // Values
@@ -87,4 +87,3 @@ pub(all) struct WorkerConfig {
 // Type aliases
 
 // Traits
-

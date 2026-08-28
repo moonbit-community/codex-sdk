@@ -87,8 +87,8 @@ To use these packages in your project:
 ```json
 {
   "import": [
-    "peter-jerry-ye/codex/x/moon",
-    "peter-jerry-ye/codex/x/git"
+    "moonbit-community/codex/x/moon",
+    "moonbit-community/codex/x/git"
   ]
 }
 ```

@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex-example/real_world/review_mbti/app"
+package "moonbit-community/codex-example/real_world/review_mbti/app"
 
 // Values
 pub async fn initialize() -> Job
@@ -103,4 +103,3 @@ pub fn SummarizeHandle::validate(Self, String) -> String raise SummarizeError
 // Type aliases
 
 // Traits
-

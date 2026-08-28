@@ -3,7 +3,7 @@
   "import": [
     "moonbitlang/async",
     "moonbitlang/async/stdio",
-    "peter-jerry-ye/codex",
+    "moonbit-community/codex",
     "multi_phase/app"
   ]
 }

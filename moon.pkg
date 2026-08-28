@@ -1,11 +1,11 @@
 import {
   "moonbitlang/async",
-  "peter-jerry-ye/codex/generator",
+  "moonbit-community/codex/generator",
   "moonbitlang/async/fs",
   "moonbitlang/async/io",
   "moonbitlang/x/sys",
   "moonbitlang/async/process",
-  "peter-jerry-ye/codex/x/error",
+  "moonbit-community/codex/x/error",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }

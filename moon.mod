@@ -1,4 +1,4 @@
-name = "peter-jerry-ye/codex"
+name = "moonbit-community/codex"
 
 version = "0.150.1"
 

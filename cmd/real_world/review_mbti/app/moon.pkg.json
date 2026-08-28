@@ -3,7 +3,7 @@
     "moonbitlang/x/sys",
     "moonbitlang/async/fs",
     "moonbitlang/async/stdio",
-    "peter-jerry-ye/codex/x/error",
-    "peter-jerry-ye/codex/x/args"
+    "moonbit-community/codex/x/error",
+    "moonbit-community/codex/x/args"
   ]
 }

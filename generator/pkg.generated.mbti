@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex/generator"
+package "moonbit-community/codex/generator"
 
 import {
   "moonbitlang/async",
@@ -22,4 +22,3 @@ pub async fn[T] AsyncGenerator::throws(Self[T], Error) -> T?
 // Type aliases
 
 // Traits
-
