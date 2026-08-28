@@ -82,7 +82,7 @@ pub impl FromJson for AppTurnPlanStep with fn from_json(value, path) {
   guard value is { "step": String(step), "status": status, .. } else {
     raise JsonDecodeError((path, "expected turn plan step"))
   }
-  { step, status: @json.from_json(status, path=path.add_key("status")) }
+  { step, status: @json.from_json(status, path=path.add_key("status")), }
 }
 
 ///|
@@ -161,7 +161,7 @@ pub impl FromJson for AppTextPosition with fn from_json(value, path) {
   guard value is { "line": Number(line, ..), "column": Number(column, ..), .. } else {
     raise JsonDecodeError((path, "expected text position"))
   }
-  { line: line.to_uint64(), column: column.to_uint64() }
+  { line: line.to_uint64(), column: column.to_uint64(), }
 }
 
 ///|
@@ -313,7 +313,7 @@ pub impl FromJson for AppHookOutputEntry with fn from_json(value, path) {
   guard value is { "kind": kind, "text": String(text), .. } else {
     raise JsonDecodeError((path, "expected hook output entry"))
   }
-  { kind: @json.from_json(kind, path=path.add_key("kind")), text }
+  { kind: @json.from_json(kind, path=path.add_key("kind")), text, }
 }
 
 ///|

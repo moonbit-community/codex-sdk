@@ -31,7 +31,7 @@ struct Codex {
 /// A new Codex instance
 pub fn Codex::new(options? : CodexOptions = CodexOptions::default()) -> Codex {
   let exec = CodexExec::new(executable_path?=options.codex_path_override)
-  { exec, options }
+  { exec, options, }
 }
 
 ///|

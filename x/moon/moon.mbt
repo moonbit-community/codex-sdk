@@ -155,7 +155,7 @@ pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
     }
     let message = message_parts.join(" ")
     if !message.is_empty() {
-      result.push(Diagnostic::{ file, line: line_num, column, level, message })
+      result.push(Diagnostic::{ file, line: line_num, column, level, message, })
     }
     i = i + 1
   }
@@ -206,7 +206,7 @@ pub async fn MoonProject::discover(path : String) -> MoonProject? {
         "Invalid moon.mod.json at \{path} with content \{@debug.to_repr(schema)}",
       )
     }
-    Some({ root: path, name })
+    Some({ root: path, name, })
   } else {
     None
   }
@@ -233,7 +233,7 @@ pub async fn MoonProject::packages(self : MoonProject) -> Array[Package] {
 
     // Found a package
     if entries.contains("moon.pkg.json") {
-      result.push({ project, path })
+      result.push({ project, path, })
     }
 
     // Recurse into subdirectories
@@ -293,5 +293,5 @@ async fn run_moon_command(
   let (exit_code, stdout, stderr) = @process.collect_output("moon", full_args)
   let stdout = stdout.text()
   let stderr = stderr.text()
-  { passed: exit_code == 0, stdout, stderr, exit_code }
+  { passed: exit_code == 0, stdout, stderr, exit_code, }
 }

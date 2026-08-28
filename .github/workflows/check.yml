@@ -41,7 +41,7 @@ jobs:
           moon test
 
       - name: lint
-        continue-on-error: true
         run: |
-          moon fmt && git diff --exit-code
-          moon info && git diff --exit-code
+          moon info
+          moon fmt
+          git diff --exit-code

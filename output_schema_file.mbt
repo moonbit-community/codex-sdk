@@ -28,7 +28,7 @@ async fn create_output_schema_file(schema : Json) -> OutputSchemaFile {
     let file = @fs.create(path, permission=0o600)
     file.write(schema.stringify(indent=2))
     file.close()
-    return { schema_path: path, cleanup }
+    return { schema_path: path, cleanup, }
   } catch {
     e => {
       cleanup()

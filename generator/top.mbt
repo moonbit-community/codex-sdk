@@ -117,7 +117,7 @@ pub fn[T, G] AsyncGenerator::new(
 ) -> AsyncGenerator[T] {
   let in_ = @async.Queue::Queue(kind=Blocking(1))
   let out = @async.Queue::Queue(kind=Unbounded)
-  let generator = { in_, out }
+  let generator = { in_, out, }
   taskgroup.spawn_bg(no_wait~, () => {
     try
       f(value => {
