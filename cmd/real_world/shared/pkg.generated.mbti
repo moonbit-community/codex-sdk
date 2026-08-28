@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex-example/real_world/shared"
+package "moonbit-community/codex-example/real_world/shared"
 
 // Values
 pub async fn[A, B] for_all_tasks(Array[A], async (Int, A) -> B, parallelism? : Int) -> Array[B]
@@ -11,4 +11,3 @@ pub async fn[A, B] for_all_tasks(Array[A], async (Int, A) -> B, parallelism? : I
 // Type aliases
 
 // Traits
-

@@ -4,7 +4,7 @@
     "moonbitlang/async",
     "moonbitlang/async/stdio",
     "moonbitlang/x/sys",
-    "peter-jerry-ye/codex",
-    "peter-jerry-ye/codex-example/real_world/dag_poc/app"
+    "moonbit-community/codex",
+    "moonbit-community/codex-example/real_world/dag_poc/app"
   ]
 }

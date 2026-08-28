@@ -5,7 +5,7 @@
     "moonbitlang/async/process",
     "moonbitlang/async/io",
     "moonbitlang/async/stdio",
-    "peter-jerry-ye/codex/x/args",
-    "peter-jerry-ye/codex/x/error"
+    "moonbit-community/codex/x/args",
+    "moonbit-community/codex/x/error"
   ]
 }

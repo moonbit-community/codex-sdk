@@ -1,10 +1,10 @@
 {
   "is-main": true,
   "import": [
-    "peter-jerry-ye/codex",
+    "moonbit-community/codex",
     "moonbitlang/async",
     "moonbitlang/async/stdio",
     "moonbitlang/async/io",
-    "peter-jerry-ye/codex/generator"
+    "moonbit-community/codex/generator"
   ]
 }

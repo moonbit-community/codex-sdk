@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex/x/error"
+package "moonbit-community/codex/x/error"
 
 // Values
 #callsite(autofill(loc))
@@ -18,4 +18,3 @@ pub fn[A] reraise(Error, loc~ : SourceLoc) -> A raise
 // Type aliases
 
 // Traits
-

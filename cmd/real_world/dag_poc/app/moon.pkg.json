@@ -3,7 +3,7 @@
     "moonbitlang/async",
     "moonbitlang/async/semaphore",
     "moonbitlang/async/stdio",
-    "peter-jerry-ye/codex",
-    "peter-jerry-ye/codex/x/error"
+    "moonbit-community/codex",
+    "moonbit-community/codex/x/error"
   ]
 }

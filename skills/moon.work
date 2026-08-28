@@ -1,0 +1,7 @@
+members = [
+  "..",
+  "./codex-parallel-subagents/assets/package_analyzer",
+  "./codex-parallel-subagents/assets/parallel_batch",
+  "./evolving-workflow/assets/multi_phase",
+  "./evolving-workflow/assets/parallel_tasks",
+]

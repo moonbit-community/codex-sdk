@@ -22,7 +22,7 @@ async fn main {
 {
   "is-main": true,
   "import": [
-    "peter-jerry-ye/codex",
+    "moonbit-community/codex",
     "moonbitlang/async",
     "moonbitlang/async/stdio"
   ]
@@ -35,7 +35,7 @@ async fn main {
   "name": "your_project",
   "version": "0.1.0",
   "deps": {
-    "peter-jerry-ye/codex": "0.129.0",
+    "moonbit-community/codex": "0.150.1",
     "moonbitlang/async": "0.21.1",
     "moonbitlang/x": "0.4.38"
   },
@@ -48,7 +48,7 @@ async fn main {
 ```bash
 moon new my_project --name my_project --user your_user
 cd my_project
-moon add peter-jerry-ye/codex
+moon add moonbit-community/codex
 moon add moonbitlang/async
 moon add moonbitlang/x
 ```

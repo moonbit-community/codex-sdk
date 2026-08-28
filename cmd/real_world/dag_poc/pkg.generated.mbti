@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex-example/real_world/dag_poc"
+package "moonbit-community/codex-example/real_world/dag_poc"
 
 // Values
 
@@ -10,4 +10,3 @@ package "peter-jerry-ye/codex-example/real_world/dag_poc"
 // Type aliases
 
 // Traits
-

@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex-example/real_world/dag_poc/app"
+package "moonbit-community/codex-example/real_world/dag_poc/app"
 
 import(
-  "peter-jerry-ye/codex"
+  "moonbit-community/codex"
 )
 
 // Values
@@ -40,4 +40,3 @@ pub fn RunOptions::new(String, Int, model? : String) -> Self
 // Type aliases
 
 // Traits
-

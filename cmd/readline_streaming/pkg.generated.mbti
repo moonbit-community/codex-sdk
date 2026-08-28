@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex-example/readline_streaming"
+package "moonbit-community/codex-example/readline_streaming"
 
 // Values
 
@@ -10,4 +10,3 @@ package "peter-jerry-ye/codex-example/readline_streaming"
 // Type aliases
 
 // Traits
-

@@ -108,7 +108,7 @@ fn build_system_context() -> String {
     #|3. **Git Operations**: You can clone repos, create branches, commit, and push.
     #|4. **Other MCP Tools**: You can call other MCP tools as needed.
     #|5. **Self-Improvement**: You can use MoonBit to create new tools.
-    #|   - Use `peter-jerry-ye/codex` to create AI agent tools.
+    #|   - Use `moonbit-community/codex` to create AI agent tools.
     #|
     #|## Task Solving Approach:
     #|1. **Analyze** the task requirements carefully 

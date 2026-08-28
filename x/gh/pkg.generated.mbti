@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "peter-jerry-ye/codex/x/gh"
+package "moonbit-community/codex/x/gh"
 
 // Values
 pub async fn create_pr(String, String, String, String, String) -> String
@@ -30,4 +30,3 @@ pub struct PrInfo {
 // Type aliases
 
 // Traits
-

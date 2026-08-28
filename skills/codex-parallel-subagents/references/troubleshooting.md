@@ -55,9 +55,9 @@ let semaphore = @async.Semaphore::new(2)  // max 2 concurrent
 
 ### Adding packages
 
-When you need `peter-jerry-ye/codex` or other modules:
+When you need `moonbit-community/codex` or other modules:
 ```bash
-moon add peter-jerry-ye/codex
+moon add moonbit-community/codex
 moon add moonbitlang/x
 ```
 
@@ -72,4 +72,4 @@ moon add pkg@0.1.1
 
 If you see build errors in `moonbitlang/x` or `moonbitlang/async`:
 1. Run `moon upgrade` to update your toolchain
-2. Align your toolchain with the versions required by `peter-jerry-ye/codex`
+2. Align your toolchain with the versions required by `moonbit-community/codex`

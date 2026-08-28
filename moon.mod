@@ -1,9 +1,9 @@
-name = "peter-jerry-ye/codex"
+name = "moonbit-community/codex"
 
 version = "0.150.1"
 
 import {
-  "moonbitlang/async@0.19.3",
+  "moonbitlang/async@0.21.1",
   "moonbitlang/x@0.4.38",
 }
 
