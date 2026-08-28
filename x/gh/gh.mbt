@@ -136,7 +136,7 @@ pub async fn get_pr_state(repo_path : String, pr_number : Int) -> PrInfo {
         "reviewDecision": String(review_decision),
         ..
       }
-    ) => { number: number.to_int(), url, state, mergeable, review_decision }
+    ) => { number: number.to_int(), url, state, mergeable, review_decision, }
     _ => @error.fail("Unexpected JSON format: \{json.stringify()}")
   }
 }

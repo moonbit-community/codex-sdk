@@ -229,7 +229,7 @@ pub impl FromJson for AppThreadRealtimeListVoicesResponse with fn from_json(
       (path, "expected thread/realtime/listVoices response"),
     )
   }
-  { voices: @json.from_json(voices, path=path.add_key("voices")) }
+  { voices: @json.from_json(voices, path=path.add_key("voices")), }
 }
 
 ///|
@@ -295,7 +295,7 @@ pub impl FromJson for AppCollaborationModeListResponse with fn from_json(
   guard value is { "data": data, .. } else {
     raise JsonDecodeError((path, "expected collaborationMode/list response"))
   }
-  { data: @json.from_json(data, path=path.add_key("data")) }
+  { data: @json.from_json(data, path=path.add_key("data")), }
 }
 
 ///|
@@ -326,7 +326,7 @@ pub impl FromJson for AppMockExperimentalMethodResponse with fn from_json(
   guard value is { "echoed"? : echoed, .. } else {
     raise JsonDecodeError((path, "expected mock/experimentalMethod response"))
   }
-  { echoed: app_optional_string(echoed, path.add_key("echoed")) }
+  { echoed: app_optional_string(echoed, path.add_key("echoed")), }
 }
 
 ///|

@@ -107,7 +107,7 @@ pub async fn GitRepo::clone(url : String, destination : String) -> GitRepo {
   } catch {
     _ => ()
   }
-  { path: destination, url: Some(url), name: Some(repo_name), default_branch }
+  { path: destination, url: Some(url), name: Some(repo_name), default_branch, }
 }
 
 ///|
@@ -153,7 +153,7 @@ pub async fn GitRepo::discover(path : String) -> GitRepo {
   } catch {
     _ => ()
   }
-  { path, url: None, name: None, default_branch }
+  { path, url: None, name: None, default_branch, }
 }
 
 ///|
@@ -507,7 +507,7 @@ pub async fn GitRepo::create_workspace(
   if status != 0 {
     return None
   }
-  Some({ path, branch, repo: self })
+  Some({ path, branch, repo: self, })
 }
 
 ///|

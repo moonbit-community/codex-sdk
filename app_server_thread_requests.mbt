@@ -38,7 +38,10 @@ pub impl FromJson for AppThreadElicitationCounterResponse with fn from_json(
       (path, "expected thread elicitation counter response"),
     )
   }
-  { count: count.to_uint64(), paused: app_bool(paused, path.add_key("paused")) }
+  {
+    count: count.to_uint64(),
+    paused: app_bool(paused, path.add_key("paused")),
+  }
 }
 
 ///|
@@ -102,7 +105,7 @@ pub impl FromJson for AppThreadGoalSetResponse with fn from_json(value, path) {
   guard value is { "goal": goal, .. } else {
     raise JsonDecodeError((path, "expected thread/goal/set response"))
   }
-  { goal: @json.from_json(goal, path=path.add_key("goal")) }
+  { goal: @json.from_json(goal, path=path.add_key("goal")), }
 }
 
 ///|
@@ -133,7 +136,7 @@ pub impl FromJson for AppThreadGoalClearResponse with fn from_json(value, path) 
   guard value is { "cleared": cleared, .. } else {
     raise JsonDecodeError((path, "expected thread/goal/clear response"))
   }
-  { cleared: app_bool(cleared, path.add_key("cleared")) }
+  { cleared: app_bool(cleared, path.add_key("cleared")), }
 }
 
 ///|
