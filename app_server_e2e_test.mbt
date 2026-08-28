@@ -37,6 +37,7 @@ async test "app-server session e2e talks to real app-server" {
               "ChatGPT auth token refresh"
             AppAttestationGenerateRequest(_) => "attestation generation"
             AppMcpServerElicitationRequest(_) => "MCP elicitation"
+            AppRawServerRequest(rpc_method~, ..) => rpc_method
           },
         )
         fail("e2e does not handle server request")

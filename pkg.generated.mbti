@@ -138,10 +138,11 @@ pub(all) enum AppAutoReviewDecisionSource {
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppAutoReviewDecisionSource
 
-pub struct AppByteRange {
+pub(all) struct AppByteRange {
   start : UInt64
   end : UInt64
 } derive(@debug.Debug)
+pub impl ToJson for AppByteRange
 pub impl @json.FromJson for AppByteRange
 
 pub(all) struct AppCancelLoginAccountParams {
@@ -278,12 +279,20 @@ pub(all) enum AppCommandExecutionApprovalDecision {
 } derive(@debug.Debug)
 pub impl ToJson for AppCommandExecutionApprovalDecision
 
+pub(all) enum AppCommandExecutionApprovalKind {
+  AppCommandApprovalCommand
+  AppCommandApprovalWriteStdin
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppCommandExecutionApprovalKind
+
 pub(all) struct AppCommandExecutionApprovalRequest {
+  kind : AppCommandExecutionApprovalKind
   thread_id : String
   turn_id : String
   item_id : String
   started_at_ms : Int64
   approval_id : String?
+  environment_id : String?
   reason : String?
   network_approval_context : AppNetworkApprovalContext?
   command : String?
@@ -955,6 +964,15 @@ pub struct AppHooksListResponse {
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppHooksListResponse
 
+pub(all) enum AppImageDetail {
+  AppImageAuto
+  AppImageLow
+  AppImageHigh
+  AppImageOriginal
+} derive(@debug.Debug)
+pub impl ToJson for AppImageDetail
+pub impl @json.FromJson for AppImageDetail
+
 pub struct AppInfo {
   id : String
   name : String
@@ -968,10 +986,12 @@ pub impl @json.FromJson for AppInfo
 
 pub(all) struct AppInitializeCapabilities {
   experimental_api : Bool
-  request_attestation : Bool?
+  request_attestation : Bool
+  mcp_server_openai_form_elicitation : Bool?
   opt_out_notification_methods : Array[String]?
+  extensions : Map[String, Json]?
 } derive(@debug.Debug)
-pub fn AppInitializeCapabilities::new(experimental_api? : Bool, request_attestation? : Bool, opt_out_notification_methods? : Array[String]) -> Self
+pub fn AppInitializeCapabilities::new(experimental_api? : Bool, request_attestation? : Bool, mcp_server_openai_form_elicitation? : Bool, opt_out_notification_methods? : Array[String], extensions? : Map[String, Json]) -> Self
 pub impl ToJson for AppInitializeCapabilities
 
 pub(all) struct AppInitializeParams {
@@ -1243,6 +1263,7 @@ pub impl ToJson for AppMcpServerElicitationAction
 
 pub(all) enum AppMcpServerElicitationContent {
   AppMcpElicitationForm(meta~ : Json?, message~ : String, requested_schema~ : AppMcpElicitationSchema)
+  AppMcpElicitationOpenAIForm(meta~ : Json?, message~ : String, requested_schema~ : Json)
   AppMcpElicitationUrl(meta~ : Json?, message~ : String, url~ : String, elicitation_id~ : String)
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppMcpServerElicitationContent
@@ -1393,13 +1414,16 @@ pub struct AppModel {
   availability_nux : AppModelAvailabilityNux?
   display_name : String
   description : String
+  model_specialty : String?
   hidden : Bool
   supported_reasoning_efforts : ArrayView[AppReasoningEffortOption]
   default_reasoning_effort : AppReasoningEffort
   input_modalities : ArrayView[AppInputModality]
   supports_personality : Bool
+  multi_agent_version : AppMultiAgentVersion?
   additional_speed_tiers : ArrayView[String]
   service_tiers : ArrayView[AppModelServiceTier]
+  default_service_tier : String?
   is_default : Bool
   // private fields
 } derive(@debug.Debug)
@@ -1462,6 +1486,14 @@ pub(all) enum AppModelVerification {
   AppModelVerificationTrustedAccessForCyber
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppModelVerification
+
+pub(all) enum AppMultiAgentVersion {
+  AppMultiAgentDisabled
+  AppMultiAgentV1
+  AppMultiAgentV2
+  AppMultiAgentCustom(String)
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppMultiAgentVersion
 
 pub(all) struct AppNamedMigration {
   name : String
@@ -1539,6 +1571,7 @@ pub(all) struct AppPermissionsRequestApprovalRequest {
   thread_id : String
   turn_id : String
   item_id : String
+  environment_id : String?
   started_at_ms : Int64
   cwd : String
   reason : String?
@@ -1799,6 +1832,9 @@ pub(all) enum AppReasoningEffort {
   AppEffortMedium
   AppEffortHigh
   AppEffortXhigh
+  AppEffortMax
+  AppEffortUltra
+  AppEffortCustom(String)
 } derive(@debug.Debug)
 pub impl ToJson for AppReasoningEffort
 pub impl @json.FromJson for AppReasoningEffort
@@ -1980,6 +2016,7 @@ pub(all) struct AppSendAddCreditsNudgeEmailParams {
 pub impl ToJson for AppSendAddCreditsNudgeEmailParams
 
 pub enum AppServerEvent {
+  AppRawNotification(rpc_method~ : String, params~ : Json?)
   AppThreadStarted(AppThread)
   AppThreadStatusChanged(thread_id~ : String, status~ : AppThreadStatus)
   AppThreadArchived(thread_id~ : String)
@@ -2067,6 +2104,7 @@ pub enum AppServerRequestDetails {
   AppChatgptAuthTokensRefreshRequest(AppChatgptAuthTokensRefreshRequest)
   AppAttestationGenerateRequest(AppAttestationGenerateRequest)
   AppMcpServerElicitationRequest(AppMcpServerElicitationRequest)
+  AppRawServerRequest(rpc_method~ : String, params~ : Json?)
 } derive(@debug.Debug)
 
 pub(all) enum AppServerResponse {
@@ -2078,6 +2116,8 @@ pub(all) enum AppServerResponse {
   AppChatgptAuthTokensRefreshResponse(access_token~ : String, chatgpt_account_id~ : String, chatgpt_plan_type~ : String?)
   AppAttestationGenerateResponse(token~ : String)
   AppMcpServerElicitationResponse(action~ : AppMcpServerElicitationAction, content~ : Json?, meta~ : Json?)
+  AppRawServerResponse(Json)
+  AppRawServerError(code~ : Int64, message~ : String, data~ : Json?)
 } derive(@debug.Debug)
 pub impl ToJson for AppServerResponse
 
@@ -2216,10 +2256,11 @@ pub struct AppSummary {
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppSummary
 
-pub struct AppTextElement {
+pub(all) struct AppTextElement {
   byte_range : AppByteRange
   placeholder : String?
 } derive(@debug.Debug)
+pub impl ToJson for AppTextElement
 pub impl @json.FromJson for AppTextElement
 
 pub(all) struct AppTextPosition {
@@ -2236,17 +2277,24 @@ pub impl @json.FromJson for AppTextRange
 
 pub struct AppThread {
   id : String
+  session_id : String
   forked_from_id : String?
+  parent_thread_id : String?
   preview : String
   ephemeral : Bool
+  section : AppThreadSection?
+  section_entered_at : Int64?
+  project_id : String?
   model_provider : String
   created_at : Int64
   updated_at : Int64
+  recency_at : Int64?
   status : AppThreadStatus
   path : String?
   cwd : String
   cli_version : String
   source : AppSessionSource
+  thread_source : String?
   agent_nickname : String?
   agent_role : String?
   git_info : AppConversationGitInfo?
@@ -2344,6 +2392,7 @@ pub impl @json.FromJson for AppThreadFileUpdateChange
 
 pub(all) struct AppThreadForkParams {
   thread_id : String
+  last_turn_id : String?
   model : String?
   model_provider : String?
   service_tier : AppNullableString?
@@ -2355,6 +2404,7 @@ pub(all) struct AppThreadForkParams {
   base_instructions : String?
   developer_instructions : String?
   ephemeral : Bool?
+  thread_source : String?
 } derive(@debug.Debug)
 pub impl ToJson for AppThreadForkParams
 
@@ -2660,6 +2710,70 @@ pub struct AppThreadRollbackResponse {
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppThreadRollbackResponse
 
+pub(all) struct AppThreadSection {
+  id : String
+  name : String
+  appearance : AppThreadSectionAppearance?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadSection
+
+pub(all) struct AppThreadSectionAppearance {
+  icon : String?
+  color : String?
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadSectionAppearance
+pub impl @json.FromJson for AppThreadSectionAppearance
+
+pub(all) enum AppThreadSectionAppearanceUpdate {
+  AppClearThreadSectionAppearance
+  AppSetThreadSectionAppearance(AppThreadSectionAppearance)
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadSectionAppearanceUpdate
+
+pub(all) struct AppThreadSectionCreateParams {
+  name : String
+  appearance : AppThreadSectionAppearanceUpdate?
+} derive(@debug.Debug)
+pub fn AppThreadSectionCreateParams::new(String, appearance? : AppThreadSectionAppearanceUpdate) -> Self
+pub impl ToJson for AppThreadSectionCreateParams
+
+pub(all) struct AppThreadSectionDeleteParams {
+  section_id : String
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadSectionDeleteParams
+
+pub(all) struct AppThreadSectionListParams {
+  cursor : String?
+  limit : UInt?
+} derive(Default, @debug.Debug)
+pub fn AppThreadSectionListParams::new(cursor? : String, limit? : UInt) -> Self
+pub impl ToJson for AppThreadSectionListParams
+
+pub struct AppThreadSectionListResponse {
+  data : ArrayView[AppThreadSection]
+  next_cursor : String?
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadSectionListResponse
+
+pub(all) struct AppThreadSectionMoveParams {
+  thread_id : String
+  section_id : AppNullableString
+  before_thread_id : AppNullableString?
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadSectionMoveParams
+
+pub(all) struct AppThreadSectionResponse {
+  section : AppThreadSection
+} derive(@debug.Debug)
+pub impl @json.FromJson for AppThreadSectionResponse
+
+pub(all) struct AppThreadSectionUpdateParams {
+  section_id : String
+  name : String
+  appearance : AppThreadSectionAppearanceUpdate?
+} derive(@debug.Debug)
+pub impl ToJson for AppThreadSectionUpdateParams
+
 pub struct AppThreadSetNameParams {
   thread_id : String
   name : String
@@ -2708,8 +2822,9 @@ pub struct AppThreadStartParams {
   personality : AppPersonality?
   ephemeral : Bool?
   session_start_source : AppThreadStartSource?
+  thread_source : String?
 } derive(@debug.Debug)
-pub fn AppThreadStartParams::new(model? : String, model_provider? : String, service_tier? : AppNullableString, cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox? : SandboxMode, config? : Map[String, Json], service_name? : String, base_instructions? : String, developer_instructions? : String, personality? : AppPersonality, ephemeral? : Bool, session_start_source? : AppThreadStartSource) -> Self
+pub fn AppThreadStartParams::new(model? : String, model_provider? : String, service_tier? : AppNullableString, cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox? : SandboxMode, config? : Map[String, Json], service_name? : String, base_instructions? : String, developer_instructions? : String, personality? : AppPersonality, ephemeral? : Bool, session_start_source? : AppThreadStartSource, thread_source? : String) -> Self
 pub impl ToJson for AppThreadStartParams
 
 pub struct AppThreadStartResponse {
@@ -2776,8 +2891,10 @@ pub impl @json.FromJson for AppThreadUnsubscribeStatus
 
 pub enum AppThreadUserInput {
   AppThreadInputText(text~ : String, text_elements~ : ArrayView[AppTextElement])
-  AppThreadInputImage(url~ : String)
-  AppThreadInputLocalImage(path~ : String)
+  AppThreadInputImage(url~ : String, detail~ : AppImageDetail?)
+  AppThreadInputLocalImage(path~ : String, detail~ : AppImageDetail?)
+  AppThreadInputAudio(url~ : String)
+  AppThreadInputLocalAudio(path~ : String)
   AppThreadInputSkill(name~ : String, path~ : String)
   AppThreadInputMention(name~ : String, path~ : String)
 } derive(@debug.Debug)
@@ -2829,6 +2946,8 @@ pub(all) struct AppToolRequestUserInputRequest {
   turn_id : String
   item_id : String
   questions : ArrayView[AppToolRequestUserInputQuestion]
+  is_blocking : Bool
+  auto_resolution_ms : Int64?
   // private fields
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppToolRequestUserInputRequest
@@ -2879,6 +2998,7 @@ pub(all) enum AppTurnPlanStepStatus {
 pub impl @json.FromJson for AppTurnPlanStepStatus
 
 pub struct AppTurnStartOptions {
+  client_user_message_id : String?
   cwd : String?
   approval_policy : AppApprovalPolicy?
   approvals_reviewer : AppApprovalsReviewer?
@@ -2890,10 +3010,11 @@ pub struct AppTurnStartOptions {
   personality : AppPersonality?
   output_schema : Json?
 } derive(Default, @debug.Debug)
-pub fn AppTurnStartOptions::new(cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox_policy? : AppSandboxPolicy, model? : String, service_tier? : AppNullableString, effort? : AppReasoningEffort, summary? : AppReasoningSummary, personality? : AppPersonality, output_schema? : Json) -> Self
+pub fn AppTurnStartOptions::new(client_user_message_id? : String, cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox_policy? : AppSandboxPolicy, model? : String, service_tier? : AppNullableString, effort? : AppReasoningEffort, summary? : AppReasoningSummary, personality? : AppPersonality, output_schema? : Json) -> Self
 
 pub struct AppTurnStartParams {
   thread_id : String
+  client_user_message_id : String?
   input : Array[AppUserInput]
   cwd : String?
   approval_policy : AppApprovalPolicy?
@@ -2906,7 +3027,7 @@ pub struct AppTurnStartParams {
   personality : AppPersonality?
   output_schema : Json?
 } derive(@debug.Debug)
-pub fn AppTurnStartParams::new(String, Array[AppUserInput], cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox_policy? : AppSandboxPolicy, model? : String, service_tier? : AppNullableString, effort? : AppReasoningEffort, summary? : AppReasoningSummary, personality? : AppPersonality, output_schema? : Json) -> Self
+pub fn AppTurnStartParams::new(String, Array[AppUserInput], client_user_message_id? : String, cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox_policy? : AppSandboxPolicy, model? : String, service_tier? : AppNullableString, effort? : AppReasoningEffort, summary? : AppReasoningSummary, personality? : AppPersonality, output_schema? : Json) -> Self
 pub impl ToJson for AppTurnStartParams
 
 pub struct AppTurnStartResponse {
@@ -2924,10 +3045,11 @@ pub impl @json.FromJson for AppTurnStatus
 
 pub struct AppTurnSteerParams {
   thread_id : String
+  client_user_message_id : String?
   input : Array[AppUserInput]
   expected_turn_id : String
 } derive(@debug.Debug)
-pub fn AppTurnSteerParams::new(String, Array[AppUserInput], String) -> Self
+pub fn AppTurnSteerParams::new(String, Array[AppUserInput], String, client_user_message_id? : String) -> Self
 pub impl ToJson for AppTurnSteerParams
 
 pub struct AppTurnSteerResponse {
@@ -2946,8 +3068,13 @@ pub async fn AppTurnStream::next(Self) -> AppServerEvent?
 
 pub(all) enum AppUserInput {
   AppInputText(text~ : String)
+  AppInputTextWithElements(text~ : String, text_elements~ : Array[AppTextElement])
   AppInputImage(url~ : String)
+  AppInputImageWithDetail(url~ : String, detail~ : AppImageDetail)
   AppInputLocalImage(path~ : String)
+  AppInputLocalImageWithDetail(path~ : String, detail~ : AppImageDetail)
+  AppInputAudio(url~ : String)
+  AppInputLocalAudio(path~ : String)
   AppInputSkill(name~ : String, path~ : String)
   AppInputMention(name~ : String, path~ : String)
 } derive(@debug.Debug)
@@ -3072,10 +3199,12 @@ pub async fn CodexAppConnection::mock_experimental_method(Self, AppMockExperimen
 pub async fn CodexAppConnection::model_list(Self, params? : AppModelListParams) -> AppModelListResponse
 pub async fn CodexAppConnection::model_provider_capabilities_read(Self) -> AppModelProviderCapabilitiesReadResponse
 pub async fn CodexAppConnection::next_event(Self) -> AppServerEvent?
+pub async fn CodexAppConnection::notify(Self, String, params? : Json) -> Unit
 pub async fn CodexAppConnection::plugin_install(Self, AppPluginInstallParams) -> AppPluginInstallResponse
 pub async fn CodexAppConnection::plugin_list(Self, AppPluginListParams) -> AppPluginListResponse
 pub async fn CodexAppConnection::plugin_read(Self, AppPluginReadParams) -> AppPluginReadResponse
 pub async fn CodexAppConnection::plugin_uninstall(Self, AppPluginUninstallParams) -> Unit
+pub async fn CodexAppConnection::request(Self, String, params? : Json) -> Json
 pub async fn CodexAppConnection::review_start(Self, AppReviewStartParams) -> AppReviewStartResponse
 pub async fn CodexAppConnection::skills_config_write(Self, AppSkillsConfigWriteParams) -> AppSkillsConfigWriteResponse
 pub async fn CodexAppConnection::skills_list(Self, params? : AppSkillsListParams) -> AppSkillsListResponse
@@ -3084,6 +3213,7 @@ pub async fn CodexAppConnection::thread_archive(Self, AppThreadIdParams) -> Unit
 pub async fn CodexAppConnection::thread_background_terminals_clean(Self, AppThreadIdParams) -> Unit
 pub async fn CodexAppConnection::thread_compact_start(Self, AppThreadIdParams) -> Unit
 pub async fn CodexAppConnection::thread_decrement_elicitation(Self, AppThreadElicitationCounterParams) -> AppThreadElicitationCounterResponse
+pub async fn CodexAppConnection::thread_delete(Self, AppThreadIdParams) -> Unit
 pub async fn CodexAppConnection::thread_fork(Self, AppThreadForkParams) -> AppThreadForkResponse
 pub async fn CodexAppConnection::thread_goal_clear(Self, AppThreadIdParams) -> AppThreadGoalClearResponse
 pub async fn CodexAppConnection::thread_goal_get(Self, AppThreadIdParams) -> AppThreadGoalGetResponse
@@ -3102,6 +3232,11 @@ pub async fn CodexAppConnection::thread_realtime_start(Self, AppThreadRealtimeSt
 pub async fn CodexAppConnection::thread_realtime_stop(Self, AppThreadIdParams) -> Unit
 pub async fn CodexAppConnection::thread_resume(Self, AppThreadResumeParams) -> AppThreadResumeResponse
 pub async fn CodexAppConnection::thread_rollback(Self, AppThreadRollbackParams) -> AppThreadRollbackResponse
+pub async fn CodexAppConnection::thread_section_create(Self, AppThreadSectionCreateParams) -> AppThreadSectionResponse
+pub async fn CodexAppConnection::thread_section_delete(Self, AppThreadSectionDeleteParams) -> Unit
+pub async fn CodexAppConnection::thread_section_list(Self, params? : AppThreadSectionListParams) -> AppThreadSectionListResponse
+pub async fn CodexAppConnection::thread_section_move(Self, AppThreadSectionMoveParams) -> Unit
+pub async fn CodexAppConnection::thread_section_update(Self, AppThreadSectionUpdateParams) -> AppThreadSectionResponse
 pub async fn CodexAppConnection::thread_set_name(Self, AppThreadSetNameParams) -> Unit
 pub async fn CodexAppConnection::thread_shell_command(Self, AppThreadShellCommandParams) -> Unit
 pub async fn CodexAppConnection::thread_start(Self, params? : AppThreadStartParams) -> AppThreadStartResponse
@@ -3164,10 +3299,12 @@ pub async fn CodexAppSession::mock_experimental_method(Self, AppMockExperimental
 pub async fn CodexAppSession::model_list(Self, params? : AppModelListParams) -> AppModelListResponse
 pub async fn CodexAppSession::model_provider_capabilities_read(Self) -> AppModelProviderCapabilitiesReadResponse
 pub async fn CodexAppSession::next_global_event(Self) -> AppServerEvent?
+pub async fn CodexAppSession::notify(Self, String, params? : Json) -> Unit
 pub async fn CodexAppSession::plugin_install(Self, AppPluginInstallParams) -> AppPluginInstallResponse
 pub async fn CodexAppSession::plugin_list(Self, AppPluginListParams) -> AppPluginListResponse
 pub async fn CodexAppSession::plugin_read(Self, AppPluginReadParams) -> AppPluginReadResponse
 pub async fn CodexAppSession::plugin_uninstall(Self, AppPluginUninstallParams) -> Unit
+pub async fn CodexAppSession::request(Self, String, params? : Json) -> Json
 pub async fn CodexAppSession::resume_thread(Self, AppThreadResumeParams, request_handler? : async (AppServerRequest) -> AppServerResponse) -> CodexAppThread
 pub async fn CodexAppSession::review_start(Self, AppReviewStartParams) -> AppReviewStartResponse
 pub async fn CodexAppSession::skills_config_write(Self, AppSkillsConfigWriteParams) -> AppSkillsConfigWriteResponse
@@ -3178,6 +3315,7 @@ pub async fn CodexAppSession::thread_archive(Self, AppThreadIdParams) -> Unit
 pub async fn CodexAppSession::thread_background_terminals_clean(Self, AppThreadIdParams) -> Unit
 pub async fn CodexAppSession::thread_compact_start(Self, AppThreadIdParams) -> Unit
 pub async fn CodexAppSession::thread_decrement_elicitation(Self, AppThreadElicitationCounterParams) -> AppThreadElicitationCounterResponse
+pub async fn CodexAppSession::thread_delete(Self, AppThreadIdParams) -> Unit
 pub async fn CodexAppSession::thread_fork(Self, AppThreadForkParams) -> AppThreadForkResponse
 pub async fn CodexAppSession::thread_goal_clear(Self, AppThreadIdParams) -> AppThreadGoalClearResponse
 pub async fn CodexAppSession::thread_goal_get(Self, AppThreadIdParams) -> AppThreadGoalGetResponse
@@ -3196,6 +3334,11 @@ pub async fn CodexAppSession::thread_realtime_start(Self, AppThreadRealtimeStart
 pub async fn CodexAppSession::thread_realtime_stop(Self, AppThreadIdParams) -> Unit
 pub async fn CodexAppSession::thread_resume(Self, AppThreadResumeParams) -> AppThreadResumeResponse
 pub async fn CodexAppSession::thread_rollback(Self, AppThreadRollbackParams) -> AppThreadRollbackResponse
+pub async fn CodexAppSession::thread_section_create(Self, AppThreadSectionCreateParams) -> AppThreadSectionResponse
+pub async fn CodexAppSession::thread_section_delete(Self, AppThreadSectionDeleteParams) -> Unit
+pub async fn CodexAppSession::thread_section_list(Self, params? : AppThreadSectionListParams) -> AppThreadSectionListResponse
+pub async fn CodexAppSession::thread_section_move(Self, AppThreadSectionMoveParams) -> Unit
+pub async fn CodexAppSession::thread_section_update(Self, AppThreadSectionUpdateParams) -> AppThreadSectionResponse
 pub async fn CodexAppSession::thread_set_name(Self, AppThreadSetNameParams) -> Unit
 pub async fn CodexAppSession::thread_shell_command(Self, AppThreadShellCommandParams) -> Unit
 pub async fn CodexAppSession::thread_start(Self, params? : AppThreadStartParams) -> AppThreadStartResponse
@@ -3227,7 +3370,7 @@ pub fn CodexAppThread::set_request_handler(Self, request_handler? : async (AppSe
 pub async fn CodexAppThread::start_turn(Self, Array[AppUserInput], options? : AppTurnStartOptions) -> AppTurnStartResponse
 
 type CodexOptions derive(Default)
-pub fn CodexOptions::new(codex_path_override? : String, base_url? : String, api_key? : String, env? : Map[String, String]) -> Self
+pub fn CodexOptions::new(codex_path_override? : String, base_url? : String, api_key? : String, config? : Map[String, Json], config_overrides? : Array[String], env? : Map[String, String]) -> Self
 
 pub struct CollabAgentState {
   status : CollabAgentStatus
@@ -3300,6 +3443,7 @@ pub impl Show for FileUpdateChange
 
 pub struct McpToolCallResult {
   content : Array[Json]
+  meta : Json?
   structured_content : Json
 } derive(@debug.Debug)
 pub impl ToJson for McpToolCallResult
@@ -3317,8 +3461,11 @@ pub impl @json.FromJson for McpToolCallStatus
 pub(all) enum ModelReasoningEffort {
   Minimal
   Low
+  Medium
   High
   Xhigh
+  Max
+  Ultra
 }
 pub impl Show for ModelReasoningEffort
 
@@ -3378,7 +3525,7 @@ pub impl ToJson for ThreadItem
 pub impl @json.FromJson for ThreadItem
 
 type ThreadOptions derive(Default)
-pub fn ThreadOptions::new(model? : String, sandbox_mode? : SandboxMode, working_directory? : String, skip_git_repo_check? : Bool, model_reasoning_effort? : ModelReasoningEffort, network_access_enabled? : Bool, web_search_enabled? : Bool, approval_policy? : ApprovalMode, additional_directories? : Array[String]) -> Self
+pub fn ThreadOptions::new(model? : String, thread_source? : String, sandbox_mode? : SandboxMode, working_directory? : String, skip_git_repo_check? : Bool, model_reasoning_effort? : ModelReasoningEffort, network_access_enabled? : Bool, web_search_enabled? : Bool, web_search_mode? : WebSearchMode, approval_policy? : ApprovalMode, additional_directories? : Array[String]) -> Self
 
 pub struct TodoItem {
   text : String
@@ -3399,14 +3546,24 @@ pub fn TurnOptions::new(output_schema? : Json) -> Self
 pub struct Usage {
   input_tokens : Int
   cached_input_tokens : Int
+  cache_write_input_tokens : Int
   output_tokens : Int
   reasoning_output_tokens : Int
-} derive(ToJson, @debug.Debug, @json.FromJson)
+} derive(@debug.Debug)
+pub impl ToJson for Usage
+pub impl @json.FromJson for Usage
 
 pub(all) enum UserInput {
   Text(String)
   LocalImage(path~ : String)
 }
+
+pub(all) enum WebSearchMode {
+  Disabled
+  Cached
+  Live
+}
+pub impl Show for WebSearchMode
 
 // Type aliases
 pub type AppServerRequestHandler = async (AppServerRequest) -> AppServerResponse
@@ -3414,4 +3571,3 @@ pub type AppServerRequestHandler = async (AppServerRequest) -> AppServerResponse
 pub type Input = Array[UserInput]
 
 // Traits
-

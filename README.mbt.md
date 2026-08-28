@@ -3,12 +3,12 @@
 This is the Codex SDK for MoonBit, ported from the TypeScript SDK.
 
 The SDK communicates with Codex by spawning it in non-interactive mode using
-`codex exec`. The target Codex version is `codex-cli 0.128.0`.
+`codex exec`. The target Codex version is `codex-cli 0.150.1`.
 
 Codex must be installed and available on your PATH. If not, install with:
 
 ```bash
-pnpm install -g @openai/codex@0.128.0
+pnpm install -g @openai/codex@0.150.1
 ```
 
 ## Usage
@@ -81,7 +81,7 @@ async test {
 
 The MoonBit SDK is a thin but strongly typed wrapper around `codex exec`:
 
-1. `@codex.CodexExec::run` spawns the CLI with `--json`,
+1. `@codex.CodexExec::run` spawns the CLI with `--experimental-json`,
    automatically wiring API endpoint overrides, API keys, sandbox flags, working
    directory overrides, and thread resumption arguments.
 2. The CLI's JSONL stream is fed through `@generator.AsyncGenerator` so the SDK
@@ -91,11 +91,10 @@ The MoonBit SDK is a thin but strongly typed wrapper around `codex exec`:
    hierarchy (`events.mbt` and `items.mbt`), which means MoonBit callers never
    manipulate raw JSON.
 
-The native JSON event parser targets the `codex-cli 0.128.0` non-interactive
-event stream, checked against the upstream `openai/codex` schema at
-`2a67c46de498`. In that schema, command execution items always include
-`aggregated_output` as a string; in-progress commands use an empty string until
-terminal output is available.
+The native JSON event parser targets the `codex-cli 0.150.1` non-interactive
+event stream, checked against the upstream `openai/codex` release tag
+`rust-v0.150.1`. Usage includes prompt-cache writes when reported by the CLI,
+while older CLIs that omit that counter decode it as zero.
 
 The `Codex`/`Thread`/`Turn` trio mirrors the CLI lifecycle: a `Codex` holds
 process-level configuration, a `Thread` models a Codex conversation, and a
@@ -221,7 +220,7 @@ everything in the SDK is expressed as plain MoonBit structs and async functions.
 
 ### Connect to Codex app-server
 
-The app-server surface is separate from `codex exec --json`. It runs as a
+The app-server surface is separate from `codex exec --experimental-json`. It runs as a
 persistent JSON-RPC process. Prefer `Codex::with_app_server_session` for app
 integrations: the SDK owns the task group, starts the app-server process, sends
 the required `initialize` request plus `initialized` notification, runs the
@@ -260,7 +259,21 @@ For lower-level integrations, `Codex::with_app_server` exposes the raw
 stream: use a single consumer and fan events out yourself if multiple turns are
 active.
 
-The app-server surface currently targets the Codex app-server v2 schema.
+The typed app-server surface targets the stable v2 schema shipped with Codex
+0.150.1. It includes current initialize capabilities, rich text/image/audio
+inputs, client message ids, thread sources and sections, newer reasoning levels,
+and the latest approval metadata. Set `experimental_api=true` in
+`AppInitializeCapabilities` to opt into experimental methods and fields.
+
+`CodexAppSession::request` and `CodexAppConnection::request` expose every
+app-server method as raw JSON when a dedicated typed convenience method is not
+available. Likewise, unrecognized notifications and server requests are
+delivered as `AppRawNotification` and `AppRawServerRequest`; handlers can reply
+with `AppRawServerResponse`, or reject one with `AppRawServerError`. This keeps
+additions in the release protocol usable without silently discarding them.
+
+The shared request transport automatically retries the app-server's retryable
+`-32001` overload response with bounded exponential backoff.
 
 The real app-server e2e test is marked `#skip` because it uses the local Codex
 CLI and can make authenticated model requests. It reads `skills/list` and runs
@@ -325,6 +338,8 @@ async test {
             content=None,
             meta=None,
           )
+        @codex.AppServerRequestDetails::AppRawServerRequest(..) =>
+          @codex.AppServerResponse::AppRawServerResponse({})
       }
     })
     let review_turn = review_thread.run_streamed([

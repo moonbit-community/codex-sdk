@@ -98,6 +98,7 @@ pub struct CodexAppThread {
 
 ///|
 pub struct AppTurnStartOptions {
+  client_user_message_id : String?
   cwd : String?
   approval_policy : AppApprovalPolicy?
   approvals_reviewer : AppApprovalsReviewer?
@@ -112,6 +113,7 @@ pub struct AppTurnStartOptions {
 
 ///|
 pub fn AppTurnStartOptions::new(
+  client_user_message_id? : String,
   cwd? : String,
   approval_policy? : AppApprovalPolicy,
   approvals_reviewer? : AppApprovalsReviewer,
@@ -124,6 +126,7 @@ pub fn AppTurnStartOptions::new(
   output_schema? : Json,
 ) -> AppTurnStartOptions {
   {
+    client_user_message_id,
     cwd,
     approval_policy,
     approvals_reviewer,
@@ -145,6 +148,7 @@ fn AppTurnStartOptions::params(
 ) -> AppTurnStartParams {
   {
     thread_id,
+    client_user_message_id: self.client_user_message_id,
     input,
     cwd: self.cwd,
     approval_policy: self.approval_policy,
@@ -477,7 +481,7 @@ fn CodexAppSession::set_thread_request_handler(
     }
   }
   if request_handler is Some(handler) {
-    remaining.push({ thread_id, request_handler: handler })
+    remaining.push({ thread_id, request_handler: handler, })
   }
   self.thread_request_handlers = remaining
 }
@@ -661,22 +665,31 @@ fn AppServerRequest::turn_stream_key(
 ) -> AppTurnStreamKey? {
   match self.details {
     AppCommandExecutionApprovalRequest(request) =>
-      Some({ thread_id: request.thread_id, turn_id: request.turn_id })
+      Some({ thread_id: request.thread_id, turn_id: request.turn_id, })
     AppFileChangeApprovalRequest(request) =>
-      Some({ thread_id: request.thread_id, turn_id: request.turn_id })
+      Some({ thread_id: request.thread_id, turn_id: request.turn_id, })
     AppToolRequestUserInputRequest(request) =>
-      Some({ thread_id: request.thread_id, turn_id: request.turn_id })
+      Some({ thread_id: request.thread_id, turn_id: request.turn_id, })
     AppDynamicToolCallRequest(request) =>
-      Some({ thread_id: request.thread_id, turn_id: request.turn_id })
+      Some({ thread_id: request.thread_id, turn_id: request.turn_id, })
     AppPermissionsRequestApprovalRequest(request) =>
-      Some({ thread_id: request.thread_id, turn_id: request.turn_id })
+      Some({ thread_id: request.thread_id, turn_id: request.turn_id, })
     AppMcpServerElicitationRequest(request) =>
       match request.turn_id {
-        Some(turn_id) => Some({ thread_id: request.thread_id, turn_id })
+        Some(turn_id) => Some({ thread_id: request.thread_id, turn_id, })
         None => None
       }
     AppChatgptAuthTokensRefreshRequest(_) => None
     AppAttestationGenerateRequest(_) => None
+    AppRawServerRequest(params~, ..) =>
+      match
+        (
+          app_raw_params_string(params, "threadId"),
+          app_raw_params_string(params, "turnId"),
+        ) {
+        (Some(thread_id), Some(turn_id)) => Some({ thread_id, turn_id, })
+        _ => None
+      }
   }
 }
 
@@ -691,58 +704,84 @@ fn AppServerRequest::thread_id(self : AppServerRequest) -> String? {
     AppMcpServerElicitationRequest(request) => Some(request.thread_id)
     AppChatgptAuthTokensRefreshRequest(_) => None
     AppAttestationGenerateRequest(_) => None
+    AppRawServerRequest(params~, ..) =>
+      app_raw_params_string(params, "threadId")
   }
 }
 
 ///|
 fn AppServerEvent::turn_stream_key(self : AppServerEvent) -> AppTurnStreamKey? {
   match self {
-    AppTurnStarted(thread_id~, turn~) => Some({ thread_id, turn_id: turn.id })
-    AppTurnCompleted(thread_id~, turn~) => Some({ thread_id, turn_id: turn.id })
+    AppTurnStarted(thread_id~, turn~) => Some({ thread_id, turn_id: turn.id, })
+    AppTurnCompleted(thread_id~, turn~) =>
+      Some({ thread_id, turn_id: turn.id, })
     AppHookStarted(thread_id~, turn_id~, ..) =>
       app_optional_turn_key(thread_id, turn_id)
     AppHookCompleted(thread_id~, turn_id~, ..) =>
       app_optional_turn_key(thread_id, turn_id)
     AppThreadGoalUpdated(thread_id~, turn_id~, ..) =>
       app_optional_turn_key(thread_id, turn_id)
-    AppTurnDiffUpdated(thread_id~, turn_id~, ..) => Some({ thread_id, turn_id })
-    AppTurnPlanUpdated(thread_id~, turn_id~, ..) => Some({ thread_id, turn_id })
-    AppTurnError(thread_id~, turn_id~, ..) => Some({ thread_id, turn_id })
+    AppTurnDiffUpdated(thread_id~, turn_id~, ..) =>
+      Some({ thread_id, turn_id, })
+    AppTurnPlanUpdated(thread_id~, turn_id~, ..) =>
+      Some({ thread_id, turn_id, })
+    AppTurnError(thread_id~, turn_id~, ..) => Some({ thread_id, turn_id, })
     AppItemStarted(event) =>
-      Some({ thread_id: event.thread_id, turn_id: event.turn_id })
+      Some({ thread_id: event.thread_id, turn_id: event.turn_id, })
     AppItemCompleted(event) =>
-      Some({ thread_id: event.thread_id, turn_id: event.turn_id })
+      Some({ thread_id: event.thread_id, turn_id: event.turn_id, })
     AppItemGuardianApprovalReviewStarted(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
     AppItemGuardianApprovalReviewCompleted(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
     AppRawResponseItemCompleted(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
     AppAgentMessageDelta(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
-    AppPlanDelta(thread_id~, turn_id~, ..) => Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
+    AppPlanDelta(thread_id~, turn_id~, ..) => Some({ thread_id, turn_id, })
     AppCommandExecutionOutputDelta(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
     AppTerminalInteraction(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
     AppFileChangeOutputDelta(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
     AppFileChangePatchUpdated(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
     AppMcpToolCallProgress(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
-    AppContextCompacted(thread_id~, turn_id~) => Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
+    AppContextCompacted(thread_id~, turn_id~) => Some({ thread_id, turn_id, })
     AppReasoningSummaryTextDelta(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
     AppReasoningSummaryPartAdded(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
     AppReasoningTextDelta(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
-    AppModelRerouted(thread_id~, turn_id~, ..) => Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
+    AppModelRerouted(thread_id~, turn_id~, ..) => Some({ thread_id, turn_id, })
     AppModelVerification(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
     AppThreadTokenUsageUpdated(thread_id~, turn_id~, ..) =>
-      Some({ thread_id, turn_id })
+      Some({ thread_id, turn_id, })
+    AppRawNotification(params~, ..) =>
+      match
+        (
+          app_raw_params_string(params, "threadId"),
+          app_raw_params_string(params, "turnId"),
+        ) {
+        (Some(thread_id), Some(turn_id)) => Some({ thread_id, turn_id, })
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn app_raw_params_string(params : Json?, key : String) -> String? {
+  match params {
+    Some(Object(obj)) =>
+      match obj.get(key) {
+        Some(String(value)) => Some(value)
+        _ => None
+      }
     _ => None
   }
 }
@@ -753,7 +792,7 @@ fn app_optional_turn_key(
   turn_id : String?,
 ) -> AppTurnStreamKey? {
   match turn_id {
-    Some(turn_id) => Some({ thread_id, turn_id })
+    Some(turn_id) => Some({ thread_id, turn_id, })
     None => None
   }
 }

@@ -13,6 +13,27 @@
 // limitations under the License.
 
 ///|
+/// Send an arbitrary app-server request and return its raw JSON result.
+/// Prefer a typed session method when one is available.
+pub async fn CodexAppSession::request(
+  self : CodexAppSession,
+  rpc_method : String,
+  params? : Json,
+) -> Json {
+  self.connection.request(rpc_method, params?)
+}
+
+///|
+/// Send an arbitrary app-server notification.
+pub async fn CodexAppSession::notify(
+  self : CodexAppSession,
+  rpc_method : String,
+  params? : Json,
+) -> Unit {
+  self.connection.notify(rpc_method, params?)
+}
+
+///|
 pub async fn CodexAppSession::account_login_cancel(
   self : CodexAppSession,
   params : AppCancelLoginAccountParams,

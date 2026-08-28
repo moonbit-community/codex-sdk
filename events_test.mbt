@@ -238,11 +238,52 @@ test "parse turn completed usage with reasoning tokens" {
           #|{
           #|  input_tokens: 10,
           #|  cached_input_tokens: 3,
+          #|  cache_write_input_tokens: 0,
           #|  output_tokens: 7,
           #|  reasoning_output_tokens: 5,
           #|}
         ),
       )
+    _ => fail("expected turn completed event")
+  }
+}
+
+///|
+test "parse turn completed usage with prompt cache writes" {
+  let event : Event = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "type": "turn.completed",
+        #|  "usage": {
+        #|    "input_tokens": 20,
+        #|    "cached_input_tokens": 8,
+        #|    "cache_write_input_tokens": 4,
+        #|    "output_tokens": 6,
+        #|    "reasoning_output_tokens": 2
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  match event {
+    TurnCompleted(usage) => {
+      assert_eq(usage.cache_write_input_tokens, 4)
+      debug_inspect(
+        usage.to_json(),
+        content=(
+          #|Object(
+          #|  {
+          #|    "input_tokens": Number(20),
+          #|    "cached_input_tokens": Number(8),
+          #|    "cache_write_input_tokens": Number(4),
+          #|    "output_tokens": Number(6),
+          #|    "reasoning_output_tokens": Number(2),
+          #|  },
+          #|)
+        ),
+      )
+    }
     _ => fail("expected turn completed event")
   }
 }

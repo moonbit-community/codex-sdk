@@ -560,7 +560,7 @@ pub impl @json.FromJson for CollabAgentState with fn from_json(value, path) {
         ),
       )
   }
-  { status: @json.from_json(status, path=path.add_key("status")), message }
+  { status: @json.from_json(status, path=path.add_key("status")), message, }
 }
 
 ///|
@@ -692,12 +692,21 @@ pub impl @json.FromJson for McpToolCallStatus with fn from_json(value, path) {
 ///|
 pub struct McpToolCallResult {
   content : Array[Json]
+  /// Optional MCP result metadata.
+  meta : Json?
   structured_content : Json
 } derive(Debug)
 
 ///|
 pub impl ToJson for McpToolCallResult with fn to_json(result) {
-  { "content": result.content, "structured_content": result.structured_content }
+  let obj : Map[String, Json] = {
+    "content": result.content,
+    "structured_content": result.structured_content,
+  }
+  if result.meta is Some(meta) {
+    obj.set("_meta", meta)
+  }
+  Json::object(obj)
 }
 
 ///|
@@ -705,6 +714,7 @@ pub impl FromJson for McpToolCallResult with fn from_json(value, path) {
   guard value
     is {
       "content": Array(content),
+      "_meta"? : meta,
       "structured_content": structured_content,
       ..
     } else {
@@ -715,5 +725,12 @@ pub impl FromJson for McpToolCallResult with fn from_json(value, path) {
       ),
     )
   }
-  { content, structured_content }
+  {
+    content,
+    meta: match meta {
+      Some(Null) | None => None
+      Some(value) => Some(value)
+    },
+    structured_content,
+  }
 }
