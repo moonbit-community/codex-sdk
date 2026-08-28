@@ -25,29 +25,68 @@ test "serialize app-server initialize capabilities" {
     client_info: AppClientInfo::{
       name: "moonbit-codex-sdk",
       title: None,
-      version: "0.129.0",
+      version: "0.150.1",
     },
     capabilities: Some(
       AppInitializeCapabilities::new(
         experimental_api=true,
         request_attestation=true,
+        mcp_server_openai_form_elicitation=true,
         opt_out_notification_methods=["thread/name/updated"],
+        extensions={ "openai/form": {} },
       ),
     ),
   }
   guard params.to_json()
     is {
-      "clientInfo": { "version": String("0.129.0"), .. },
+      "clientInfo": { "version": String("0.150.1"), .. },
       "capabilities": {
         "experimentalApi": True,
         "requestAttestation": True,
+        "mcpServerOpenaiFormElicitation": True,
         "optOutNotificationMethods": Array([String("thread/name/updated")]),
+        "extensions": Object({ "openai/form": Object({ }) }),
         ..
       },
       ..
     } else {
     fail("expected request attestation capability")
   }
+}
+
+///|
+test "serialize v0.150 app-server user inputs" {
+  let inputs = [
+    AppUserInput::AppInputImageWithDetail(
+      url="https://example.test/image.png",
+      detail=AppImageOriginal,
+    ),
+    AppUserInput::AppInputAudio(url="https://example.test/audio.wav"),
+    AppUserInput::AppInputLocalAudio(path="/tmp/audio.wav"),
+  ]
+  debug_inspect(
+    inputs.to_json(),
+    content=(
+      #|Array(
+      #|  [
+      #|    Object(
+      #|      {
+      #|        "type": String("image"),
+      #|        "url": String("https://example.test/image.png"),
+      #|        "detail": String("original"),
+      #|      },
+      #|    ),
+      #|    Object(
+      #|      {
+      #|        "type": String("audio"),
+      #|        "url": String("https://example.test/audio.wav"),
+      #|      },
+      #|    ),
+      #|    Object({ "type": String("localAudio"), "path": String("/tmp/audio.wav") }),
+      #|  ],
+      #|)
+    ),
+  )
 }
 
 ///|
@@ -157,6 +196,7 @@ test "serialize app-server nullable request fields" {
   }
   let thread_fork = AppThreadForkParams::{
     thread_id: "thread-1",
+    last_turn_id: None,
     model: None,
     model_provider: None,
     service_tier: Some(AppNullableStringNull),
@@ -168,6 +208,7 @@ test "serialize app-server nullable request fields" {
     base_instructions: None,
     developer_instructions: None,
     ephemeral: None,
+    thread_source: None,
   }
   guard thread_fork.to_json() is { "serviceTier": Null, .. } else {
     fail("expected thread/fork serviceTier null")
@@ -205,7 +246,7 @@ test "serialize app-server command env null overrides" {
     timeout_ms: Some(3_000_000_000),
     cwd: None,
     env: Some(env),
-    size: Some({ rows: 24, cols: 80 }),
+    size: Some({ rows: 24, cols: 80, }),
     sandbox_policy: None,
   }
   guard params.to_json()
@@ -371,7 +412,7 @@ test "serialize app-server realtime and experimental request params" {
   }
   debug_inspect(sample_rate.to_uint(), content="24000")
   debug_inspect(num_channels.to_uint(), content="1")
-  guard AppMockExperimentalMethodParams::{ value: None }.to_json()
+  guard AppMockExperimentalMethodParams::{ value: None, }.to_json()
     is { "value": Null, .. } else {
     fail("expected mock/experimentalMethod null value")
   }
@@ -400,7 +441,7 @@ test "serialize app-server typed request responses" {
   )
   debug_inspect(
     AppServerResponse::AppToolRequestUserInputResponse(answers={
-      "choice": AppToolRequestUserInputAnswer::{ answers: ["first"] },
+      "choice": AppToolRequestUserInputAnswer::{ answers: ["first"], },
     }).to_json(),
     content=(
       #|Object({ "answers": Object({ "choice": Object({ "answers": Array([String("first")]) }) }) })
@@ -456,7 +497,7 @@ test "serialize app-server typed request responses" {
   )
   let permissions_response = AppServerResponse::AppPermissionsRequestApprovalResponse(
     permissions=AppGrantedPermissionProfile::{
-      network: Some(AppAdditionalNetworkPermissions::{ enabled: Some(true) }),
+      network: Some(AppAdditionalNetworkPermissions::{ enabled: Some(true), }),
       file_system: Some(AppAdditionalFileSystemPermissions::{
         read: None,
         write: None,
@@ -1554,7 +1595,7 @@ test "parse app-server attestation generate request" {
 }
 
 ///|
-test "parse unsupported app-server requests as internal unsupported frames" {
+test "preserve app-server requests without typed variants" {
   let methods = ["applyPatchApproval", "execCommandApproval"]
   for rpc_method in methods {
     let message : AppServerMessage = @json.from_json({
@@ -1563,11 +1604,81 @@ test "parse unsupported app-server requests as internal unsupported frames" {
       "params": {},
     })
     match message {
-      UnsupportedRequest(rpc_method=unsupported_method, ..) =>
-        debug_inspect(unsupported_method, content="\"\{rpc_method}\"")
-      _ => fail("expected unsupported app-server request")
+      Request({ details: AppRawServerRequest(rpc_method=raw_method, ..), .. }) =>
+        debug_inspect(raw_method, content="\"\{rpc_method}\"")
+      _ => fail("expected raw app-server request")
     }
   }
+}
+
+///|
+test "preserve newer payloads for known app-server requests" {
+  let message : AppServerMessage = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "id": 18,
+        #|  "method": "item/commandExecution/requestApproval",
+        #|  "params": { "futureShape": true }
+        #|}
+      ),
+    ),
+  )
+  match message {
+    Request({ details: AppRawServerRequest(rpc_method~, params~), .. }) => {
+      debug_inspect(
+        rpc_method,
+        content=(
+          #|"item/commandExecution/requestApproval"
+        ),
+      )
+      debug_inspect(params, content="Some(Object({ \"futureShape\": True }))")
+    }
+    _ => fail("expected raw request fallback")
+  }
+}
+
+///|
+test "serialize and parse v0.150 thread sections" {
+  let create = AppThreadSectionCreateParams::new(
+    "SDK",
+    appearance=AppSetThreadSectionAppearance({
+      icon: Some("code"),
+      color: Some("blue"),
+    }),
+  )
+  debug_inspect(
+    create.to_json(),
+    content=(
+      #|Object(
+      #|  {
+      #|    "name": String("SDK"),
+      #|    "appearance": Object({ "icon": String("code"), "color": String("blue") }),
+      #|  },
+      #|)
+    ),
+  )
+  let response : AppThreadSectionListResponse = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "data": [
+        #|    {
+        #|      "id": "section-1",
+        #|      "name": "SDK",
+        #|      "appearance": { "icon": "code", "color": null }
+        #|    }
+        #|  ],
+        #|  "nextCursor": null
+        #|}
+      ),
+    ),
+  )
+  debug_inspect(response.data[0].id, content="\"section-1\"")
+  guard response.data[0].appearance is Some(appearance) else {
+    fail("expected section appearance")
+  }
+  debug_inspect(appearance.icon, content="Some(\"code\")")
 }
 
 ///|
@@ -1721,6 +1832,209 @@ async test "session closes turn stream on terminal event" {
 }
 
 ///|
+async test "session closes turn stream on raw turn completion" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+    events_closed: false,
+  }
+  let session = CodexAppSession::new(connection)
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
+    kind=Unbounded,
+  )
+  let stream_id = session.register_pending_turn_stream("thread-1", events, None)
+  session.bind_turn_stream(stream_id, "turn-1")
+  let stream : AppTurnStream = {
+    thread_id: "thread-1",
+    turn_id: "turn-1",
+    session,
+    stream_id,
+    events,
+    events_closed: false,
+  }
+  let message : AppServerMessage = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "method": "turn/completed",
+        #|  "params": {
+        #|    "threadId": "thread-1",
+        #|    "turn": {
+        #|      "id": "turn-1",
+        #|      "futureShape": true
+        #|    }
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  let event = match message {
+    Notification(event) => event
+    _ => fail("expected app-server notification")
+  }
+  guard session.dispatch_turn_event(event) else {
+    fail("expected session to route raw turn completion")
+  }
+  match stream.next() {
+    Some(AppRawNotification(rpc_method~, ..)) =>
+      debug_inspect(rpc_method, content="\"turn/completed\"")
+    _ => fail("expected raw turn completion event")
+  }
+  guard stream.next() is None else {
+    fail("expected raw turn completion to close the stream")
+  }
+}
+
+///|
+async test "session closes turn stream on raw non-retryable error" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+    events_closed: false,
+  }
+  let session = CodexAppSession::new(connection)
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
+    kind=Unbounded,
+  )
+  let stream_id = session.register_pending_turn_stream("thread-1", events, None)
+  session.bind_turn_stream(stream_id, "turn-1")
+  let stream : AppTurnStream = {
+    thread_id: "thread-1",
+    turn_id: "turn-1",
+    session,
+    stream_id,
+    events,
+    events_closed: false,
+  }
+  let message : AppServerMessage = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "method": "error",
+        #|  "params": {
+        #|    "threadId": "thread-1",
+        #|    "turnId": "turn-1",
+        #|    "error": { "futureShape": true },
+        #|    "willRetry": false
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  let event = match message {
+    Notification(event) => event
+    _ => fail("expected app-server notification")
+  }
+  guard event
+    is AppRawNotification(
+      rpc_method="error",
+      params=Some({ "willRetry": False, .. })
+    ) else {
+    fail("expected raw non-retryable turn error")
+  }
+  guard session.dispatch_turn_event(event) else {
+    fail("expected session to route raw turn error")
+  }
+  debug_inspect(session.turn_streams.length(), content="0")
+  match stream.next() {
+    Some(AppRawNotification(rpc_method~, ..)) =>
+      debug_inspect(rpc_method, content="\"error\"")
+    _ => fail("expected raw turn error event")
+  }
+  guard stream.next() is None else {
+    fail("expected raw non-retryable error to close the stream")
+  }
+}
+
+///|
+async test "session keeps turn stream open on raw retryable error" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+    events_closed: false,
+  }
+  let session = CodexAppSession::new(connection)
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
+    kind=Unbounded,
+  )
+  let stream_id = session.register_pending_turn_stream("thread-1", events, None)
+  session.bind_turn_stream(stream_id, "turn-1")
+  let stream : AppTurnStream = {
+    thread_id: "thread-1",
+    turn_id: "turn-1",
+    session,
+    stream_id,
+    events,
+    events_closed: false,
+  }
+  let message : AppServerMessage = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "method": "error",
+        #|  "params": {
+        #|    "threadId": "thread-1",
+        #|    "turnId": "turn-1",
+        #|    "error": { "futureShape": true },
+        #|    "willRetry": true
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  let event = match message {
+    Notification(event) => event
+    _ => fail("expected app-server notification")
+  }
+  guard event
+    is AppRawNotification(
+      rpc_method="error",
+      params=Some({ "willRetry": True, .. })
+    ) else {
+    fail("expected raw retryable turn error")
+  }
+  guard session.dispatch_turn_event(event) else {
+    fail("expected session to route raw retryable turn error")
+  }
+  debug_inspect(session.turn_streams.length(), content="1")
+  match stream.next() {
+    Some(AppRawNotification(rpc_method~, ..)) =>
+      debug_inspect(rpc_method, content="\"error\"")
+    _ => fail("expected raw retryable turn error event")
+  }
+  let turn : AppTurn = {
+    id: "turn-1",
+    items: [],
+    status: AppTurnCompletedStatus,
+    error: None,
+    started_at: Some(10),
+    completed_at: Some(20),
+    duration_ms: Some(10),
+    raw: {},
+  }
+  guard session.dispatch_turn_event(
+    AppTurnCompleted(thread_id="thread-1", turn~),
+  ) else {
+    fail("expected stream to remain open for turn completion")
+  }
+  guard stream.next() is Some(AppTurnCompleted(..)) else {
+    fail("expected turn completion after retryable raw error")
+  }
+  guard stream.next() is None else {
+    fail("expected turn completion to close the stream")
+  }
+}
+
+///|
 async test "session preserves pending stream when terminal event arrives before response" {
   let connection : CodexAppConnection = {
     outgoing: @async.Queue::Queue(kind=Unbounded),
@@ -1870,11 +2184,13 @@ async test "session binds pending stream on early turn request" {
   let request : AppServerRequest = {
     id: StringId("approval-1"),
     details: AppCommandExecutionApprovalRequest({
+      kind: AppCommandApprovalCommand,
       thread_id: "thread-1",
       turn_id: "turn-1",
       item_id: "item-1",
       started_at_ms: 1,
       approval_id: None,
+      environment_id: None,
       reason: None,
       network_approval_context: None,
       command: None,
@@ -1923,11 +2239,13 @@ async test "session routes turn request to stream handler" {
   let request : AppServerRequest = {
     id: StringId("approval-1"),
     details: AppCommandExecutionApprovalRequest({
+      kind: AppCommandApprovalCommand,
       thread_id: "thread-1",
       turn_id: "turn-1",
       item_id: "item-1",
       started_at_ms: 1,
       approval_id: None,
+      environment_id: None,
       reason: None,
       network_approval_context: None,
       command: None,
@@ -1970,11 +2288,13 @@ async test "session routes thread request to thread handler" {
   let request : AppServerRequest = {
     id: StringId("approval-1"),
     details: AppCommandExecutionApprovalRequest({
+      kind: AppCommandApprovalCommand,
       thread_id: "thread-1",
       turn_id: "turn-1",
       item_id: "item-1",
       started_at_ms: 1,
       approval_id: None,
+      environment_id: None,
       reason: None,
       network_approval_context: None,
       command: None,
@@ -2028,11 +2348,13 @@ async test "session prefers turn request handler over thread handler" {
   let request : AppServerRequest = {
     id: StringId("approval-1"),
     details: AppCommandExecutionApprovalRequest({
+      kind: AppCommandApprovalCommand,
       thread_id: "thread-1",
       turn_id: "turn-1",
       item_id: "item-1",
       started_at_ms: 1,
       approval_id: None,
+      environment_id: None,
       reason: None,
       network_approval_context: None,
       command: None,
@@ -2188,7 +2510,7 @@ test "parse app-server MCP elicitation request" {
 }
 
 ///|
-test "parse app-server unknown notification as ignored frame" {
+test "preserve unknown app-server notification" {
   let message : AppServerMessage = @json.from_json(
     @json.parse(
       (
@@ -2200,9 +2522,47 @@ test "parse app-server unknown notification as ignored frame" {
     ),
   )
   match message {
-    IgnoredNotification => ()
-    _ => fail("expected ignored notification")
+    Notification(AppRawNotification(rpc_method~, params~)) => {
+      debug_inspect(rpc_method, content="\"future/event\"")
+      debug_inspect(params, content="Some(Object({ \"value\": Number(1) }))")
+    }
+    _ => fail("expected raw notification")
   }
+}
+
+///|
+test "preserve newer payloads for known app-server notifications" {
+  let message : AppServerMessage = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "method": "turn/started",
+        #|  "params": { "futureShape": true }
+        #|}
+      ),
+    ),
+  )
+  match message {
+    Notification(AppRawNotification(rpc_method~, params~)) => {
+      debug_inspect(rpc_method, content="\"turn/started\"")
+      debug_inspect(params, content="Some(Object({ \"futureShape\": True }))")
+    }
+    _ => fail("expected raw notification fallback")
+  }
+}
+
+///|
+test "bound app-server overload retry backoff" {
+  debug_inspect(
+    [
+      app_server_overload_retry_delay(0),
+      app_server_overload_retry_delay(1),
+      app_server_overload_retry_delay(2),
+      app_server_overload_retry_delay(3),
+      app_server_overload_retry_delay(4),
+    ],
+    content="[50, 100, 200, 400, 400]",
+  )
 }
 
 ///|
@@ -2871,17 +3231,28 @@ test "parse typed app-server thread resume response" {
         #|{
         #|  "thread": {
         #|    "id": "thread-1",
+        #|    "sessionId": "session-1",
         #|    "forkedFromId": null,
+        #|    "parentThreadId": "thread-parent",
         #|    "preview": "hello",
         #|    "ephemeral": false,
+        #|    "section": {
+        #|      "id": "section-1",
+        #|      "name": "SDK",
+        #|      "appearance": { "icon": "code", "color": "blue" }
+        #|    },
+        #|    "sectionEnteredAt": 1710000000,
+        #|    "projectId": "project-1",
         #|    "modelProvider": "openai",
         #|    "createdAt": 1710000000,
         #|    "updatedAt": 1710000001,
+        #|    "recencyAt": 1710000002,
         #|    "status": { "type": "idle" },
         #|    "path": null,
         #|    "cwd": "/tmp/project",
         #|    "cliVersion": "0.0.0",
         #|    "source": "appServer",
+        #|    "threadSource": "moonbit-sdk",
         #|    "agentNickname": null,
         #|    "agentRole": null,
         #|    "gitInfo": {
@@ -2975,6 +3346,18 @@ test "parse typed app-server thread resume response" {
       #|"thread-1"
     ),
   )
+  debug_inspect(response.thread.session_id, content="\"session-1\"")
+  debug_inspect(
+    response.thread.parent_thread_id,
+    content="Some(\"thread-parent\")",
+  )
+  guard response.thread.section is Some(section) else {
+    fail("expected thread section")
+  }
+  debug_inspect(section.name, content="\"SDK\"")
+  debug_inspect(response.thread.project_id, content="Some(\"project-1\")")
+  debug_inspect(response.thread.recency_at, content="Some(1710000002)")
+  debug_inspect(response.thread.thread_source, content="Some(\"moonbit-sdk\")")
   debug_inspect(response.thread.turns[0].items.length(), content="3")
   match response.thread.turns[0].items[0] {
     AppThreadUserMessageItem(content~, ..) =>
@@ -3266,6 +3649,7 @@ test "parse app-server model fields and defaults" {
         #|  "availabilityNux": { "message": "New model available" },
         #|  "displayName": "Legacy",
         #|  "description": "Legacy model",
+        #|  "modelSpecialty": "coding",
         #|  "hidden": false,
         #|  "supportedReasoningEfforts": [
         #|    { "reasoningEffort": "low", "description": "Fast" }
@@ -3273,10 +3657,12 @@ test "parse app-server model fields and defaults" {
         #|  "defaultReasoningEffort": "low",
         #|  "inputModalities": ["text"],
         #|  "supportsPersonality": true,
+        #|  "multiAgentVersion": "v2",
         #|  "additionalSpeedTiers": ["fast"],
         #|  "serviceTiers": [
         #|    { "id": "flex", "name": "Flex", "description": "Flexible" }
         #|  ],
+        #|  "defaultServiceTier": "flex",
         #|  "isDefault": false
         #|}
       ),
@@ -3303,6 +3689,9 @@ test "parse app-server model fields and defaults" {
   guard full.supports_personality else { fail("expected personality support") }
   debug_inspect(full.additional_speed_tiers[0], content="\"fast\"")
   debug_inspect(full.service_tiers[0].id, content="\"flex\"")
+  debug_inspect(full.model_specialty, content="Some(\"coding\")")
+  debug_inspect(full.multi_agent_version, content="Some(AppMultiAgentV2)")
+  debug_inspect(full.default_service_tier, content="Some(\"flex\")")
 }
 
 ///|

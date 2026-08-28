@@ -23,6 +23,12 @@ struct CodexOptions {
   base_url : String?
   /// API key for authentication
   api_key : String?
+  /// Structured Codex configuration overrides. Nested objects are flattened
+  /// into dotted `--config` keys and values are serialized as TOML.
+  config : Map[String, Json]?
+  /// Raw `--config key=value` overrides passed through unchanged after
+  /// structured overrides and before SDK-managed settings.
+  config_overrides : Array[String]?
   /// Environment variables passed to the Codex CLI process. When provided, the SDK will not inherit variables.
   env : Map[String, String]?
 } derive(Default)
@@ -32,9 +38,11 @@ pub fn CodexOptions::new(
   codex_path_override? : String,
   base_url? : String,
   api_key? : String,
+  config? : Map[String, Json],
+  config_overrides? : Array[String],
   env? : Map[String, String],
 ) -> CodexOptions {
-  { codex_path_override, base_url, api_key, env }
+  { codex_path_override, base_url, api_key, config, config_overrides, env, }
 }
 
 // #endregion
@@ -89,8 +97,11 @@ pub impl Show for SandboxMode with fn output(self : SandboxMode, logger) {
 pub(all) enum ModelReasoningEffort {
   Minimal
   Low
+  Medium
   High
   Xhigh
+  Max
+  Ultra
 }
 
 ///|
@@ -98,8 +109,28 @@ pub impl Show for ModelReasoningEffort with fn output(self, logger) {
   match self {
     Minimal => logger.write_string("minimal")
     Low => logger.write_string("low")
+    Medium => logger.write_string("medium")
     High => logger.write_string("high")
     Xhigh => logger.write_string("xhigh")
+    Max => logger.write_string("max")
+    Ultra => logger.write_string("ultra")
+  }
+}
+
+///|
+/// Web search behavior for Codex turns.
+pub(all) enum WebSearchMode {
+  Disabled
+  Cached
+  Live
+}
+
+///|
+pub impl Show for WebSearchMode with fn output(self, logger) {
+  match self {
+    Disabled => logger.write_string("disabled")
+    Cached => logger.write_string("cached")
+    Live => logger.write_string("live")
   }
 }
 
@@ -108,6 +139,8 @@ pub impl Show for ModelReasoningEffort with fn output(self, logger) {
 struct ThreadOptions {
   /// The model to use for the thread
   model : String?
+  /// Source classification applied when this thread is first created.
+  thread_source : String?
   /// The sandbox mode
   sandbox_mode : SandboxMode?
   /// The working directory
@@ -120,6 +153,8 @@ struct ThreadOptions {
   network_access_enabled : Bool?
   /// Whether web search is enabled
   web_search_enabled : Bool?
+  /// Web search behavior. Takes precedence over `web_search_enabled`.
+  web_search_mode : WebSearchMode?
   /// Approval policy for actions that require user consent
   approval_policy : ApprovalMode?
   /// Additional directories to mount into the agent's sandbox
@@ -129,23 +164,27 @@ struct ThreadOptions {
 ///|
 pub fn ThreadOptions::new(
   model? : String,
+  thread_source? : String,
   sandbox_mode? : SandboxMode,
   working_directory? : String,
   skip_git_repo_check? : Bool,
   model_reasoning_effort? : ModelReasoningEffort,
   network_access_enabled? : Bool,
   web_search_enabled? : Bool,
+  web_search_mode? : WebSearchMode,
   approval_policy? : ApprovalMode,
   additional_directories? : Array[String],
 ) -> ThreadOptions {
   {
     model,
+    thread_source,
     sandbox_mode,
     working_directory,
     skip_git_repo_check,
     model_reasoning_effort,
     network_access_enabled,
     web_search_enabled,
+    web_search_mode,
     approval_policy,
     additional_directories,
   }

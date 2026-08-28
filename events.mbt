@@ -126,11 +126,58 @@ pub struct Usage {
   input_tokens : Int
   /// The number of cached input tokens used during the turn
   cached_input_tokens : Int
+  /// The number of input tokens written to the prompt cache during the turn.
+  /// Older Codex versions omit this field; omitted values decode as zero.
+  cache_write_input_tokens : Int
   /// The number of output tokens used during the turn
   output_tokens : Int
   /// The number of reasoning output tokens used during the turn
   reasoning_output_tokens : Int
-} derive(ToJson, FromJson, Debug)
+} derive(Debug)
+
+///|
+pub impl ToJson for Usage with fn to_json(usage) {
+  {
+    "input_tokens": usage.input_tokens,
+    "cached_input_tokens": usage.cached_input_tokens,
+    "cache_write_input_tokens": usage.cache_write_input_tokens,
+    "output_tokens": usage.output_tokens,
+    "reasoning_output_tokens": usage.reasoning_output_tokens,
+  }
+}
+
+///|
+pub impl FromJson for Usage with fn from_json(value, path) {
+  guard value
+    is {
+      "input_tokens": Number(input_tokens, ..),
+      "cached_input_tokens": Number(cached_input_tokens, ..),
+      "cache_write_input_tokens"? : cache_write_input_tokens,
+      "output_tokens": Number(output_tokens, ..),
+      "reasoning_output_tokens": Number(reasoning_output_tokens, ..),
+      ..
+    } else {
+    raise JsonDecodeError((path, "expected token usage"))
+  }
+  let cache_write_input_tokens = match cache_write_input_tokens {
+    Some(Number(value, ..)) => value.to_int()
+    Some(Null) | None => 0
+    _ =>
+      raise JsonDecodeError(
+        (
+          path.add_key("cache_write_input_tokens"),
+          "expected integer token count",
+        ),
+      )
+  }
+  {
+    input_tokens: input_tokens.to_int(),
+    cached_input_tokens: cached_input_tokens.to_int(),
+    cache_write_input_tokens,
+    output_tokens: output_tokens.to_int(),
+    reasoning_output_tokens: reasoning_output_tokens.to_int(),
+  }
+}
 
 ///|
 pub struct ThreadError {

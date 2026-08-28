@@ -17,6 +17,7 @@ pub(all) struct AppPermissionsRequestApprovalRequest {
   thread_id : String
   turn_id : String
   item_id : String
+  environment_id : String?
   started_at_ms : Int64
   cwd : String
   reason : String?
@@ -34,6 +35,7 @@ pub impl FromJson for AppPermissionsRequestApprovalRequest with fn from_json(
       "threadId": String(thread_id),
       "turnId": String(turn_id),
       "itemId": String(item_id),
+      "environmentId"? : environment_id,
       "startedAtMs": Number(started_at_ms, ..),
       "cwd": String(cwd),
       "reason"? : reason,
@@ -46,6 +48,10 @@ pub impl FromJson for AppPermissionsRequestApprovalRequest with fn from_json(
     thread_id,
     turn_id,
     item_id,
+    environment_id: app_optional_string(
+      environment_id,
+      path.add_key("environmentId"),
+    ),
     started_at_ms: started_at_ms.to_int64(),
     cwd,
     reason: app_optional_string(reason, path.add_key("reason")),
@@ -137,7 +143,7 @@ pub impl FromJson for AppAdditionalNetworkPermissions with fn from_json(
   guard value is { "enabled"? : enabled, .. } else {
     raise JsonDecodeError((path, "expected additional network permissions"))
   }
-  { enabled: app_optional_bool(enabled, path.add_key("enabled")) }
+  { enabled: app_optional_bool(enabled, path.add_key("enabled")), }
 }
 
 ///|
@@ -447,7 +453,7 @@ pub impl FromJson for AppAttestationGenerateRequest with fn from_json(
   value,
   _path,
 ) {
-  { raw: value }
+  { raw: value, }
 }
 
 ///|
@@ -480,6 +486,7 @@ pub impl FromJson for AppMcpServerElicitationRequest with fn from_json(
     server_name,
     elicitation: match mode {
       "form" => @json.from_json(value, path~)
+      "openai/form" => @json.from_json(value, path~)
       "url" => @json.from_json(value, path~)
       _ =>
         raise JsonDecodeError(
@@ -496,6 +503,14 @@ pub(all) enum AppMcpServerElicitationContent {
     meta~ : Json?,
     message~ : String,
     requested_schema~ : AppMcpElicitationSchema
+  )
+  /// OpenAI's extended form schema. The app-server protocol intentionally
+  /// forwards this schema as opaque JSON so clients can support new field
+  /// types without waiting for an SDK release.
+  AppMcpElicitationOpenAIForm(
+    meta~ : Json?,
+    message~ : String,
+    requested_schema~ : Json
   )
   AppMcpElicitationUrl(
     meta~ : Json?,
@@ -526,6 +541,18 @@ pub impl FromJson for AppMcpServerElicitationContent with fn from_json(
           requested_schema,
           path=path.add_key("requestedSchema"),
         ),
+      )
+    }
+    "openai/form" => {
+      guard value is { "requestedSchema": requested_schema, .. } else {
+        raise JsonDecodeError(
+          (path, "expected OpenAI MCP form elicitation content"),
+        )
+      }
+      AppMcpElicitationOpenAIForm(
+        meta=app_optional_json(meta),
+        message~,
+        requested_schema~,
       )
     }
     "url" => {
@@ -968,7 +995,7 @@ pub impl FromJson for AppMcpElicitationUntitledEnumItems with fn from_json(
   guard value is { "type": String("string"), "enum": enum_values, .. } else {
     raise JsonDecodeError((path, "expected MCP untitled enum items"))
   }
-  { enum_values: @json.from_json(enum_values, path=path.add_key("enum")) }
+  { enum_values: @json.from_json(enum_values, path=path.add_key("enum")), }
 }
 
 ///|
@@ -993,7 +1020,7 @@ pub impl FromJson for AppMcpElicitationTitledEnumItems with fn from_json(
       }
     Some(value) => @json.from_json(value, path=path.add_key("anyOf"))
   }
-  { any_of: options }
+  { any_of: options, }
 }
 
 ///|
@@ -1010,5 +1037,5 @@ pub impl FromJson for AppMcpElicitationConstOption with fn from_json(
   guard value is { "const": String(const_value), "title": String(title), .. } else {
     raise JsonDecodeError((path, "expected MCP enum option"))
   }
-  { const_value, title }
+  { const_value, title, }
 }

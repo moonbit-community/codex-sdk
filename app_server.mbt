@@ -28,7 +28,7 @@ pub fn AppServerOptions::new(
   client_info? : AppClientInfo,
   capabilities? : AppInitializeCapabilities,
 ) -> AppServerOptions {
-  { executable_path_override, client_info, capabilities }
+  { executable_path_override, client_info, capabilities, }
 }
 
 ///|
@@ -42,7 +42,7 @@ fn AppServerOptions::initialize_params(
         {
           name: "moonbit-codex-sdk",
           title: Some("MoonBit Codex SDK"),
-          version: "0.129.0",
+          version: "0.150.1",
         }
     },
     capabilities: self.capabilities,
@@ -200,25 +200,48 @@ async fn CodexAppConnection::call(
   rpc_method : String,
   params? : Json,
 ) -> Json {
-  let id = AppRequestId::IntId(self.next_request_id.to_int64())
-  self.next_request_id += 1
-  let replies : @async.Queue[AppPendingResponse] = @async.Queue::Queue(
-    kind=Unbounded,
-  )
-  self.pending.push({ id, replies })
-  self.send(AppClientMessage::ClientRequest(id~, rpc_method~, params~)) catch {
-    e => {
-      self.drop_pending_request(id)
-      raise @error.reraise(e)
+  let mut overload_attempt = 0
+  while true {
+    let id = AppRequestId::IntId(self.next_request_id.to_int64())
+    self.next_request_id += 1
+    let replies : @async.Queue[AppPendingResponse] = @async.Queue::Queue(
+      kind=Unbounded,
+    )
+    self.pending.push({ id, replies, })
+    self.send(AppClientMessage::ClientRequest(id~, rpc_method~, params~)) catch {
+      e => {
+        self.drop_pending_request(id)
+        raise @error.reraise(e)
+      }
     }
+    let response = replies.get() catch {
+      _ =>
+        @error.fail(
+          "Codex app server closed before responding to \{rpc_method}",
+        )
+    }
+    match response {
+      AppPendingResult(result) => return result
+      AppPendingError(error) if error.code == -32001 && overload_attempt < 4 => {
+        // The v2 protocol guarantees that overload rejection happens before
+        // request execution, so retrying is safe for mutating methods too.
+        @async.sleep(app_server_overload_retry_delay(overload_attempt))
+        overload_attempt += 1
+      }
+      AppPendingError(error) => @error.fail(format_app_rpc_error(error))
+    }
+  } nobreak {
+    @error.fail("unreachable app-server retry state")
   }
-  let response = replies.get() catch {
-    _ =>
-      @error.fail("Codex app server closed before responding to \{rpc_method}")
-  }
-  match response {
-    AppPendingResult(result) => result
-    AppPendingError(error) => @error.fail(format_app_rpc_error(error))
+}
+
+///|
+fn app_server_overload_retry_delay(attempt : Int) -> Int {
+  match attempt {
+    0 => 50
+    1 => 100
+    2 => 200
+    _ => 400
   }
 }
 
@@ -237,13 +260,6 @@ async fn CodexAppConnection::route_server_message(
         ()
       }
     Request(request) => self.requests.put(request)
-    UnsupportedRequest(id~, rpc_method~) =>
-      self.respond_error(id, {
-        code: -32601,
-        message: "Unsupported app-server request: \{rpc_method}",
-        data: None,
-      })
-    IgnoredNotification => ()
     Notification(event) => self.events.put(AppQueuedEvent(event))
   }
 }
@@ -612,7 +628,7 @@ pub impl FromJson for AppThreadReadResponse with fn from_json(value, path) {
   guard value is { "thread": thread, .. } else {
     raise JsonDecodeError((path, "expected thread/read response"))
   }
-  { thread: @json.from_json(thread, path=path.add_key("thread")) }
+  { thread: @json.from_json(thread, path=path.add_key("thread")), }
 }
 
 ///|
@@ -625,7 +641,7 @@ pub impl FromJson for AppTurnStartResponse with fn from_json(value, path) {
   guard value is { "turn": turn, .. } else {
     raise JsonDecodeError((path, "expected turn/start response"))
   }
-  { turn: @json.from_json(turn, path=path.add_key("turn")) }
+  { turn: @json.from_json(turn, path=path.add_key("turn")), }
 }
 
 ///|
@@ -654,7 +670,7 @@ pub fn AppThreadSetNameParams::new(
   thread_id : String,
   name : String,
 ) -> AppThreadSetNameParams {
-  { thread_id, name }
+  { thread_id, name, }
 }
 
 ///|
@@ -757,7 +773,7 @@ pub fn AppThreadLoadedListParams::new(
   cursor? : String,
   limit? : UInt,
 ) -> AppThreadLoadedListParams {
-  { cursor, limit }
+  { cursor, limit, }
 }
 
 ///|
@@ -802,7 +818,7 @@ pub impl FromJson for AppThreadUnsubscribeResponse with fn from_json(
   guard value is { "status": status, .. } else {
     raise JsonDecodeError((path, "expected thread/unsubscribe response"))
   }
-  { status: @json.from_json(status, path=path.add_key("status")) }
+  { status: @json.from_json(status, path=path.add_key("status")), }
 }
 
 ///|
@@ -825,6 +841,7 @@ pub impl FromJson for AppThreadUnsubscribeStatus with fn from_json(value, path) 
 ///|
 pub struct AppTurnSteerParams {
   thread_id : String
+  client_user_message_id : String?
   input : Array[AppUserInput]
   expected_turn_id : String
 } derive(Debug)
@@ -834,17 +851,20 @@ pub fn AppTurnSteerParams::new(
   thread_id : String,
   input : Array[AppUserInput],
   expected_turn_id : String,
+  client_user_message_id? : String,
 ) -> AppTurnSteerParams {
-  { thread_id, input, expected_turn_id }
+  { thread_id, client_user_message_id, input, expected_turn_id, }
 }
 
 ///|
 pub impl ToJson for AppTurnSteerParams with fn to_json(params) {
-  {
+  let obj : Map[String, Json] = {
     "threadId": params.thread_id,
     "input": params.input,
     "expectedTurnId": params.expected_turn_id,
   }
+  app_put_string(obj, "clientUserMessageId", params.client_user_message_id)
+  Json::object(obj)
 }
 
 ///|
@@ -871,7 +891,7 @@ pub fn AppSkillsListParams::new(
   cwds? : Array[String],
   force_reload? : Bool,
 ) -> AppSkillsListParams {
-  { cwds, force_reload }
+  { cwds, force_reload, }
 }
 
 ///|
@@ -964,7 +984,7 @@ pub impl FromJson for AppSkillDependencies with fn from_json(value, path) {
   guard value is { "tools": tools, .. } else {
     raise JsonDecodeError((path, "expected skill dependencies"))
   }
-  { tools: @json.from_json(tools, path=path.add_key("tools")) }
+  { tools: @json.from_json(tools, path=path.add_key("tools")), }
 }
 
 ///|
@@ -1012,7 +1032,7 @@ pub impl FromJson for AppSkillErrorInfo with fn from_json(value, path) {
   guard value is { "path": String(skill_path), "message": String(message), .. } else {
     raise JsonDecodeError((path, "expected skill error info"))
   }
-  { path: skill_path, message }
+  { path: skill_path, message, }
 }
 
 ///|
@@ -1044,7 +1064,7 @@ pub impl FromJson for AppSkillsListResponse with fn from_json(value, path) {
   guard value is { "data": data, .. } else {
     raise JsonDecodeError((path, "expected skills/list response"))
   }
-  { data: @json.from_json(data, path=path.add_key("data")) }
+  { data: @json.from_json(data, path=path.add_key("data")), }
 }
 
 ///|
@@ -1062,7 +1082,7 @@ pub fn AppListParams::new(
   thread_id? : String,
   force_refetch? : Bool,
 ) -> AppListParams {
-  { cursor, limit, thread_id, force_refetch }
+  { cursor, limit, thread_id, force_refetch, }
 }
 
 ///|
@@ -1159,7 +1179,7 @@ pub fn AppConfigReadParams::new(
   include_layers : Bool,
   cwd? : String,
 ) -> AppConfigReadParams {
-  { include_layers, cwd }
+  { include_layers, cwd, }
 }
 
 ///|
@@ -1704,7 +1724,7 @@ pub impl FromJson for AppToolsConfig with fn from_json(value, path) {
   guard value is Object(_) else {
     raise JsonDecodeError((path, "expected app tools config"))
   }
-  { tools: @json.from_json(value, path~) }
+  { tools: @json.from_json(value, path~), }
 }
 
 ///|
@@ -2123,6 +2143,8 @@ pub struct AppThreadStartParams {
   personality : AppPersonality?
   ephemeral : Bool?
   session_start_source : AppThreadStartSource?
+  /// Optional client-supplied analytics classification for this thread.
+  thread_source : String?
 } derive(Debug)
 
 ///|
@@ -2141,6 +2163,7 @@ pub fn AppThreadStartParams::new(
   personality? : AppPersonality,
   ephemeral? : Bool,
   session_start_source? : AppThreadStartSource,
+  thread_source? : String,
 ) -> AppThreadStartParams {
   {
     model,
@@ -2157,6 +2180,7 @@ pub fn AppThreadStartParams::new(
     personality,
     ephemeral,
     session_start_source,
+    thread_source,
   }
 }
 
@@ -2203,6 +2227,7 @@ pub impl ToJson for AppThreadStartParams with fn to_json(params) {
   if params.session_start_source is Some(session_start_source) {
     obj.set("sessionStartSource", session_start_source.to_json())
   }
+  app_put_string(obj, "threadSource", params.thread_source)
   Json::object(obj)
 }
 
@@ -2375,7 +2400,7 @@ pub fn AppThreadReadParams::new(
   thread_id : String,
   include_turns : Bool,
 ) -> AppThreadReadParams {
-  { thread_id, include_turns }
+  { thread_id, include_turns, }
 }
 
 ///|
@@ -2387,6 +2412,7 @@ pub impl ToJson for AppThreadReadParams with fn to_json(params) {
 /// Parameters for the app-server `turn/start` request.
 pub struct AppTurnStartParams {
   thread_id : String
+  client_user_message_id : String?
   input : Array[AppUserInput]
   cwd : String?
   approval_policy : AppApprovalPolicy?
@@ -2404,6 +2430,7 @@ pub struct AppTurnStartParams {
 pub fn AppTurnStartParams::new(
   thread_id : String,
   input : Array[AppUserInput],
+  client_user_message_id? : String,
   cwd? : String,
   approval_policy? : AppApprovalPolicy,
   approvals_reviewer? : AppApprovalsReviewer,
@@ -2417,6 +2444,7 @@ pub fn AppTurnStartParams::new(
 ) -> AppTurnStartParams {
   {
     thread_id,
+    client_user_message_id,
     input,
     cwd,
     approval_policy,
@@ -2437,6 +2465,7 @@ pub impl ToJson for AppTurnStartParams with fn to_json(params) {
     "threadId": params.thread_id,
     "input": params.input,
   }
+  app_put_string(obj, "clientUserMessageId", params.client_user_message_id)
   if params.cwd is Some(cwd) {
     obj.set("cwd", cwd.to_json())
   }
@@ -2471,8 +2500,16 @@ pub impl ToJson for AppTurnStartParams with fn to_json(params) {
 ///|
 pub(all) enum AppUserInput {
   AppInputText(text~ : String)
+  AppInputTextWithElements(
+    text~ : String,
+    text_elements~ : Array[AppTextElement]
+  )
   AppInputImage(url~ : String)
+  AppInputImageWithDetail(url~ : String, detail~ : AppImageDetail)
   AppInputLocalImage(path~ : String)
+  AppInputLocalImageWithDetail(path~ : String, detail~ : AppImageDetail)
+  AppInputAudio(url~ : String)
+  AppInputLocalAudio(path~ : String)
   AppInputSkill(name~ : String, path~ : String)
   AppInputMention(name~ : String, path~ : String)
 } derive(Debug)
@@ -2481,12 +2518,50 @@ pub(all) enum AppUserInput {
 pub impl ToJson for AppUserInput with fn to_json(input) {
   match input {
     AppInputText(text~) => { "type": "text", "text": text, "text_elements": [] }
+    AppInputTextWithElements(text~, text_elements~) =>
+      { "type": "text", "text": text, "text_elements": text_elements }
     AppInputImage(url~) => { "type": "image", "url": url }
+    AppInputImageWithDetail(url~, detail~) =>
+      { "type": "image", "url": url, "detail": detail }
     AppInputLocalImage(path~) => { "type": "localImage", "path": path }
+    AppInputLocalImageWithDetail(path~, detail~) =>
+      { "type": "localImage", "path": path, "detail": detail }
+    AppInputAudio(url~) => { "type": "audio", "url": url }
+    AppInputLocalAudio(path~) => { "type": "localAudio", "path": path }
     AppInputSkill(name~, path~) =>
       { "type": "skill", "name": name, "path": path }
     AppInputMention(name~, path~) =>
       { "type": "mention", "name": name, "path": path }
+  }
+}
+
+///|
+/// Requested fidelity for image inputs.
+pub(all) enum AppImageDetail {
+  AppImageAuto
+  AppImageLow
+  AppImageHigh
+  AppImageOriginal
+} derive(Debug)
+
+///|
+pub impl ToJson for AppImageDetail with fn to_json(detail) {
+  match detail {
+    AppImageAuto => "auto".to_json()
+    AppImageLow => "low".to_json()
+    AppImageHigh => "high".to_json()
+    AppImageOriginal => "original".to_json()
+  }
+}
+
+///|
+pub impl FromJson for AppImageDetail with fn from_json(value, path) {
+  match value {
+    String("auto") => AppImageAuto
+    String("low") => AppImageLow
+    String("high") => AppImageHigh
+    String("original") => AppImageOriginal
+    _ => raise JsonDecodeError((path, "expected image detail"))
   }
 }
 
@@ -2600,6 +2675,10 @@ pub(all) enum AppReasoningEffort {
   AppEffortMedium
   AppEffortHigh
   AppEffortXhigh
+  AppEffortMax
+  AppEffortUltra
+  /// A server-defined reasoning effort not known to this SDK version.
+  AppEffortCustom(String)
 } derive(Debug)
 
 ///|
@@ -2611,6 +2690,9 @@ pub impl ToJson for AppReasoningEffort with fn to_json(effort) {
     AppEffortMedium => "medium".to_json()
     AppEffortHigh => "high".to_json()
     AppEffortXhigh => "xhigh".to_json()
+    AppEffortMax => "max".to_json()
+    AppEffortUltra => "ultra".to_json()
+    AppEffortCustom(value) => value.to_json()
   }
 }
 
@@ -2623,6 +2705,9 @@ pub impl FromJson for AppReasoningEffort with fn from_json(value, path) {
     String("medium") => AppEffortMedium
     String("high") => AppEffortHigh
     String("xhigh") => AppEffortXhigh
+    String("max") => AppEffortMax
+    String("ultra") => AppEffortUltra
+    String(value) => AppEffortCustom(value)
     _ => raise JsonDecodeError((path, "expected reasoning effort"))
   }
 }
@@ -2668,7 +2753,7 @@ pub fn AppTurnInterruptParams::new(
   thread_id : String,
   turn_id : String,
 ) -> AppTurnInterruptParams {
-  { thread_id, turn_id }
+  { thread_id, turn_id, }
 }
 
 ///|
@@ -2707,6 +2792,26 @@ pub impl FromJson for AppModelListResponse with fn from_json(value, path) {
 }
 
 ///|
+/// Multi-agent runtime advertised by a Codex model.
+pub(all) enum AppMultiAgentVersion {
+  AppMultiAgentDisabled
+  AppMultiAgentV1
+  AppMultiAgentV2
+  AppMultiAgentCustom(String)
+} derive(Debug)
+
+///|
+pub impl FromJson for AppMultiAgentVersion with fn from_json(value, path) {
+  match value {
+    String("disabled") => AppMultiAgentDisabled
+    String("v1") => AppMultiAgentV1
+    String("v2") => AppMultiAgentV2
+    String(value) => AppMultiAgentCustom(value)
+    _ => raise JsonDecodeError((path, "expected multi-agent version"))
+  }
+}
+
+///|
 pub struct AppModel {
   id : String
   model : String
@@ -2715,13 +2820,16 @@ pub struct AppModel {
   availability_nux : AppModelAvailabilityNux?
   display_name : String
   description : String
+  model_specialty : String?
   hidden : Bool
   supported_reasoning_efforts : ArrayView[AppReasoningEffortOption]
   default_reasoning_effort : AppReasoningEffort
   input_modalities : ArrayView[AppInputModality]
   supports_personality : Bool
+  multi_agent_version : AppMultiAgentVersion?
   additional_speed_tiers : ArrayView[String]
   service_tiers : ArrayView[AppModelServiceTier]
+  default_service_tier : String?
   is_default : Bool
   priv raw : Json
 } derive(Debug)
@@ -2737,13 +2845,16 @@ pub impl FromJson for AppModel with fn from_json(value, path) {
       "availabilityNux"? : availability_nux,
       "displayName": String(display_name),
       "description": String(description),
+      "modelSpecialty"? : model_specialty,
       "hidden": hidden,
       "supportedReasoningEfforts": supported_reasoning_efforts,
       "defaultReasoningEffort": default_reasoning_effort,
       "inputModalities"? : input_modalities,
       "supportsPersonality"? : supports_personality,
+      "multiAgentVersion"? : multi_agent_version,
       "additionalSpeedTiers"? : additional_speed_tiers,
       "serviceTiers"? : service_tiers,
+      "defaultServiceTier"? : default_service_tier,
       "isDefault": is_default,
       ..
     } else {
@@ -2765,6 +2876,10 @@ pub impl FromJson for AppModel with fn from_json(value, path) {
     },
     display_name,
     description,
+    model_specialty: app_optional_string(
+      model_specialty,
+      path.add_key("modelSpecialty"),
+    ),
     hidden: app_bool(hidden, path.add_key("hidden")),
     supported_reasoning_efforts: @json.from_json(
       supported_reasoning_efforts,
@@ -2787,6 +2902,11 @@ pub impl FromJson for AppModel with fn from_json(value, path) {
       Some(value) => app_bool(value, path.add_key("supportsPersonality"))
       None => false
     },
+    multi_agent_version: match multi_agent_version {
+      Some(Null) | None => None
+      Some(value) =>
+        Some(@json.from_json(value, path=path.add_key("multiAgentVersion")))
+    },
     additional_speed_tiers: match additional_speed_tiers {
       Some(value) =>
         @json.from_json(value, path=path.add_key("additionalSpeedTiers"))
@@ -2801,6 +2921,10 @@ pub impl FromJson for AppModel with fn from_json(value, path) {
       None =>
         @json.from_json(Json::array([]), path=path.add_key("serviceTiers"))
     },
+    default_service_tier: app_optional_string(
+      default_service_tier,
+      path.add_key("defaultServiceTier"),
+    ),
     is_default: app_bool(is_default, path.add_key("isDefault")),
     raw: value,
   }
@@ -2868,7 +2992,7 @@ pub impl FromJson for AppModelServiceTier with fn from_json(value, path) {
     } else {
     raise JsonDecodeError((path, "expected model service tier"))
   }
-  { id, name, description }
+  { id, name, description, }
 }
 
 ///|
@@ -2928,7 +3052,7 @@ pub fn AppModelListParams::new(
   limit? : UInt,
   include_hidden? : Bool,
 ) -> AppModelListParams {
-  { cursor, limit, include_hidden }
+  { cursor, limit, include_hidden, }
 }
 
 ///|
@@ -2948,7 +3072,7 @@ pub impl ToJson for AppModelListParams with fn to_json(params) {
 
 ///|
 /// Send one app-server JSON-RPC notification.
-async fn CodexAppConnection::notify(
+pub async fn CodexAppConnection::notify(
   self : CodexAppConnection,
   rpc_method : String,
   params? : Json,
@@ -2991,7 +3115,11 @@ async fn CodexAppConnection::handle_request(
       return
     }
   }
-  self.respond(id, result.to_json())
+  match result {
+    AppRawServerError(code~, message~, data~) =>
+      self.respond_error(id, { code, message, data, })
+    _ => self.respond(id, result.to_json())
+  }
 }
 
 ///|
@@ -3026,6 +3154,9 @@ pub enum AppServerRequestDetails {
   AppChatgptAuthTokensRefreshRequest(AppChatgptAuthTokensRefreshRequest)
   AppAttestationGenerateRequest(AppAttestationGenerateRequest)
   AppMcpServerElicitationRequest(AppMcpServerElicitationRequest)
+  /// Server request not modeled by a typed variant. This keeps newly added or
+  /// experimental methods available to request handlers without data loss.
+  AppRawServerRequest(rpc_method~ : String, params~ : Json?)
 } derive(Debug)
 
 ///|
@@ -3057,6 +3188,10 @@ pub(all) enum AppServerResponse {
     content~ : Json?,
     meta~ : Json?
   )
+  /// Raw JSON result for `AppRawServerRequest` or protocol extensions.
+  AppRawServerResponse(Json)
+  /// JSON-RPC error for a raw or unsupported server-initiated request.
+  AppRawServerError(code~ : Int64, message~ : String, data~ : Json?)
 } derive(Debug)
 
 ///|
@@ -3105,16 +3240,27 @@ pub impl ToJson for AppServerResponse with fn to_json(response) {
           None => Json::null()
         },
       }
+    AppRawServerResponse(result) => result
+    AppRawServerError(code~, message~, data~) => {
+      let obj : Map[String, Json] = {
+        "code": Json::number(code.to_double()),
+        "message": message,
+      }
+      app_put_json(obj, "data", data)
+      Json::object(obj)
+    }
   }
 }
 
 ///|
 pub(all) struct AppCommandExecutionApprovalRequest {
+  kind : AppCommandExecutionApprovalKind
   thread_id : String
   turn_id : String
   item_id : String
   started_at_ms : Int64
   approval_id : String?
+  environment_id : String?
   reason : String?
   network_approval_context : AppNetworkApprovalContext?
   command : String?
@@ -3124,6 +3270,24 @@ pub(all) struct AppCommandExecutionApprovalRequest {
   proposed_network_policy_amendments : ArrayView[AppNetworkPolicyAmendment]?
   priv raw : Json
 } derive(Debug)
+
+///|
+pub(all) enum AppCommandExecutionApprovalKind {
+  AppCommandApprovalCommand
+  AppCommandApprovalWriteStdin
+} derive(Debug)
+
+///|
+pub impl FromJson for AppCommandExecutionApprovalKind with fn from_json(
+  value,
+  path,
+) {
+  match value {
+    String("command") => AppCommandApprovalCommand
+    String("writeStdin") => AppCommandApprovalWriteStdin
+    _ => raise JsonDecodeError((path, "expected command approval kind"))
+  }
+}
 
 ///|
 pub enum AppNetworkApprovalProtocol {
@@ -3155,7 +3319,7 @@ pub impl FromJson for AppNetworkApprovalContext with fn from_json(value, path) {
   guard value is { "host": String(host), "protocol": protocol, .. } else {
     raise JsonDecodeError((path, "expected network approval context"))
   }
-  { host, protocol: @json.from_json(protocol, path=path.add_key("protocol")) }
+  { host, protocol: @json.from_json(protocol, path=path.add_key("protocol")), }
 }
 
 ///|
@@ -3209,11 +3373,13 @@ pub impl FromJson for AppCommandExecutionApprovalRequest with fn from_json(
 ) {
   guard value
     is {
+      "kind"? : kind,
       "threadId": String(thread_id),
       "turnId": String(turn_id),
       "itemId": String(item_id),
       "startedAtMs": Number(started_at_ms, ..),
       "approvalId"? : approval_id,
+      "environmentId"? : environment_id,
       "reason"? : reason,
       "networkApprovalContext"? : network_approval_context,
       "command"? : command,
@@ -3226,11 +3392,19 @@ pub impl FromJson for AppCommandExecutionApprovalRequest with fn from_json(
     raise JsonDecodeError((path, "expected command execution approval request"))
   }
   {
+    kind: match kind {
+      Some(value) => @json.from_json(value, path=path.add_key("kind"))
+      None => AppCommandApprovalCommand
+    },
     thread_id,
     turn_id,
     item_id,
     started_at_ms: started_at_ms.to_int64(),
     approval_id: app_optional_string(approval_id, path.add_key("approvalId")),
+    environment_id: app_optional_string(
+      environment_id,
+      path.add_key("environmentId"),
+    ),
     reason: app_optional_string(reason, path.add_key("reason")),
     network_approval_context: match network_approval_context {
       Some(Null) | None => None
@@ -3320,7 +3494,7 @@ pub impl FromJson for AppNetworkPolicyAmendment with fn from_json(value, path) {
   guard value is { "host": String(host), "action": action, .. } else {
     raise JsonDecodeError((path, "expected network policy amendment"))
   }
-  { host, action: @json.from_json(action, path=path.add_key("action")) }
+  { host, action: @json.from_json(action, path=path.add_key("action")), }
 }
 
 ///|
@@ -3404,6 +3578,8 @@ pub(all) struct AppToolRequestUserInputRequest {
   turn_id : String
   item_id : String
   questions : ArrayView[AppToolRequestUserInputQuestion]
+  is_blocking : Bool
+  auto_resolution_ms : Int64?
   priv raw : Json
 } derive(Debug)
 
@@ -3418,6 +3594,8 @@ pub impl FromJson for AppToolRequestUserInputRequest with fn from_json(
       "turnId": String(turn_id),
       "itemId": String(item_id),
       "questions": questions,
+      "isBlocking"? : is_blocking,
+      "autoResolutionMs"? : auto_resolution_ms,
       ..
     } else {
     raise JsonDecodeError((path, "expected tool user-input request"))
@@ -3427,6 +3605,14 @@ pub impl FromJson for AppToolRequestUserInputRequest with fn from_json(
     turn_id,
     item_id,
     questions: @json.from_json(questions, path=path.add_key("questions")),
+    is_blocking: match is_blocking {
+      Some(value) => app_bool(value, path.add_key("isBlocking"))
+      None => true
+    },
+    auto_resolution_ms: app_optional_int64(
+      auto_resolution_ms,
+      path.add_key("autoResolutionMs"),
+    ),
     raw: value,
   }
 }
@@ -3648,7 +3834,7 @@ impl FromJson for AppRpcError with fn from_json(value, path) {
     } else {
     raise JsonDecodeError((path, "expected JSON-RPC error object"))
   }
-  { code: code.to_int64(), message, data }
+  { code: code.to_int64(), message, data, }
 }
 
 ///|
@@ -3782,30 +3968,51 @@ pub impl ToJson for AppClientInfo with fn to_json(info) {
 ///|
 pub(all) struct AppInitializeCapabilities {
   experimental_api : Bool
-  request_attestation : Bool?
+  request_attestation : Bool
+  /// Legacy opt-in for the `openai/form` MCP extension. New clients should
+  /// declare `openai/form` in `extensions`.
+  mcp_server_openai_form_elicitation : Bool?
   opt_out_notification_methods : Array[String]?
+  /// MCP extension settings declared by this client.
+  extensions : Map[String, Json]?
 } derive(Debug)
 
 ///|
 pub fn AppInitializeCapabilities::new(
   experimental_api? : Bool = false,
-  request_attestation? : Bool,
+  request_attestation? : Bool = false,
+  mcp_server_openai_form_elicitation? : Bool,
   opt_out_notification_methods? : Array[String],
+  extensions? : Map[String, Json],
 ) -> AppInitializeCapabilities {
-  { experimental_api, request_attestation, opt_out_notification_methods }
+  {
+    experimental_api,
+    request_attestation,
+    mcp_server_openai_form_elicitation,
+    opt_out_notification_methods,
+    extensions,
+  }
 }
 
 ///|
 pub impl ToJson for AppInitializeCapabilities with fn to_json(capabilities) {
   let obj : Map[String, Json] = {
     "experimentalApi": capabilities.experimental_api,
+    "requestAttestation": capabilities.request_attestation,
   }
-  app_put_bool(obj, "requestAttestation", capabilities.request_attestation)
+  app_put_bool(
+    obj,
+    "mcpServerOpenaiFormElicitation",
+    capabilities.mcp_server_openai_form_elicitation,
+  )
   app_put_strings(
     obj,
     "optOutNotificationMethods",
     capabilities.opt_out_notification_methods,
   )
+  if capabilities.extensions is Some(extensions) {
+    obj.set("extensions", extensions.to_json())
+  }
   Json::object(obj)
 }
 
@@ -3828,6 +4035,8 @@ pub impl ToJson for AppInitializeParams with fn to_json(params) {
 ///|
 pub(all) struct AppThreadForkParams {
   thread_id : String
+  /// Optional last turn to include in the fork.
+  last_turn_id : String?
   model : String?
   model_provider : String?
   service_tier : AppNullableString?
@@ -3839,11 +4048,13 @@ pub(all) struct AppThreadForkParams {
   base_instructions : String?
   developer_instructions : String?
   ephemeral : Bool?
+  thread_source : String?
 } derive(Debug)
 
 ///|
 pub impl ToJson for AppThreadForkParams with fn to_json(params) {
   let obj : Map[String, Json] = { "threadId": params.thread_id }
+  app_put_string(obj, "lastTurnId", params.last_turn_id)
   app_put_string(obj, "model", params.model)
   app_put_string(obj, "modelProvider", params.model_provider)
   app_put_nullable_string(obj, "serviceTier", params.service_tier)
@@ -3863,6 +4074,7 @@ pub impl ToJson for AppThreadForkParams with fn to_json(params) {
   app_put_string(obj, "baseInstructions", params.base_instructions)
   app_put_string(obj, "developerInstructions", params.developer_instructions)
   app_put_true(obj, "ephemeral", params.ephemeral)
+  app_put_string(obj, "threadSource", params.thread_source)
   Json::object(obj)
 }
 
@@ -4898,12 +5110,25 @@ pub impl ToJson for AppFuzzyFileSearchParams with fn to_json(params) {
 }
 
 ///|
-async fn CodexAppConnection::call_raw(
+/// Send an arbitrary app-server request and return its raw JSON result.
+///
+/// This is the complete, forward-compatible protocol escape hatch. Prefer a
+/// typed method when one is available.
+pub async fn CodexAppConnection::request(
   self : CodexAppConnection,
   rpc_method : String,
   params? : Json,
 ) -> Json {
   self.call(rpc_method, params?)
+}
+
+///|
+async fn CodexAppConnection::call_raw(
+  self : CodexAppConnection,
+  rpc_method : String,
+  params? : Json,
+) -> Json {
+  self.request(rpc_method, params?)
 }
 
 ///|
@@ -4935,7 +5160,7 @@ pub impl FromJson for AppInitializeResponse with fn from_json(value, path) {
     } else {
     raise JsonDecodeError((path, "expected initialize response"))
   }
-  { user_agent, codex_home, platform_family, platform_os }
+  { user_agent, codex_home, platform_family, platform_os, }
 }
 
 ///|
@@ -4984,7 +5209,7 @@ pub impl FromJson for AppThreadMetadataUpdateResponse with fn from_json(
   guard value is { "thread": thread, .. } else {
     raise JsonDecodeError((path, "expected thread/metadata/update response"))
   }
-  { thread: @json.from_json(thread, path=path.add_key("thread")) }
+  { thread: @json.from_json(thread, path=path.add_key("thread")), }
 }
 
 ///|
@@ -4997,7 +5222,7 @@ pub impl FromJson for AppThreadRollbackResponse with fn from_json(value, path) {
   guard value is { "thread": thread, .. } else {
     raise JsonDecodeError((path, "expected thread/rollback response"))
   }
-  { thread: @json.from_json(thread, path=path.add_key("thread")) }
+  { thread: @json.from_json(thread, path=path.add_key("thread")), }
 }
 
 ///|
@@ -5011,7 +5236,7 @@ pub impl FromJson for AppHookErrorInfo with fn from_json(value, path) {
   guard value is { "path": String(hook_path), "message": String(message), .. } else {
     raise JsonDecodeError((path, "expected hook error info"))
   }
-  { path: hook_path, message }
+  { path: hook_path, message, }
 }
 
 ///|
@@ -5218,7 +5443,7 @@ pub impl FromJson for AppHooksListResponse with fn from_json(value, path) {
   guard value is { "data": data, .. } else {
     raise JsonDecodeError((path, "expected hooks/list response"))
   }
-  { data: @json.from_json(data, path=path.add_key("data")) }
+  { data: @json.from_json(data, path=path.add_key("data")), }
 }
 
 ///|
@@ -5293,7 +5518,7 @@ pub impl FromJson for AppMarketplaceUpgradeErrorInfo with fn from_json(
     } else {
     raise JsonDecodeError((path, "expected marketplace upgrade error info"))
   }
-  { marketplace_name, message }
+  { marketplace_name, message, }
 }
 
 ///|
@@ -5625,7 +5850,7 @@ pub impl FromJson for AppMarketplaceLoadErrorInfo with fn from_json(value, path)
     } else {
     raise JsonDecodeError((path, "expected marketplace load error info"))
   }
-  { marketplace_path, message }
+  { marketplace_path, message, }
 }
 
 ///|
@@ -5828,7 +6053,7 @@ pub impl FromJson for AppPluginReadResponse with fn from_json(value, path) {
   guard value is { "plugin": plugin, .. } else {
     raise JsonDecodeError((path, "expected plugin/read response"))
   }
-  { plugin: @json.from_json(plugin, path=path.add_key("plugin")) }
+  { plugin: @json.from_json(plugin, path=path.add_key("plugin")), }
 }
 
 ///|
@@ -5910,7 +6135,7 @@ pub impl FromJson for AppFsReadDirectoryResponse with fn from_json(value, path) 
   guard value is { "entries": entries, .. } else {
     raise JsonDecodeError((path, "expected fs/readDirectory response"))
   }
-  { entries: @json.from_json(entries, path=path.add_key("entries")) }
+  { entries: @json.from_json(entries, path=path.add_key("entries")), }
 }
 
 ///|
@@ -5923,7 +6148,7 @@ pub impl FromJson for AppFsWatchResponse with fn from_json(value, path) {
   guard value is { "path": String(watch_path), .. } else {
     raise JsonDecodeError((path, "expected fs/watch response"))
   }
-  { path: watch_path }
+  { path: watch_path, }
 }
 
 ///|
@@ -5980,7 +6205,7 @@ pub impl FromJson for AppReviewStartResponse with fn from_json(value, path) {
     is { "turn": turn, "reviewThreadId": String(review_thread_id), .. } else {
     raise JsonDecodeError((path, "expected review/start response"))
   }
-  { turn: @json.from_json(turn, path=path.add_key("turn")), review_thread_id }
+  { turn: @json.from_json(turn, path=path.add_key("turn")), review_thread_id, }
 }
 
 ///|
@@ -6079,7 +6304,7 @@ pub impl FromJson for AppExperimentalFeatureEnablementSetResponse with fn from_j
       (path, "expected experimentalFeature/enablement/set response"),
     )
   }
-  { enablement: @json.from_json(enablement, path=path.add_key("enablement")) }
+  { enablement: @json.from_json(enablement, path=path.add_key("enablement")), }
 }
 
 ///|
@@ -6356,7 +6581,7 @@ pub impl FromJson for AppMcpServerResourceReadResponse with fn from_json(
   guard value is { "contents": contents, .. } else {
     raise JsonDecodeError((path, "expected mcp/resource/read response"))
   }
-  { contents: @json.from_json(contents, path=path.add_key("contents")) }
+  { contents: @json.from_json(contents, path=path.add_key("contents")), }
 }
 
 ///|
@@ -6405,7 +6630,7 @@ pub impl FromJson for AppWindowsSandboxSetupStartResponse with fn from_json(
       (path, "expected windowsSandbox/setup/start response"),
     )
   }
-  { started: app_bool(started, path.add_key("started")) }
+  { started: app_bool(started, path.add_key("started")), }
 }
 
 ///|
@@ -6475,7 +6700,7 @@ pub impl FromJson for AppAccountLoginCancelResponse with fn from_json(
   guard value is { "status": status, .. } else {
     raise JsonDecodeError((path, "expected account/login/cancel response"))
   }
-  { status: @json.from_json(status, path=path.add_key("status")) }
+  { status: @json.from_json(status, path=path.add_key("status")), }
 }
 
 ///|
@@ -6710,7 +6935,7 @@ pub impl FromJson for AppAccountSendAddCreditsNudgeEmailResponse with fn from_js
       (path, "expected account/sendAddCreditsNudgeEmail response"),
     )
   }
-  { status: @json.from_json(status, path=path.add_key("status")) }
+  { status: @json.from_json(status, path=path.add_key("status")), }
 }
 
 ///|
@@ -6744,7 +6969,7 @@ pub impl FromJson for AppCommandExecResponse with fn from_json(value, path) {
     } else {
     raise JsonDecodeError((path, "expected command/exec response"))
   }
-  { exit_code: exit_code.to_int(), stdout, stderr }
+  { exit_code: exit_code.to_int(), stdout, stderr, }
 }
 
 ///|
@@ -6790,7 +7015,7 @@ pub impl FromJson for AppExternalAgentConfigDetectResponse with fn from_json(
       (path, "expected externalAgentConfig/detect response"),
     )
   }
-  { items: @json.from_json(items, path=path.add_key("items")) }
+  { items: @json.from_json(items, path=path.add_key("items")), }
 }
 
 ///|
@@ -6826,7 +7051,7 @@ pub impl FromJson for AppConfigLayerMetadata with fn from_json(value, path) {
   guard value is { "name": name, "version": String(version), .. } else {
     raise JsonDecodeError((path, "expected config layer metadata"))
   }
-  { name: @json.from_json(name, path=path.add_key("name")), version }
+  { name: @json.from_json(name, path=path.add_key("name")), version, }
 }
 
 ///|
@@ -7213,7 +7438,7 @@ pub impl FromJson for AppFuzzyFileSearchResponse with fn from_json(value, path) 
   guard value is { "files": files, .. } else {
     raise JsonDecodeError((path, "expected fuzzyFileSearch response"))
   }
-  { files: @json.from_json(files, path=path.add_key("files")) }
+  { files: @json.from_json(files, path=path.add_key("files")), }
 }
 
 ///|
@@ -7704,9 +7929,7 @@ pub async fn CodexAppConnection::fuzzy_file_search(
 /// Raw JSON-RPC message received from a Codex app server.
 priv enum AppServerMessage {
   Notification(AppServerEvent)
-  IgnoredNotification
   Request(AppServerRequest)
-  UnsupportedRequest(id~ : AppRequestId, rpc_method~ : String)
   Response(id~ : AppRequestId, result~ : Json)
   ErrorResponse(id~ : AppRequestId, error~ : AppRpcError)
 }
@@ -7748,25 +7971,20 @@ impl FromJson for AppServerMessage with fn from_json(value, path) {
     raise JsonDecodeError((path, "expected JSON-RPC object"))
   }
   match obj {
-    { "method": String(rpc_method), "id": id_json, "params"? : params, .. } =>
-      match
-        app_server_request(
-          @json.from_json(id_json, path=path.add_key("id")),
-          rpc_method,
-          params,
-          path.add_key("params"),
-        ) {
-        Some(request) => Request(request)
-        None =>
-          UnsupportedRequest(
-            id=@json.from_json(id_json, path=path.add_key("id")),
-            rpc_method~,
-          )
+    { "method": String(rpc_method), "id": id_json, "params"? : params, .. } => {
+      let id : AppRequestId = @json.from_json(id_json, path=path.add_key("id"))
+      Request(
+        app_server_request(id, rpc_method, params, path.add_key("params")) catch {
+          _ => { id, details: AppRawServerRequest(rpc_method~, params~), }
+        },
+      )
+    }
+    { "method": String(rpc_method), "params"? : params, .. } => {
+      let event : AppServerEvent = @json.from_json(value, path~) catch {
+        _ => AppRawNotification(rpc_method~, params~)
       }
-    { "method": String(_), .. } =>
-      Notification(@json.from_json(value, path~)) catch {
-        _ => IgnoredNotification
-      }
+      Notification(event)
+    }
     { "id": id_json, "result": result, .. } =>
       Response(id=@json.from_json(id_json, path=path.add_key("id")), result~)
     { "id": id_json, "error": error_json, .. } =>
@@ -7784,7 +8002,7 @@ fn app_server_request(
   rpc_method : String,
   params : Json?,
   path : @json.JsonPath,
-) -> AppServerRequest? raise @json.JsonDecodeError {
+) -> AppServerRequest raise @json.JsonDecodeError {
   let details = match rpc_method {
     "item/commandExecution/requestApproval" =>
       match params {
@@ -7843,17 +8061,20 @@ fn app_server_request(
           Some(AppMcpServerElicitationRequest(@json.from_json(params, path~)))
         None => None
       }
-    _ => None
+    _ => Some(AppRawServerRequest(rpc_method~, params~))
   }
   match details {
-    Some(details) => Some({ id, details })
-    None => None
+    Some(details) => { id, details, }
+    None => { id, details: AppRawServerRequest(rpc_method~, params~), }
   }
 }
 
 ///|
 /// App-server event. This is intentionally broader than the existing exec `Event`.
 pub enum AppServerEvent {
+  /// Notification not modeled by a typed variant, or a known notification
+  /// whose newer payload could not be decoded by the typed representation.
+  AppRawNotification(rpc_method~ : String, params~ : Json?)
   AppThreadStarted(AppThread)
   AppThreadStatusChanged(thread_id~ : String, status~ : AppThreadStatus)
   AppThreadArchived(thread_id~ : String)
@@ -9158,8 +9379,7 @@ pub impl FromJson for AppServerEvent with fn from_json(value, path) {
         ),
       )
     }
-    _ =>
-      raise JsonDecodeError((path, "expected app-server notification method"))
+    _ => AppRawNotification(rpc_method~, params~)
   }
 }
 
@@ -9170,7 +9390,7 @@ pub fn AppServerEvent::thread_event(self : AppServerEvent) -> Event? {
     AppThreadStarted(thread) => Some(Event::ThreadStarted(thread_id=thread.id))
     AppTurnStarted(..) => Some(Event::TurnStarted)
     AppTurnError(error~, ..) =>
-      Some(Event::TurnFailed({ message: error.message }))
+      Some(Event::TurnFailed({ message: error.message, }))
     AppItemStarted(event) =>
       match event.item {
         Some(item) => Some(Event::ItemStarted(item))
@@ -9188,17 +9408,24 @@ pub fn AppServerEvent::thread_event(self : AppServerEvent) -> Event? {
 ///|
 pub struct AppThread {
   id : String
+  session_id : String
   forked_from_id : String?
+  parent_thread_id : String?
   preview : String
   ephemeral : Bool
+  section : AppThreadSection?
+  section_entered_at : Int64?
+  project_id : String?
   model_provider : String
   created_at : Int64
   updated_at : Int64
+  recency_at : Int64?
   status : AppThreadStatus
   path : String?
   cwd : String
   cli_version : String
   source : AppSessionSource
+  thread_source : String?
   agent_nickname : String?
   agent_role : String?
   git_info : AppConversationGitInfo?
@@ -9212,17 +9439,24 @@ pub impl FromJson for AppThread with fn from_json(value, path) {
   guard value
     is {
       "id": String(id),
+      "sessionId"? : session_id,
       "forkedFromId"? : forked_from_id,
+      "parentThreadId"? : parent_thread_id,
       "preview": String(preview),
       "ephemeral": ephemeral,
+      "section"? : section,
+      "sectionEnteredAt"? : section_entered_at,
+      "projectId"? : project_id,
       "modelProvider": String(model_provider),
       "createdAt": Number(created_at, ..),
       "updatedAt": Number(updated_at, ..),
+      "recencyAt"? : recency_at,
       "status": status,
       "path"? : thread_path,
       "cwd": String(cwd),
       "cliVersion": String(cli_version),
       "source": source,
+      "threadSource"? : thread_source,
       "agentNickname"? : agent_nickname,
       "agentRole"? : agent_role,
       "gitInfo"? : git_info,
@@ -9234,20 +9468,44 @@ pub impl FromJson for AppThread with fn from_json(value, path) {
   }
   {
     id,
+    session_id: match session_id {
+      Some(String(value)) => value
+      Some(_) =>
+        raise JsonDecodeError((path.add_key("sessionId"), "expected string"))
+      None => id
+    },
     forked_from_id: app_optional_string(
       forked_from_id,
       path.add_key("forkedFromId"),
     ),
+    parent_thread_id: app_optional_string(
+      parent_thread_id,
+      path.add_key("parentThreadId"),
+    ),
     preview,
     ephemeral: app_bool(ephemeral, path.add_key("ephemeral")),
+    section: match section {
+      Some(Null) | None => None
+      Some(value) => Some(@json.from_json(value, path=path.add_key("section")))
+    },
+    section_entered_at: app_optional_int64(
+      section_entered_at,
+      path.add_key("sectionEnteredAt"),
+    ),
+    project_id: app_optional_string(project_id, path.add_key("projectId")),
     model_provider,
     created_at: created_at.to_int64(),
     updated_at: updated_at.to_int64(),
+    recency_at: app_optional_int64(recency_at, path.add_key("recencyAt")),
     status: @json.from_json(status, path=path.add_key("status")),
     path: app_optional_string(thread_path, path.add_key("path")),
     cwd,
     cli_version,
     source: @json.from_json(source, path=path.add_key("source")),
+    thread_source: app_optional_string(
+      thread_source,
+      path.add_key("threadSource"),
+    ),
     agent_nickname: app_optional_string(
       agent_nickname,
       path.add_key("agentNickname"),
@@ -9427,7 +9685,7 @@ pub impl FromJson for AppTurn with fn from_json(value, path) {
 }
 
 ///|
-pub struct AppByteRange {
+pub(all) struct AppByteRange {
   start : UInt64
   end : UInt64
 } derive(Debug)
@@ -9437,11 +9695,16 @@ pub impl FromJson for AppByteRange with fn from_json(value, path) {
   guard value is { "start": Number(start, ..), "end": Number(end, ..), .. } else {
     raise JsonDecodeError((path, "expected byte range"))
   }
-  { start: start.to_uint64(), end: end.to_uint64() }
+  { start: start.to_uint64(), end: end.to_uint64(), }
 }
 
 ///|
-pub struct AppTextElement {
+pub impl ToJson for AppByteRange with fn to_json(range) {
+  { "start": range.start, "end": range.end }
+}
+
+///|
+pub(all) struct AppTextElement {
   byte_range : AppByteRange
   placeholder : String?
 } derive(Debug)
@@ -9458,10 +9721,19 @@ pub impl FromJson for AppTextElement with fn from_json(value, path) {
 }
 
 ///|
+pub impl ToJson for AppTextElement with fn to_json(element) {
+  let obj : Map[String, Json] = { "byteRange": element.byte_range }
+  app_put_string(obj, "placeholder", element.placeholder)
+  Json::object(obj)
+}
+
+///|
 pub enum AppThreadUserInput {
   AppThreadInputText(text~ : String, text_elements~ : ArrayView[AppTextElement])
-  AppThreadInputImage(url~ : String)
-  AppThreadInputLocalImage(path~ : String)
+  AppThreadInputImage(url~ : String, detail~ : AppImageDetail?)
+  AppThreadInputLocalImage(path~ : String, detail~ : AppImageDetail?)
+  AppThreadInputAudio(url~ : String)
+  AppThreadInputLocalAudio(path~ : String)
   AppThreadInputSkill(name~ : String, path~ : String)
   AppThreadInputMention(name~ : String, path~ : String)
 } derive(Debug)
@@ -9487,16 +9759,42 @@ pub impl FromJson for AppThreadUserInput with fn from_json(value, path) {
       )
     }
     "image" => {
-      guard obj is { "url": String(url), .. } else {
+      guard obj is { "url": String(url), "detail"? : detail, .. } else {
         raise JsonDecodeError((path, "expected image user input"))
       }
-      AppThreadInputImage(url~)
+      AppThreadInputImage(
+        url~,
+        detail=match detail {
+          Some(Null) | None => None
+          Some(value) =>
+            Some(@json.from_json(value, path=path.add_key("detail")))
+        },
+      )
     }
     "localImage" => {
-      guard obj is { "path": String(image_path), .. } else {
+      guard obj is { "path": String(image_path), "detail"? : detail, .. } else {
         raise JsonDecodeError((path, "expected localImage user input"))
       }
-      AppThreadInputLocalImage(path=image_path)
+      AppThreadInputLocalImage(
+        path=image_path,
+        detail=match detail {
+          Some(Null) | None => None
+          Some(value) =>
+            Some(@json.from_json(value, path=path.add_key("detail")))
+        },
+      )
+    }
+    "audio" => {
+      guard obj is { "url": String(url), .. } else {
+        raise JsonDecodeError((path, "expected audio user input"))
+      }
+      AppThreadInputAudio(url~)
+    }
+    "localAudio" => {
+      guard obj is { "path": String(audio_path), .. } else {
+        raise JsonDecodeError((path, "expected localAudio user input"))
+      }
+      AppThreadInputLocalAudio(path=audio_path)
     }
     "skill" => {
       guard obj is { "name": String(name), "path": String(skill_path), .. } else {
@@ -9525,7 +9823,7 @@ pub impl FromJson for AppHookPromptFragment with fn from_json(value, path) {
   guard value is { "text": String(text), "hookRunId": String(hook_run_id), .. } else {
     raise JsonDecodeError((path, "expected hook prompt fragment"))
   }
-  { text, hook_run_id }
+  { text, hook_run_id, }
 }
 
 ///|
@@ -10760,7 +11058,7 @@ fn app_file_change(
         (path.add_key("kind"), "expected app-server PatchChangeKind"),
       )
   }
-  { path: file_path, kind }
+  { path: file_path, kind, }
 }
 
 ///|
@@ -10772,6 +11070,7 @@ fn app_mcp_result(
     is {
       "content": Array(content),
       "structuredContent"? : structured_content,
+      "_meta"? : meta,
       ..
     } else {
     raise @json.JsonDecodeError((path, "expected app-server McpToolCallResult"))
@@ -10780,7 +11079,14 @@ fn app_mcp_result(
     Some(value) => value
     None => Json::null()
   }
-  { content, structured_content }
+  {
+    content,
+    meta: match meta {
+      Some(Null) | None => None
+      Some(value) => Some(value)
+    },
+    structured_content,
+  }
 }
 
 ///|

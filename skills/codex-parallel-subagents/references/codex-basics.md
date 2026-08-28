@@ -35,8 +35,8 @@ async fn main {
   "name": "your_project",
   "version": "0.1.0",
   "deps": {
-    "peter-jerry-ye/codex": "0.79.0",
-    "moonbitlang/async": "0.16.0",
+    "peter-jerry-ye/codex": "0.129.0",
+    "moonbitlang/async": "0.21.1",
     "moonbitlang/x": "0.4.38"
   },
   "preferred-target": "native"

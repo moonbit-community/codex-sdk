@@ -66,14 +66,38 @@ async fn[T] CodexExec::run(
   self : Self,
   args : CodexExecArgs,
   taskgroup : @async.TaskGroup[T],
-) -> @generator.AsyncGenerator[String] {
+) -> @generator.AsyncGenerator[String] raise Error {
   // Build command arguments
-  let command_args : Array[String] = ["exec", "--json"]
+  let command_args : Array[String] = ["exec", "--experimental-json"]
+
+  if args.codex_options.config is Some(config) {
+    for config_override in serialize_config_overrides(config) {
+      command_args.push("--config")
+      command_args.push(config_override)
+    }
+  }
+  if args.codex_options.config_overrides is Some(overrides) {
+    for config_override in overrides {
+      command_args.push("--config")
+      command_args.push(config_override)
+    }
+  }
+  if args.codex_options.base_url is Some(base_url) {
+    command_args.push("--config")
+    command_args.push(
+      "openai_base_url=\{codex_config_toml_value(base_url.to_json(), "openai_base_url")}",
+    )
+  }
 
   // Add optional arguments
   if args.thread_options.model is Some(model) {
     command_args.push("--model")
     command_args.push(model)
+  }
+  if args.thread_options.thread_source is Some(thread_source) &&
+    args.thread_id is None {
+    command_args.push("--thread-source")
+    command_args.push(thread_source)
   }
   if args.thread_options.sandbox_mode is Some(sandbox_mode) {
     command_args.push("--sandbox")
@@ -100,27 +124,37 @@ async fn[T] CodexExec::run(
   }
   if args.thread_options.model_reasoning_effort is Some(effort) {
     command_args.push("--config")
-    command_args.push("model_reasoning_effort=\{effort}")
+    command_args.push(
+      "model_reasoning_effort=\{effort.to_string().to_json().stringify()}",
+    )
   }
   if args.thread_options.network_access_enabled is Some(option) {
     command_args.push("--config")
-    command_args.push("sandbox_workspace_network_access=\{option}")
+    command_args.push("sandbox_workspace_write.network_access=\{option}")
   }
-  if args.thread_options.web_search_enabled is Some(option) {
+  if args.thread_options.web_search_mode is Some(mode) {
     command_args.push("--config")
-    command_args.push("features.web_search_request=\{option}")
+    command_args.push("web_search=\{mode.to_string().to_json().stringify()}")
+  } else if args.thread_options.web_search_enabled is Some(true) {
+    command_args.push("--config")
+    command_args.push("web_search=\"live\"")
+  } else if args.thread_options.web_search_enabled is Some(false) {
+    command_args.push("--config")
+    command_args.push("web_search=\"disabled\"")
   }
   if args.thread_options.approval_policy is Some(approval_policy) {
     command_args.push("--config")
-    command_args.push("approval_policy=\{approval_policy}")
-  }
-  for image in args.images {
-    command_args.push("--image")
-    command_args.push(image)
+    command_args.push(
+      "approval_policy=\{approval_policy.to_string().to_json().stringify()}",
+    )
   }
   if args.thread_id is Some(thread_id) {
     command_args.push("resume")
     command_args.push(thread_id)
+  }
+  for image in args.images {
+    command_args.push("--image")
+    command_args.push(image)
   }
 
   // Add env
@@ -128,9 +162,6 @@ async fn[T] CodexExec::run(
   let extra_env = args.codex_options.env.unwrap_or({})
   if env.get(INTERNAL_ORIGINATOR_ENV) is None {
     extra_env.set(INTERNAL_ORIGINATOR_ENV, MOONBIT_SDK_ORIGINATOR)
-  }
-  if args.codex_options.base_url is Some(base_url) {
-    extra_env.set("OPENAI_BASE_URL", base_url)
   }
   if args.codex_options.api_key is Some(api_key) {
     extra_env.set("CODEX_API_KEY", api_key)
@@ -175,4 +206,68 @@ async fn[T] CodexExec::run(
     },
     taskgroup,
   )
+}
+
+///|
+fn serialize_config_overrides(
+  config : Map[String, Json],
+) -> Array[String] raise Error {
+  let overrides : Array[String] = []
+  for key, value in config {
+    if key == "" {
+      @error.fail("Codex config override keys must be non-empty strings")
+    }
+    flatten_config_override(value, key, overrides)
+  }
+  overrides
+}
+
+///|
+fn flatten_config_override(
+  value : Json,
+  path : String,
+  overrides : Array[String],
+) -> Unit raise Error {
+  match value {
+    Object(entries) => {
+      if entries.is_empty() {
+        overrides.push("\{path}={}")
+        return
+      }
+      for key, child in entries {
+        if key == "" {
+          @error.fail("Codex config override keys must be non-empty strings")
+        }
+        flatten_config_override(child, "\{path}.\{key}", overrides)
+      }
+    }
+    _ => overrides.push("\{path}=\{codex_config_toml_value(value, path)}")
+  }
+}
+
+///|
+fn codex_config_toml_value(value : Json, path : String) -> String raise Error {
+  match value {
+    Null => @error.fail("Codex config override at \{path} cannot be null")
+    String(_) | Number(_) | True | False => value.stringify()
+    Array(items) => {
+      let rendered : Array[String] = []
+      for index, item in items {
+        rendered.push(codex_config_toml_value(item, "\{path}[\{index}]"))
+      }
+      "[\{rendered.join(", ")}]"
+    }
+    Object(entries) => {
+      let rendered : Array[String] = []
+      for key, child in entries {
+        if key == "" {
+          @error.fail("Codex config override keys must be non-empty strings")
+        }
+        rendered.push(
+          "\{key.to_json().stringify()} = \{codex_config_toml_value(child, "\{path}.\{key}")}",
+        )
+      }
+      "{\{rendered.join(", ")}}"
+    }
+  }
 }
