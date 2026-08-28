@@ -1832,6 +1832,63 @@ async test "session closes turn stream on terminal event" {
 }
 
 ///|
+async test "session closes turn stream on raw turn completion" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+    events_closed: false,
+  }
+  let session = CodexAppSession::new(connection)
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
+    kind=Unbounded,
+  )
+  let stream_id = session.register_pending_turn_stream("thread-1", events, None)
+  session.bind_turn_stream(stream_id, "turn-1")
+  let stream : AppTurnStream = {
+    thread_id: "thread-1",
+    turn_id: "turn-1",
+    session,
+    stream_id,
+    events,
+    events_closed: false,
+  }
+  let message : AppServerMessage = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "method": "turn/completed",
+        #|  "params": {
+        #|    "threadId": "thread-1",
+        #|    "turn": {
+        #|      "id": "turn-1",
+        #|      "futureShape": true
+        #|    }
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  let event = match message {
+    Notification(event) => event
+    _ => fail("expected app-server notification")
+  }
+  guard session.dispatch_turn_event(event) else {
+    fail("expected session to route raw turn completion")
+  }
+  match stream.next() {
+    Some(AppRawNotification(rpc_method~, ..)) =>
+      debug_inspect(rpc_method, content="\"turn/completed\"")
+    _ => fail("expected raw turn completion event")
+  }
+  guard stream.next() is None else {
+    fail("expected raw turn completion to close the stream")
+  }
+}
+
+///|
 async test "session preserves pending stream when terminal event arrives before response" {
   let connection : CodexAppConnection = {
     outgoing: @async.Queue::Queue(kind=Unbounded),

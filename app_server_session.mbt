@@ -763,10 +763,7 @@ fn AppServerEvent::turn_stream_key(self : AppServerEvent) -> AppTurnStreamKey? {
       Some({ thread_id, turn_id, })
     AppRawNotification(params~, ..) =>
       match
-        (
-          app_raw_params_string(params, "threadId"),
-          app_raw_params_string(params, "turnId"),
-        ) {
+        (app_raw_params_string(params, "threadId"), app_raw_turn_id(params)) {
         (Some(thread_id), Some(turn_id)) => Some({ thread_id, turn_id, })
         _ => None
       }
@@ -782,6 +779,15 @@ fn app_raw_params_string(params : Json?, key : String) -> String? {
         Some(String(value)) => Some(value)
         _ => None
       }
+    _ => None
+  }
+}
+
+///|
+fn app_raw_turn_id(params : Json?) -> String? {
+  match params {
+    Some({ "turnId": String(turn_id), .. }) => Some(turn_id)
+    Some({ "turn": { "id": String(turn_id), .. }, .. }) => Some(turn_id)
     _ => None
   }
 }
@@ -807,6 +813,7 @@ fn AppServerEvent::ends_turn_stream(
       thread_id == key.thread_id && turn.id == key.turn_id
     AppTurnError(thread_id~, turn_id~, will_retry~, ..) =>
       thread_id == key.thread_id && turn_id == key.turn_id && !will_retry
+    AppRawNotification(rpc_method="turn/completed", ..) => true
     _ => false
   }
 }
