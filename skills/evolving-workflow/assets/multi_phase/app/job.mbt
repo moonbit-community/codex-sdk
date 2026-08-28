@@ -511,7 +511,7 @@ async fn save_group_result(result : GroupResult, output_dir : String) -> Unit {
     $|
     $|\{result.result}
     $|
-  @fs.write_file(output_path, @encoding/utf8.encode(content), create=0o700) catch {
+  @fs.write_file(output_path, @encoding/utf8.encode(content), permission=0o700) catch {
     e => @error.reraise(e)
   }
 }
