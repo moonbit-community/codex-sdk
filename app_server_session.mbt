@@ -814,6 +814,10 @@ fn AppServerEvent::ends_turn_stream(
     AppTurnError(thread_id~, turn_id~, will_retry~, ..) =>
       thread_id == key.thread_id && turn_id == key.turn_id && !will_retry
     AppRawNotification(rpc_method="turn/completed", ..) => true
+    AppRawNotification(
+      rpc_method="error",
+      params=Some({ "willRetry": False, .. })
+    ) => true
     _ => false
   }
 }

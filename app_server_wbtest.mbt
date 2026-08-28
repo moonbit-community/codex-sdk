@@ -1889,6 +1889,152 @@ async test "session closes turn stream on raw turn completion" {
 }
 
 ///|
+async test "session closes turn stream on raw non-retryable error" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+    events_closed: false,
+  }
+  let session = CodexAppSession::new(connection)
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
+    kind=Unbounded,
+  )
+  let stream_id = session.register_pending_turn_stream("thread-1", events, None)
+  session.bind_turn_stream(stream_id, "turn-1")
+  let stream : AppTurnStream = {
+    thread_id: "thread-1",
+    turn_id: "turn-1",
+    session,
+    stream_id,
+    events,
+    events_closed: false,
+  }
+  let message : AppServerMessage = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "method": "error",
+        #|  "params": {
+        #|    "threadId": "thread-1",
+        #|    "turnId": "turn-1",
+        #|    "error": { "futureShape": true },
+        #|    "willRetry": false
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  let event = match message {
+    Notification(event) => event
+    _ => fail("expected app-server notification")
+  }
+  guard event
+    is AppRawNotification(
+      rpc_method="error",
+      params=Some({ "willRetry": False, .. })
+    ) else {
+    fail("expected raw non-retryable turn error")
+  }
+  guard session.dispatch_turn_event(event) else {
+    fail("expected session to route raw turn error")
+  }
+  debug_inspect(session.turn_streams.length(), content="0")
+  match stream.next() {
+    Some(AppRawNotification(rpc_method~, ..)) =>
+      debug_inspect(rpc_method, content="\"error\"")
+    _ => fail("expected raw turn error event")
+  }
+  guard stream.next() is None else {
+    fail("expected raw non-retryable error to close the stream")
+  }
+}
+
+///|
+async test "session keeps turn stream open on raw retryable error" {
+  let connection : CodexAppConnection = {
+    outgoing: @async.Queue::Queue(kind=Unbounded),
+    events: @async.Queue::Queue(kind=Unbounded),
+    requests: @async.Queue::Queue(kind=Unbounded),
+    pending: [],
+    next_request_id: 1,
+    events_closed: false,
+  }
+  let session = CodexAppSession::new(connection)
+  let events : @async.Queue[AppQueuedTurnEvent] = @async.Queue::Queue(
+    kind=Unbounded,
+  )
+  let stream_id = session.register_pending_turn_stream("thread-1", events, None)
+  session.bind_turn_stream(stream_id, "turn-1")
+  let stream : AppTurnStream = {
+    thread_id: "thread-1",
+    turn_id: "turn-1",
+    session,
+    stream_id,
+    events,
+    events_closed: false,
+  }
+  let message : AppServerMessage = @json.from_json(
+    @json.parse(
+      (
+        #|{
+        #|  "method": "error",
+        #|  "params": {
+        #|    "threadId": "thread-1",
+        #|    "turnId": "turn-1",
+        #|    "error": { "futureShape": true },
+        #|    "willRetry": true
+        #|  }
+        #|}
+      ),
+    ),
+  )
+  let event = match message {
+    Notification(event) => event
+    _ => fail("expected app-server notification")
+  }
+  guard event
+    is AppRawNotification(
+      rpc_method="error",
+      params=Some({ "willRetry": True, .. })
+    ) else {
+    fail("expected raw retryable turn error")
+  }
+  guard session.dispatch_turn_event(event) else {
+    fail("expected session to route raw retryable turn error")
+  }
+  debug_inspect(session.turn_streams.length(), content="1")
+  match stream.next() {
+    Some(AppRawNotification(rpc_method~, ..)) =>
+      debug_inspect(rpc_method, content="\"error\"")
+    _ => fail("expected raw retryable turn error event")
+  }
+  let turn : AppTurn = {
+    id: "turn-1",
+    items: [],
+    status: AppTurnCompletedStatus,
+    error: None,
+    started_at: Some(10),
+    completed_at: Some(20),
+    duration_ms: Some(10),
+    raw: {},
+  }
+  guard session.dispatch_turn_event(
+    AppTurnCompleted(thread_id="thread-1", turn~),
+  ) else {
+    fail("expected stream to remain open for turn completion")
+  }
+  guard stream.next() is Some(AppTurnCompleted(..)) else {
+    fail("expected turn completion after retryable raw error")
+  }
+  guard stream.next() is None else {
+    fail("expected turn completion to close the stream")
+  }
+}
+
+///|
 async test "session preserves pending stream when terminal event arrives before response" {
   let connection : CodexAppConnection = {
     outgoing: @async.Queue::Queue(kind=Unbounded),
