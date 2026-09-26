@@ -148,7 +148,7 @@ pub async fn Database::count(self : Database, table : String) -> Int {
     let count_str = self.exec_string(sql).trim(chars=" \t\n\r") catch {
         e => @error.reraise(e)
       }
-    @strconv.from_str(count_str) catch {
+    @string.parse_int(count_str) catch {
       e => @error.reraise(e)
     }
   } catch {
