@@ -3,6 +3,6 @@ import {
   "moonbitlang/async/process",
   "moonbitlang/async/io",
   "moonbit-community/codex/x/error",
-  "moonbitlang/core/strconv",
+  "moonbitlang/core/string",
   "moonbitlang/core/json",
 }
