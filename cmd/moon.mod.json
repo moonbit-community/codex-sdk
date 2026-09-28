@@ -1,7 +1,7 @@
 {
   "name": "moonbit-community/codex-example",
   "deps": {
-    "moonbitlang/async": "0.16.0",
+    "moonbitlang/async": "0.22.4",
     "moonbit-community/codex": {
       "path": ".."
     },

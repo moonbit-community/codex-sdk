@@ -3,7 +3,7 @@ name = "moonbit-community/codex"
 version = "0.150.2"
 
 import {
-  "moonbitlang/async@0.21.1",
+  "moonbitlang/async@0.22.4",
   "moonbitlang/x@0.4.38",
 }
 
