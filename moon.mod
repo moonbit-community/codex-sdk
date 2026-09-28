@@ -1,6 +1,6 @@
 name = "moonbit-community/codex"
 
-version = "0.150.2"
+version = "0.151.0"
 
 import {
   "moonbitlang/async@0.22.4",
