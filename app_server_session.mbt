@@ -191,10 +191,12 @@ async fn CodexAppSession::run_turn_stream(
     events,
     request_handler,
   )
-  let response = self.connection.turn_start(params) catch {
-    e => {
-      self.close_turn_stream_by_id(stream_id, true)
-      raise @error.reraise(e)
+  let response = {
+    // Drop the pending registration when `turn/start` fails *or is
+    // cancelled*; otherwise the stream would keep capturing events.
+    errdefer self.close_turn_stream_by_id(stream_id, true)
+    self.connection.turn_start(params) catch {
+      e => raise @error.reraise(e)
     }
   }
   self.bind_turn_stream(stream_id, response.turn.id)

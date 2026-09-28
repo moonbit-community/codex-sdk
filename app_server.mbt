@@ -144,7 +144,8 @@ fn[G] Codex::spawn_app_server(
         connection.route_server_message(message)
       }
     } catch {
-      e if @async.is_cancellation_error(e) => raise e
+      // Cancellation is not observed by `catch` (async >= 0.22), so this
+      // handler only runs for genuine read/decode errors.
       e => {
         connection.close_pending_requests()
         events.put(AppQueuedClosed)
@@ -208,17 +209,19 @@ async fn CodexAppConnection::call(
       kind=Unbounded,
     )
     self.pending.push({ id, replies, })
-    self.send(AppClientMessage::ClientRequest(id~, rpc_method~, params~)) catch {
-      e => {
-        self.drop_pending_request(id)
-        raise @error.reraise(e)
+    let response = {
+      // Unregister the request when sending or waiting fails *or is
+      // cancelled*, so a cancelled caller leaves no stale pending entry.
+      errdefer self.drop_pending_request(id)
+      self.send(AppClientMessage::ClientRequest(id~, rpc_method~, params~)) catch {
+        e => raise @error.reraise(e)
       }
-    }
-    let response = replies.get() catch {
-      _ =>
-        @error.fail(
-          "Codex app server closed before responding to \{rpc_method}",
-        )
+      replies.get() catch {
+        _ =>
+          @error.fail(
+            "Codex app server closed before responding to \{rpc_method}",
+          )
+      }
     }
     match response {
       AppPendingResult(result) => return result
