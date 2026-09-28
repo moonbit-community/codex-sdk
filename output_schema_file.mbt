@@ -24,15 +24,10 @@ async fn create_output_schema_file(schema : Json) -> OutputSchemaFile {
   let path = "\{dir}/schema.json"
   @fs.mkdir(dir, permission=0o700)
   let cleanup = async fn() { @fs.rmdir(dir, recursive=true) }
-  try {
-    let file = @fs.create(path, permission=0o600)
-    file.write(schema.stringify(indent=2))
-    file.close()
-    return { schema_path: path, cleanup, }
-  } catch {
-    e => {
-      cleanup()
-      raise e
-    }
-  }
+  // Remove the temporary directory on failure *and* on cancellation.
+  errdefer @async.protect_from_cancel(cleanup)
+  let file = @fs.create(path, permission=0o600)
+  defer file.close()
+  file.write(schema.stringify(indent=2))
+  { schema_path: path, cleanup, }
 }

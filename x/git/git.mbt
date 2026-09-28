@@ -531,11 +531,11 @@ pub async fn[T] with_workspace(
 ) -> T {
   match repo.create_workspace(path, branch, create_branch~) {
     Some(workspace) => {
-      let result = work(workspace) catch {
-        e => {
-          workspace.cleanup()
-          raise e
-        }
+      let result = {
+        // Remove the worktree when `work` fails *or is cancelled*; `catch`
+        // no longer observes cancellation (async >= 0.22).
+        errdefer @async.protect_from_cancel(() => workspace.cleanup())
+        work(workspace)
       }
       workspace.cleanup()
       result

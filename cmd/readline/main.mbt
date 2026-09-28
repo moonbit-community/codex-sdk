@@ -29,7 +29,7 @@ async fn main {
         continue
       }
       let turn = @async.with_task_group(taskgroup => {
-        taskgroup.add_defer(() => @stdio.stdout.write(b"\r"))
+        taskgroup.add_defer(() => @async.protect_from_cancel(() => @stdio.stdout.write(b"\r")))
         taskgroup.spawn_bg(
           () => while true {
             @async.sleep(500)

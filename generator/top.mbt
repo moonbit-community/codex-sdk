@@ -119,6 +119,14 @@ pub fn[T, G] AsyncGenerator::new(
   let out = @async.Queue::Queue(kind=Unbounded)
   let generator = { in_, out, }
   taskgroup.spawn_bg(no_wait~, () => {
+    // Close both queues however the producer exits. `catch` does not observe
+    // cancellation (async >= 0.22), so this lives in `defer`; a cancelled
+    // producer wakes blocked consumers with an error instead of hanging them.
+    let mut close_error : Error = Failure("async generator was cancelled")
+    defer {
+      in_.close(error=Return)
+      out.close(error=close_error)
+    }
     try
       f(value => {
         out.put(OutMsg(Some(value)))
@@ -131,19 +139,10 @@ pub fn[T, G] AsyncGenerator::new(
         }
       })
     catch {
-      Return => {
-        in_.close(error=Return)
-        out.close(error=Return)
-      }
-      e => {
-        in_.close(error=Return)
-        out.close(error=e)
-      }
+      Return => close_error = Return
+      e => close_error = e
     } noraise {
-      _ => {
-        in_.close(error=Return)
-        out.close(error=Return)
-      }
+      _ => close_error = Return
     }
   })
   generator

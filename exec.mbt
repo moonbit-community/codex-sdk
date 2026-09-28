@@ -118,7 +118,7 @@ async fn[T] CodexExec::run(
   }
   if args.turn_options.output_schema is Some(schema) {
     let file = create_output_schema_file(schema)
-    taskgroup.add_defer(() => (file.cleanup)())
+    taskgroup.add_defer(() => @async.protect_from_cancel(file.cleanup))
     command_args.push("--output-schema")
     command_args.push(file.schema_path)
   }
