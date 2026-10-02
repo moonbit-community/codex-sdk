@@ -58,7 +58,7 @@ async fn read_tasks(file : String?) -> Array[Task] raise Error {
   let tasks : Array[Task] = []
   for i, item in items {
     let input : TaskInput = @json.from_json(item) catch { e => raise e }
-    tasks.push({ index: i, label: input.label, prompt: input.prompt })
+    tasks.push({ index: i, label: input.label, prompt: input.prompt, })
   }
   tasks
 }

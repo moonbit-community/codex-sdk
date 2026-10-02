@@ -154,7 +154,7 @@ async fn main {
         let summary = summarize_package(codex, pkg_dir, workdir) catch {
           e => "ERROR: \{e}"
         }
-        summaries.push(PackageSummary::{ path: pkg_dir, summary })
+        summaries.push(PackageSummary::{ path: pkg_dir, summary, })
       })
     }
   })

@@ -13,7 +13,9 @@ async fn main {
     @stdio.stdout.write("No items to process. Exiting.\n")
     return
   }
-  @stdio.stdout.write("Processing \{config.items.length()} items with parallelism \{config.parallelism}\n\n")
+  @stdio.stdout.write(
+    "Processing \{config.items.length()} items with parallelism \{config.parallelism}\n\n",
+  )
   let codex = @codex.Codex::new()
   let results = @app.for_all_tasks(
     config.items,
