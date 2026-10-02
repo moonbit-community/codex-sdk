@@ -27,11 +27,11 @@ fn parse_args(args : Array[String]) -> (Int, Int, String?) {
   let mut file : String? = None
   loop args[:] {
     ["--offset", val, .. rest] => {
-      offset = @strconv.parse_int(val) catch { _ => 0 }
+      offset = @string.parse_int(val) catch { _ => 0 }
       continue rest
     }
     ["--limit", val, .. rest] => {
-      limit = @strconv.parse_int(val) catch { _ => -1 }
+      limit = @string.parse_int(val) catch { _ => -1 }
       continue rest
     }
     ["--file", val, .. rest] => {
@@ -128,7 +128,7 @@ async fn main {
   let (offset, limit, file) = parse_args(args)
   let workdir = env.get("CODEX_WORKDIR").unwrap_or(".")
   let parallelism_str = env.get("PARALLELISM").unwrap_or("2")
-  let parallelism = @strconv.parse_int(parallelism_str) catch { _ => 2 }
+  let parallelism = @string.parse_int(parallelism_str) catch { _ => 2 }
 
   // Read tasks from file or stdin
   let all_tasks = read_tasks(file) catch {

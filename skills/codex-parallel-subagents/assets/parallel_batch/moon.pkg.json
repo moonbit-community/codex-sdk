@@ -5,6 +5,7 @@
     "moonbitlang/async",
     "moonbitlang/async/stdio",
     "moonbitlang/async/fs",
-    "moonbitlang/x/sys"
+    "moonbitlang/x/sys",
+    "moonbitlang/core/string"
   ]
 }
