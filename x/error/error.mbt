@@ -32,7 +32,7 @@ pub fn[A] reraise(e : Error, loc~ : SourceLoc) -> A raise {
         ),
       )
     Failure::Failure(msg) => {
-      guard msg =~ (re"FAILED", before=prefix, after=rest)
+      guard msg =~ (re"FAILED", before=prefix, after=rest) else { panic() }
       raise Reraise(
         (
           (

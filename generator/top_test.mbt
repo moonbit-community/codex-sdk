@@ -16,12 +16,12 @@
 async test {
   @async.with_task_group(tg => {
     // async iterator
-    let iterator = AsyncGenerator::new(
+    let iterator = @generator.AsyncGenerator::new(
       async fn(yield_) {
         for i = 0; ; i = i + 1 {
           yield_(i) catch {
             Failure::Failure(e) => {
-              guard e == "error"
+              guard e == "error" else { panic() }
             }
             e => raise e
           }
@@ -39,7 +39,7 @@ async test {
 ///|
 async test "returns yields pending value before closing" {
   @async.with_task_group(tg => {
-    let iterator = AsyncGenerator::new(
+    let iterator = @generator.AsyncGenerator::new(
       async fn(yield_) {
         for i = 0; ; i = i + 1 {
           yield_(i)

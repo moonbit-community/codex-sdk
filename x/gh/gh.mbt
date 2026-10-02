@@ -55,9 +55,7 @@ pub async fn create_pr(
   base : String,
   head : String,
 ) -> String raise Error {
-  ensure_available() catch {
-    e => raise e
-  }
+  ensure_available()
   let (pipe, process_read) = @process.read_from_process()
   let (err_pipe, process_err) = @process.read_from_process()
   let status = @process.run(
@@ -147,9 +145,7 @@ pub async fn get_pr_comments(
   repo_path : String,
   pr_number : Int,
 ) -> String raise Error {
-  ensure_available() catch {
-    e => raise e
-  }
+  ensure_available()
   let (status, stdout, stderr) = @process.collect_output(
     "gh",
     ["pr", "view", pr_number.to_string(), "--comments"],

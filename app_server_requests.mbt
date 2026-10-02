@@ -26,6 +26,9 @@ pub(all) struct AppPermissionsRequestApprovalRequest {
 } derive(Debug)
 
 ///|
+pub extend AppPermissionsRequestApprovalRequest with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppPermissionsRequestApprovalRequest with fn from_json(
   value,
   path,
@@ -61,10 +64,16 @@ pub impl FromJson for AppPermissionsRequestApprovalRequest with fn from_json(
 }
 
 ///|
+pub extend AppPermissionsRequestApprovalRequest with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppRequestPermissionProfile {
   network : AppAdditionalNetworkPermissions?
   file_system : AppAdditionalFileSystemPermissions?
 } derive(Debug)
+
+///|
+pub extend AppRequestPermissionProfile with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppRequestPermissionProfile with fn from_json(value, path) {
@@ -85,14 +94,20 @@ pub impl FromJson for AppRequestPermissionProfile with fn from_json(value, path)
 }
 
 ///|
+pub extend AppRequestPermissionProfile with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppGrantedPermissionProfile {
   network : AppAdditionalNetworkPermissions?
   file_system : AppAdditionalFileSystemPermissions?
 } derive(Debug)
 
 ///|
+pub extend AppGrantedPermissionProfile with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppGrantedPermissionProfile with fn to_json(profile) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if profile.network is Some(network) {
     obj.set("network", network.to_json())
   }
@@ -101,6 +116,9 @@ pub impl ToJson for AppGrantedPermissionProfile with fn to_json(profile) {
   }
   Json::object(obj)
 }
+
+///|
+pub extend AppGrantedPermissionProfile with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppGrantedPermissionProfile with fn from_json(value, path) {
@@ -121,9 +139,15 @@ pub impl FromJson for AppGrantedPermissionProfile with fn from_json(value, path)
 }
 
 ///|
+pub extend AppGrantedPermissionProfile with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppAdditionalNetworkPermissions {
   enabled : Bool?
 } derive(Debug)
+
+///|
+pub extend AppAdditionalNetworkPermissions with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppAdditionalNetworkPermissions with fn to_json(permissions) {
@@ -134,6 +158,9 @@ pub impl ToJson for AppAdditionalNetworkPermissions with fn to_json(permissions)
     },
   }
 }
+
+///|
+pub extend AppAdditionalNetworkPermissions with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppAdditionalNetworkPermissions with fn from_json(
@@ -147,12 +174,18 @@ pub impl FromJson for AppAdditionalNetworkPermissions with fn from_json(
 }
 
 ///|
+pub extend AppAdditionalNetworkPermissions with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppAdditionalFileSystemPermissions {
   read : ArrayView[String]?
   write : ArrayView[String]?
   glob_scan_max_depth : UInt64?
   entries : ArrayView[AppFileSystemSandboxEntry]?
 } derive(Debug)
+
+///|
+pub extend AppAdditionalFileSystemPermissions with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppAdditionalFileSystemPermissions with fn to_json(
@@ -174,6 +207,9 @@ pub impl ToJson for AppAdditionalFileSystemPermissions with fn to_json(
   }
   Json::object(obj)
 }
+
+///|
+pub extend AppAdditionalFileSystemPermissions with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppAdditionalFileSystemPermissions with fn from_json(
@@ -211,15 +247,24 @@ pub impl FromJson for AppAdditionalFileSystemPermissions with fn from_json(
 }
 
 ///|
+pub extend AppAdditionalFileSystemPermissions with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppFileSystemSandboxEntry {
   path : AppFileSystemPath
   access : AppFileSystemAccessMode
 } derive(Debug)
 
 ///|
+pub extend AppFileSystemSandboxEntry with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppFileSystemSandboxEntry with fn to_json(entry) {
   { "path": entry.path, "access": entry.access }
 }
+
+///|
+pub extend AppFileSystemSandboxEntry with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppFileSystemSandboxEntry with fn from_json(value, path) {
@@ -233,11 +278,17 @@ pub impl FromJson for AppFileSystemSandboxEntry with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppFileSystemSandboxEntry with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppFileSystemAccessMode {
   AppFileSystemReadAccess
   AppFileSystemWriteAccess
   AppFileSystemNoAccess
 } derive(Debug)
+
+///|
+pub extend AppFileSystemAccessMode with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFileSystemAccessMode with fn to_json(access) {
@@ -247,6 +298,9 @@ pub impl ToJson for AppFileSystemAccessMode with fn to_json(access) {
     AppFileSystemNoAccess => "none".to_json()
   }
 }
+
+///|
+pub extend AppFileSystemAccessMode with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppFileSystemAccessMode with fn from_json(value, path) {
@@ -259,11 +313,17 @@ pub impl FromJson for AppFileSystemAccessMode with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppFileSystemAccessMode with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppFileSystemPath {
   AppFileSystemAbsolutePath(path~ : String)
   AppFileSystemGlobPattern(pattern~ : String)
   AppFileSystemSpecialPath(value~ : AppFileSystemSpecialPath)
 } derive(Debug)
+
+///|
+pub extend AppFileSystemPath with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFileSystemPath with fn to_json(path) {
@@ -275,6 +335,9 @@ pub impl ToJson for AppFileSystemPath with fn to_json(path) {
       { "type": "special", "value": value.to_json() }
   }
 }
+
+///|
+pub extend AppFileSystemPath with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppFileSystemPath with fn from_json(value, path) {
@@ -307,6 +370,9 @@ pub impl FromJson for AppFileSystemPath with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppFileSystemPath with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppFileSystemSpecialPath {
   AppFileSystemRoot
   AppFileSystemMinimal
@@ -315,6 +381,9 @@ pub(all) enum AppFileSystemSpecialPath {
   AppFileSystemSlashTmp
   AppFileSystemUnknown(path~ : String, subpath~ : String?)
 } derive(Debug)
+
+///|
+pub extend AppFileSystemSpecialPath with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFileSystemSpecialPath with fn to_json(special) {
@@ -342,6 +411,9 @@ pub impl ToJson for AppFileSystemSpecialPath with fn to_json(special) {
       }
   }
 }
+
+///|
+pub extend AppFileSystemSpecialPath with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppFileSystemSpecialPath with fn from_json(value, path) {
@@ -375,10 +447,16 @@ pub impl FromJson for AppFileSystemSpecialPath with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppFileSystemSpecialPath with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppPermissionGrantScope {
   AppPermissionGrantTurn
   AppPermissionGrantSession
 } derive(Debug)
+
+///|
+pub extend AppPermissionGrantScope with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppPermissionGrantScope with fn to_json(scope) {
@@ -387,6 +465,9 @@ pub impl ToJson for AppPermissionGrantScope with fn to_json(scope) {
     AppPermissionGrantSession => "session".to_json()
   }
 }
+
+///|
+pub extend AppPermissionGrantScope with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppPermissionGrantScope with fn from_json(value, path) {
@@ -398,11 +479,17 @@ pub impl FromJson for AppPermissionGrantScope with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPermissionGrantScope with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppChatgptAuthTokensRefreshRequest {
   reason : AppChatgptAuthTokensRefreshReason
   previous_account_id : String?
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppChatgptAuthTokensRefreshRequest with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppChatgptAuthTokensRefreshRequest with fn from_json(
@@ -425,9 +512,15 @@ pub impl FromJson for AppChatgptAuthTokensRefreshRequest with fn from_json(
 }
 
 ///|
+pub extend AppChatgptAuthTokensRefreshRequest with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppChatgptAuthTokensRefreshReason {
   AppChatgptAuthTokensUnauthorized
 } derive(Debug)
+
+///|
+pub extend AppChatgptAuthTokensRefreshReason with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppChatgptAuthTokensRefreshReason with fn from_json(
@@ -444,9 +537,15 @@ pub impl FromJson for AppChatgptAuthTokensRefreshReason with fn from_json(
 }
 
 ///|
+pub extend AppChatgptAuthTokensRefreshReason with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppAttestationGenerateRequest {
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppAttestationGenerateRequest with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAttestationGenerateRequest with fn from_json(
@@ -457,6 +556,9 @@ pub impl FromJson for AppAttestationGenerateRequest with fn from_json(
 }
 
 ///|
+pub extend AppAttestationGenerateRequest with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppMcpServerElicitationRequest {
   thread_id : String
   turn_id : String?
@@ -464,6 +566,9 @@ pub(all) struct AppMcpServerElicitationRequest {
   elicitation : AppMcpServerElicitationContent
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppMcpServerElicitationRequest with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpServerElicitationRequest with fn from_json(
@@ -498,6 +603,9 @@ pub impl FromJson for AppMcpServerElicitationRequest with fn from_json(
 }
 
 ///|
+pub extend AppMcpServerElicitationRequest with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppMcpServerElicitationContent {
   AppMcpElicitationForm(
     meta~ : Json?,
@@ -519,6 +627,9 @@ pub(all) enum AppMcpServerElicitationContent {
     elicitation_id~ : String
   )
 } derive(Debug)
+
+///|
+pub extend AppMcpServerElicitationContent with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpServerElicitationContent with fn from_json(
@@ -575,11 +686,17 @@ pub impl FromJson for AppMcpServerElicitationContent with fn from_json(
 }
 
 ///|
+pub extend AppMcpServerElicitationContent with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppMcpServerElicitationAction {
   AppMcpElicitationAccept
   AppMcpElicitationDecline
   AppMcpElicitationCancel
 } derive(Debug)
+
+///|
+pub extend AppMcpServerElicitationAction with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppMcpServerElicitationAction with fn to_json(action) {
@@ -591,12 +708,18 @@ pub impl ToJson for AppMcpServerElicitationAction with fn to_json(action) {
 }
 
 ///|
+pub extend AppMcpServerElicitationAction with ToJson::{to_json}
+
+///|
 pub(all) struct AppMcpElicitationSchema {
   schema_uri : String?
   object_type : AppMcpElicitationObjectType
   properties : Map[String, AppMcpElicitationPrimitiveSchema]
   required : ArrayView[String]?
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationSchema with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationSchema with fn from_json(value, path) {
@@ -622,9 +745,15 @@ pub impl FromJson for AppMcpElicitationSchema with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMcpElicitationSchema with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppMcpElicitationObjectType {
   AppMcpElicitationObject
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationObjectType with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationObjectType with fn from_json(value, path) {
@@ -633,6 +762,9 @@ pub impl FromJson for AppMcpElicitationObjectType with fn from_json(value, path)
     _ => raise JsonDecodeError((path, "expected MCP elicitation object type"))
   }
 }
+
+///|
+pub extend AppMcpElicitationObjectType with @json.FromJson::{from_json}
 
 ///|
 pub(all) enum AppMcpElicitationPrimitiveSchema {
@@ -646,6 +778,9 @@ pub(all) enum AppMcpElicitationPrimitiveSchema {
   )
   AppMcpElicitationTitledMultiSelect(AppMcpElicitationTitledMultiSelectSchema)
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationPrimitiveSchema with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationPrimitiveSchema with fn from_json(
@@ -686,6 +821,9 @@ pub impl FromJson for AppMcpElicitationPrimitiveSchema with fn from_json(
 }
 
 ///|
+pub extend AppMcpElicitationPrimitiveSchema with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppMcpElicitationStringSchema {
   title : String?
   description : String?
@@ -694,6 +832,9 @@ pub(all) struct AppMcpElicitationStringSchema {
   format : AppMcpElicitationStringFormat?
   default : String?
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationStringSchema with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationStringSchema with fn from_json(
@@ -727,12 +868,18 @@ pub impl FromJson for AppMcpElicitationStringSchema with fn from_json(
 }
 
 ///|
+pub extend AppMcpElicitationStringSchema with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppMcpElicitationStringFormat {
   AppMcpElicitationEmailFormat
   AppMcpElicitationUriFormat
   AppMcpElicitationDateFormat
   AppMcpElicitationDateTimeFormat
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationStringFormat with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationStringFormat with fn from_json(
@@ -749,6 +896,9 @@ pub impl FromJson for AppMcpElicitationStringFormat with fn from_json(
 }
 
 ///|
+pub extend AppMcpElicitationStringFormat with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppMcpElicitationNumberSchema {
   number_type : AppMcpElicitationNumberType
   title : String?
@@ -757,6 +907,9 @@ pub(all) struct AppMcpElicitationNumberSchema {
   maximum : Double?
   default : Double?
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationNumberSchema with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationNumberSchema with fn from_json(
@@ -786,10 +939,16 @@ pub impl FromJson for AppMcpElicitationNumberSchema with fn from_json(
 }
 
 ///|
+pub extend AppMcpElicitationNumberSchema with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppMcpElicitationNumberType {
   AppMcpElicitationNumberTypeNumber
   AppMcpElicitationNumberTypeInteger
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationNumberType with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationNumberType with fn from_json(value, path) {
@@ -801,11 +960,17 @@ pub impl FromJson for AppMcpElicitationNumberType with fn from_json(value, path)
 }
 
 ///|
+pub extend AppMcpElicitationNumberType with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppMcpElicitationBooleanSchema {
   title : String?
   description : String?
   default : Bool?
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationBooleanSchema with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationBooleanSchema with fn from_json(
@@ -830,6 +995,9 @@ pub impl FromJson for AppMcpElicitationBooleanSchema with fn from_json(
 }
 
 ///|
+pub extend AppMcpElicitationBooleanSchema with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppMcpElicitationStringEnumSchema {
   title : String?
   description : String?
@@ -837,6 +1005,9 @@ pub(all) struct AppMcpElicitationStringEnumSchema {
   enum_names : ArrayView[String]?
   default : String?
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationStringEnumSchema with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationStringEnumSchema with fn from_json(
@@ -869,12 +1040,18 @@ pub impl FromJson for AppMcpElicitationStringEnumSchema with fn from_json(
 }
 
 ///|
+pub extend AppMcpElicitationStringEnumSchema with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppMcpElicitationTitledStringEnumSchema {
   title : String?
   description : String?
   one_of : ArrayView[AppMcpElicitationConstOption]
   default : String?
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationTitledStringEnumSchema with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationTitledStringEnumSchema with fn from_json(
@@ -901,6 +1078,11 @@ pub impl FromJson for AppMcpElicitationTitledStringEnumSchema with fn from_json(
 }
 
 ///|
+pub extend AppMcpElicitationTitledStringEnumSchema with @json.FromJson::{
+  from_json,
+}
+
+///|
 pub(all) struct AppMcpElicitationUntitledMultiSelectSchema {
   title : String?
   description : String?
@@ -909,6 +1091,9 @@ pub(all) struct AppMcpElicitationUntitledMultiSelectSchema {
   items : AppMcpElicitationUntitledEnumItems
   default : ArrayView[String]?
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationUntitledMultiSelectSchema with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationUntitledMultiSelectSchema with fn from_json(
@@ -942,6 +1127,11 @@ pub impl FromJson for AppMcpElicitationUntitledMultiSelectSchema with fn from_js
 }
 
 ///|
+pub extend AppMcpElicitationUntitledMultiSelectSchema with @json.FromJson::{
+  from_json,
+}
+
+///|
 pub(all) struct AppMcpElicitationTitledMultiSelectSchema {
   title : String?
   description : String?
@@ -950,6 +1140,9 @@ pub(all) struct AppMcpElicitationTitledMultiSelectSchema {
   items : AppMcpElicitationTitledEnumItems
   default : ArrayView[String]?
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationTitledMultiSelectSchema with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationTitledMultiSelectSchema with fn from_json(
@@ -983,9 +1176,17 @@ pub impl FromJson for AppMcpElicitationTitledMultiSelectSchema with fn from_json
 }
 
 ///|
+pub extend AppMcpElicitationTitledMultiSelectSchema with @json.FromJson::{
+  from_json,
+}
+
+///|
 pub(all) struct AppMcpElicitationUntitledEnumItems {
   enum_values : ArrayView[String]
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationUntitledEnumItems with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationUntitledEnumItems with fn from_json(
@@ -999,9 +1200,15 @@ pub impl FromJson for AppMcpElicitationUntitledEnumItems with fn from_json(
 }
 
 ///|
+pub extend AppMcpElicitationUntitledEnumItems with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppMcpElicitationTitledEnumItems {
   any_of : ArrayView[AppMcpElicitationConstOption]
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationTitledEnumItems with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationTitledEnumItems with fn from_json(
@@ -1024,10 +1231,16 @@ pub impl FromJson for AppMcpElicitationTitledEnumItems with fn from_json(
 }
 
 ///|
+pub extend AppMcpElicitationTitledEnumItems with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppMcpElicitationConstOption {
   const_value : String
   title : String
 } derive(Debug)
+
+///|
+pub extend AppMcpElicitationConstOption with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpElicitationConstOption with fn from_json(
@@ -1039,3 +1252,6 @@ pub impl FromJson for AppMcpElicitationConstOption with fn from_json(
   }
   { const_value, title, }
 }
+
+///|
+pub extend AppMcpElicitationConstOption with @json.FromJson::{from_json}

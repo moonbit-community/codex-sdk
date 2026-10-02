@@ -44,7 +44,7 @@ test "parse_diagnostics parses errors and warnings" {
     #|   │                 ╰── Warning: Unused variable 'x'
     #|───╯
     #|Failed with 2 warnings, 2 errors.
-  let diagnostics = parse_diagnostics(output)
+  let diagnostics = @moon.parse_diagnostics(output)
   debug_inspect(diagnostics.length(), content="4")
 
   // Check first error
@@ -127,8 +127,8 @@ test "get_errors filters only errors" {
     #|   │
     #|   │   ╰── Some warning
     #|───╯
-  let diagnostics = parse_diagnostics(output)
-  let errors = get_errors(diagnostics)
+  let diagnostics = @moon.parse_diagnostics(output)
+  let errors = @moon.get_errors(diagnostics)
   debug_inspect(errors.length(), content="1")
   debug_inspect(
     errors[0].level,
@@ -151,8 +151,8 @@ test "get_warnings filters only warnings" {
     #|   │
     #|   │   ╰── Some warning
     #|───╯
-  let diagnostics = parse_diagnostics(output)
-  let warnings = get_warnings(diagnostics)
+  let diagnostics = @moon.parse_diagnostics(output)
+  let warnings = @moon.get_warnings(diagnostics)
   debug_inspect(warnings.length(), content="1")
   debug_inspect(
     warnings[0].level,

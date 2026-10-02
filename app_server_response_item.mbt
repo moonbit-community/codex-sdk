@@ -78,6 +78,9 @@ pub(all) enum AppResponseItem {
 } derive(Debug)
 
 ///|
+pub extend AppResponseItem with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppResponseItem with fn from_json(value, path) {
   guard value is Object({ "type": String(item_type), .. } as obj) else {
     raise JsonDecodeError((path, "expected response item"))
@@ -234,9 +237,7 @@ pub impl FromJson for AppResponseItem with fn from_json(value, path) {
       )
     }
     "web_search_call" => {
-      guard obj is { "status"? : status, "action"? : action, .. } else {
-        raise JsonDecodeError((path, "expected web search response item"))
-      }
+      guard obj is { "status"? : status, "action"? : action, .. }
       AppResponseWebSearchCall(
         status=app_optional_string(status, path.add_key("status")),
         action=match action {
@@ -276,11 +277,7 @@ pub impl FromJson for AppResponseItem with fn from_json(value, path) {
       AppResponseCompaction(encrypted_content~)
     }
     "context_compaction" => {
-      guard obj is { "encrypted_content"? : encrypted_content, .. } else {
-        raise JsonDecodeError(
-          (path, "expected context compaction response item"),
-        )
-      }
+      guard obj is { "encrypted_content"? : encrypted_content, .. }
       AppResponseContextCompaction(
         encrypted_content=app_optional_string(
           encrypted_content,
@@ -294,11 +291,17 @@ pub impl FromJson for AppResponseItem with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppResponseItem with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppResponseContentItem {
   AppResponseInputText(text~ : String)
   AppResponseInputImage(image_url~ : String, detail~ : AppResponseImageDetail?)
   AppResponseOutputText(text~ : String)
 } derive(Debug)
+
+///|
+pub extend AppResponseContentItem with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResponseContentItem with fn from_json(value, path) {
@@ -336,12 +339,18 @@ pub impl FromJson for AppResponseContentItem with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppResponseContentItem with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppResponseImageDetail {
   AppResponseImageAuto
   AppResponseImageLow
   AppResponseImageHigh
   AppResponseImageOriginal
 } derive(Debug)
+
+///|
+pub extend AppResponseImageDetail with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResponseImageDetail with fn from_json(value, path) {
@@ -355,10 +364,16 @@ pub impl FromJson for AppResponseImageDetail with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppResponseImageDetail with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppResponseMessagePhase {
   AppResponseCommentary
   AppResponseFinalAnswer
 } derive(Debug)
+
+///|
+pub extend AppResponseMessagePhase with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResponseMessagePhase with fn from_json(value, path) {
@@ -370,9 +385,15 @@ pub impl FromJson for AppResponseMessagePhase with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppResponseMessagePhase with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppResponseReasoningSummary {
   text : String
 } derive(Debug)
+
+///|
+pub extend AppResponseReasoningSummary with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResponseReasoningSummary with fn from_json(value, path) {
@@ -383,10 +404,16 @@ pub impl FromJson for AppResponseReasoningSummary with fn from_json(value, path)
 }
 
 ///|
+pub extend AppResponseReasoningSummary with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppResponseReasoningContent {
   AppResponseReasoningText(text~ : String)
   AppResponseReasoningPlainText(text~ : String)
 } derive(Debug)
+
+///|
+pub extend AppResponseReasoningContent with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResponseReasoningContent with fn from_json(value, path) {
@@ -402,11 +429,17 @@ pub impl FromJson for AppResponseReasoningContent with fn from_json(value, path)
 }
 
 ///|
+pub extend AppResponseReasoningContent with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppResponseLocalShellStatus {
   AppResponseLocalShellCompleted
   AppResponseLocalShellInProgress
   AppResponseLocalShellIncomplete
 } derive(Debug)
+
+///|
+pub extend AppResponseLocalShellStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResponseLocalShellStatus with fn from_json(value, path) {
@@ -419,6 +452,9 @@ pub impl FromJson for AppResponseLocalShellStatus with fn from_json(value, path)
 }
 
 ///|
+pub extend AppResponseLocalShellStatus with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppResponseLocalShellAction {
   command : ArrayView[String]
   timeout_ms : UInt64?
@@ -426,6 +462,9 @@ pub(all) struct AppResponseLocalShellAction {
   env : Map[String, String]?
   user : String?
 } derive(Debug)
+
+///|
+pub extend AppResponseLocalShellAction with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResponseLocalShellAction with fn from_json(value, path) {
@@ -457,12 +496,18 @@ pub impl FromJson for AppResponseLocalShellAction with fn from_json(value, path)
 }
 
 ///|
+pub extend AppResponseLocalShellAction with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppResponseFunctionCallOutputBody {
   AppResponseFunctionOutputText(String)
   AppResponseFunctionOutputContentItems(
     ArrayView[AppResponseFunctionCallOutputContentItem]
   )
 } derive(Debug)
+
+///|
+pub extend AppResponseFunctionCallOutputBody with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResponseFunctionCallOutputBody with fn from_json(
@@ -478,6 +523,9 @@ pub impl FromJson for AppResponseFunctionCallOutputBody with fn from_json(
 }
 
 ///|
+pub extend AppResponseFunctionCallOutputBody with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppResponseFunctionCallOutputContentItem {
   AppResponseFunctionOutputInputText(text~ : String)
   AppResponseFunctionOutputInputImage(
@@ -485,6 +533,9 @@ pub(all) enum AppResponseFunctionCallOutputContentItem {
     detail~ : AppResponseImageDetail?
   )
 } derive(Debug)
+
+///|
+pub extend AppResponseFunctionCallOutputContentItem with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResponseFunctionCallOutputContentItem with fn from_json(
@@ -522,12 +573,20 @@ pub impl FromJson for AppResponseFunctionCallOutputContentItem with fn from_json
 }
 
 ///|
+pub extend AppResponseFunctionCallOutputContentItem with @json.FromJson::{
+  from_json,
+}
+
+///|
 pub(all) enum AppResponseWebSearchAction {
   AppResponseWebSearchSearch(query~ : String?, queries~ : ArrayView[String]?)
   AppResponseWebSearchOpenPage(url~ : String?)
   AppResponseWebSearchFindInPage(url~ : String?, pattern~ : String?)
   AppResponseWebSearchOther
 } derive(Debug)
+
+///|
+pub extend AppResponseWebSearchAction with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResponseWebSearchAction with fn from_json(value, path) {
@@ -568,3 +627,6 @@ pub impl FromJson for AppResponseWebSearchAction with fn from_json(value, path) 
       raise JsonDecodeError((path, "expected response web search action type"))
   }
 }
+
+///|
+pub extend AppResponseWebSearchAction with @json.FromJson::{from_json}

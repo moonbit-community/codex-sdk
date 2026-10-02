@@ -19,6 +19,9 @@ pub(all) struct AppThreadSectionAppearance {
 } derive(Debug)
 
 ///|
+pub extend AppThreadSectionAppearance with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadSectionAppearance with fn to_json(appearance) {
   let obj : Map[String, Json] = { "icon": Json::null(), "color": Json::null() }
   if appearance.icon is Some(icon) {
@@ -29,6 +32,9 @@ pub impl ToJson for AppThreadSectionAppearance with fn to_json(appearance) {
   }
   Json::object(obj)
 }
+
+///|
+pub extend AppThreadSectionAppearance with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppThreadSectionAppearance with fn from_json(value, path) {
@@ -42,11 +48,17 @@ pub impl FromJson for AppThreadSectionAppearance with fn from_json(value, path) 
 }
 
 ///|
+pub extend AppThreadSectionAppearance with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppThreadSection {
   id : String
   name : String
   appearance : AppThreadSectionAppearance?
 } derive(Debug)
+
+///|
+pub extend AppThreadSection with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadSection with fn from_json(value, path) {
@@ -71,10 +83,16 @@ pub impl FromJson for AppThreadSection with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadSection with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppThreadSectionAppearanceUpdate {
   AppClearThreadSectionAppearance
   AppSetThreadSectionAppearance(AppThreadSectionAppearance)
 } derive(Debug)
+
+///|
+pub extend AppThreadSectionAppearanceUpdate with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadSectionAppearanceUpdate with fn to_json(update) {
@@ -85,10 +103,19 @@ pub impl ToJson for AppThreadSectionAppearanceUpdate with fn to_json(update) {
 }
 
 ///|
+pub extend AppThreadSectionAppearanceUpdate with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadSectionListParams {
   cursor : String?
   limit : UInt?
 } derive(Debug, Default)
+
+///|
+pub extend AppThreadSectionListParams with Debug::{to_repr}
+
+///|
+pub extend AppThreadSectionListParams with Default::{default}
 
 ///|
 pub fn AppThreadSectionListParams::new(
@@ -100,7 +127,7 @@ pub fn AppThreadSectionListParams::new(
 
 ///|
 pub impl ToJson for AppThreadSectionListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_string(obj, "cursor", params.cursor)
   if params.limit is Some(limit) {
     obj.set("limit", limit.to_json())
@@ -109,10 +136,16 @@ pub impl ToJson for AppThreadSectionListParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadSectionListParams with ToJson::{to_json}
+
+///|
 pub struct AppThreadSectionListResponse {
   data : ArrayView[AppThreadSection]
   next_cursor : String?
 } derive(Debug)
+
+///|
+pub extend AppThreadSectionListResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadSectionListResponse with fn from_json(
@@ -129,10 +162,16 @@ pub impl FromJson for AppThreadSectionListResponse with fn from_json(
 }
 
 ///|
+pub extend AppThreadSectionListResponse with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppThreadSectionCreateParams {
   name : String
   appearance : AppThreadSectionAppearanceUpdate?
 } derive(Debug)
+
+///|
+pub extend AppThreadSectionCreateParams with Debug::{to_repr}
 
 ///|
 pub fn AppThreadSectionCreateParams::new(
@@ -152,11 +191,17 @@ pub impl ToJson for AppThreadSectionCreateParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadSectionCreateParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadSectionUpdateParams {
   section_id : String
   name : String
   appearance : AppThreadSectionAppearanceUpdate?
 } derive(Debug)
+
+///|
+pub extend AppThreadSectionUpdateParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadSectionUpdateParams with fn to_json(params) {
@@ -171,9 +216,15 @@ pub impl ToJson for AppThreadSectionUpdateParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadSectionUpdateParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadSectionResponse {
   section : AppThreadSection
 } derive(Debug)
+
+///|
+pub extend AppThreadSectionResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadSectionResponse with fn from_json(value, path) {
@@ -184,9 +235,15 @@ pub impl FromJson for AppThreadSectionResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadSectionResponse with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppThreadSectionDeleteParams {
   section_id : String
 } derive(Debug)
+
+///|
+pub extend AppThreadSectionDeleteParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadSectionDeleteParams with fn to_json(params) {
@@ -194,11 +251,17 @@ pub impl ToJson for AppThreadSectionDeleteParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadSectionDeleteParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadSectionMoveParams {
   thread_id : String
   section_id : AppNullableString
   before_thread_id : AppNullableString?
 } derive(Debug)
+
+///|
+pub extend AppThreadSectionMoveParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadSectionMoveParams with fn to_json(params) {
@@ -209,6 +272,9 @@ pub impl ToJson for AppThreadSectionMoveParams with fn to_json(params) {
   app_put_nullable_string(obj, "beforeThreadId", params.before_thread_id)
   Json::object(obj)
 }
+
+///|
+pub extend AppThreadSectionMoveParams with ToJson::{to_json}
 
 ///|
 pub async fn CodexAppConnection::thread_delete(

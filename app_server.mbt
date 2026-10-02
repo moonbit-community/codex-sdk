@@ -23,6 +23,9 @@ pub struct AppServerOptions {
 } derive(Default)
 
 ///|
+pub extend AppServerOptions with Default::{default}
+
+///|
 pub fn AppServerOptions::new(
   executable_path_override? : String,
   client_info? : AppClientInfo,
@@ -494,6 +497,9 @@ pub struct AppThreadListResponse {
 } derive(Debug)
 
 ///|
+pub extend AppThreadListResponse with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppThreadListResponse with fn from_json(value, path) {
   guard value
     is {
@@ -515,6 +521,9 @@ pub impl FromJson for AppThreadListResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadListResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadStartResponse {
   thread : AppThread
   model : String
@@ -529,9 +538,15 @@ pub struct AppThreadStartResponse {
 } derive(Debug)
 
 ///|
+pub extend AppThreadStartResponse with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppThreadStartResponse with fn from_json(value, path) {
   app_thread_session_response(value, path, "expected thread/start response")
 }
+
+///|
+pub extend AppThreadStartResponse with @json.FromJson::{from_json}
 
 ///|
 pub struct AppThreadResumeResponse {
@@ -546,6 +561,9 @@ pub struct AppThreadResumeResponse {
   sandbox : AppSandboxPolicy
   reasoning_effort : AppReasoningEffort?
 } derive(Debug)
+
+///|
+pub extend AppThreadResumeResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadResumeResponse with fn from_json(value, path) {
@@ -565,6 +583,9 @@ pub impl FromJson for AppThreadResumeResponse with fn from_json(value, path) {
     reasoning_effort: response.reasoning_effort,
   }
 }
+
+///|
+pub extend AppThreadResumeResponse with @json.FromJson::{from_json}
 
 ///|
 fn app_thread_session_response(
@@ -627,6 +648,9 @@ pub struct AppThreadReadResponse {
 } derive(Debug)
 
 ///|
+pub extend AppThreadReadResponse with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppThreadReadResponse with fn from_json(value, path) {
   guard value is { "thread": thread, .. } else {
     raise JsonDecodeError((path, "expected thread/read response"))
@@ -635,9 +659,15 @@ pub impl FromJson for AppThreadReadResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadReadResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppTurnStartResponse {
   turn : AppTurn
 } derive(Debug)
+
+///|
+pub extend AppTurnStartResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppTurnStartResponse with fn from_json(value, path) {
@@ -648,9 +678,15 @@ pub impl FromJson for AppTurnStartResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppTurnStartResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadIdParams {
   thread_id : String
 } derive(Debug)
+
+///|
+pub extend AppThreadIdParams with Debug::{to_repr}
 
 ///|
 pub fn AppThreadIdParams::new(thread_id : String) -> AppThreadIdParams {
@@ -663,10 +699,16 @@ pub impl ToJson for AppThreadIdParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadIdParams with ToJson::{to_json}
+
+///|
 pub struct AppThreadSetNameParams {
   thread_id : String
   name : String
 } derive(Debug)
+
+///|
+pub extend AppThreadSetNameParams with Debug::{to_repr}
 
 ///|
 pub fn AppThreadSetNameParams::new(
@@ -680,6 +722,9 @@ pub fn AppThreadSetNameParams::new(
 pub impl ToJson for AppThreadSetNameParams with fn to_json(params) {
   { "threadId": params.thread_id, "name": params.name }
 }
+
+///|
+pub extend AppThreadSetNameParams with ToJson::{to_json}
 
 ///|
 pub struct AppThreadResumeParams {
@@ -696,6 +741,9 @@ pub struct AppThreadResumeParams {
   developer_instructions : String?
   personality : AppPersonality?
 } derive(Debug)
+
+///|
+pub extend AppThreadResumeParams with Debug::{to_repr}
 
 ///|
 pub fn AppThreadResumeParams::new(
@@ -766,10 +814,16 @@ pub impl ToJson for AppThreadResumeParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadResumeParams with ToJson::{to_json}
+
+///|
 pub struct AppThreadLoadedListParams {
   cursor : String?
   limit : UInt?
 } derive(Debug)
+
+///|
+pub extend AppThreadLoadedListParams with Debug::{to_repr}
 
 ///|
 pub fn AppThreadLoadedListParams::new(
@@ -781,7 +835,7 @@ pub fn AppThreadLoadedListParams::new(
 
 ///|
 pub impl ToJson for AppThreadLoadedListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
     obj.set("cursor", cursor.to_json())
   }
@@ -792,10 +846,16 @@ pub impl ToJson for AppThreadLoadedListParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadLoadedListParams with ToJson::{to_json}
+
+///|
 pub struct AppThreadLoadedListResponse {
   data : ArrayView[String]
   next_cursor : String?
 } derive(Debug)
+
+///|
+pub extend AppThreadLoadedListResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadLoadedListResponse with fn from_json(value, path) {
@@ -809,9 +869,15 @@ pub impl FromJson for AppThreadLoadedListResponse with fn from_json(value, path)
 }
 
 ///|
+pub extend AppThreadLoadedListResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadUnsubscribeResponse {
   status : AppThreadUnsubscribeStatus
 } derive(Debug)
+
+///|
+pub extend AppThreadUnsubscribeResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadUnsubscribeResponse with fn from_json(
@@ -825,11 +891,17 @@ pub impl FromJson for AppThreadUnsubscribeResponse with fn from_json(
 }
 
 ///|
+pub extend AppThreadUnsubscribeResponse with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppThreadUnsubscribeStatus {
   AppThreadNotLoaded
   AppThreadNotSubscribed
   AppThreadUnsubscribed
 } derive(Debug)
+
+///|
+pub extend AppThreadUnsubscribeStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadUnsubscribeStatus with fn from_json(value, path) {
@@ -842,12 +914,18 @@ pub impl FromJson for AppThreadUnsubscribeStatus with fn from_json(value, path) 
 }
 
 ///|
+pub extend AppThreadUnsubscribeStatus with @json.FromJson::{from_json}
+
+///|
 pub struct AppTurnSteerParams {
   thread_id : String
   client_user_message_id : String?
   input : Array[AppUserInput]
   expected_turn_id : String
 } derive(Debug)
+
+///|
+pub extend AppTurnSteerParams with Debug::{to_repr}
 
 ///|
 pub fn AppTurnSteerParams::new(
@@ -871,9 +949,15 @@ pub impl ToJson for AppTurnSteerParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppTurnSteerParams with ToJson::{to_json}
+
+///|
 pub struct AppTurnSteerResponse {
   turn_id : String
 } derive(Debug)
+
+///|
+pub extend AppTurnSteerResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppTurnSteerResponse with fn from_json(value, path) {
@@ -884,10 +968,16 @@ pub impl FromJson for AppTurnSteerResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppTurnSteerResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppSkillsListParams {
   cwds : Array[String]?
   force_reload : Bool?
 } derive(Debug)
+
+///|
+pub extend AppSkillsListParams with Debug::{to_repr}
 
 ///|
 pub fn AppSkillsListParams::new(
@@ -899,13 +989,16 @@ pub fn AppSkillsListParams::new(
 
 ///|
 pub impl ToJson for AppSkillsListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.cwds is Some(cwds) {
     obj.set("cwds", cwds.to_json())
   }
   app_put_true(obj, "forceReload", params.force_reload)
   Json::object(obj)
 }
+
+///|
+pub extend AppSkillsListParams with ToJson::{to_json}
 
 ///|
 pub struct AppSkillMetadata {
@@ -918,6 +1011,9 @@ pub struct AppSkillMetadata {
   scope : AppSkillScope
   enabled : Bool
 } derive(Debug)
+
+///|
+pub extend AppSkillMetadata with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSkillMetadata with fn from_json(value, path) {
@@ -959,12 +1055,18 @@ pub impl FromJson for AppSkillMetadata with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSkillMetadata with @json.FromJson::{from_json}
+
+///|
 pub enum AppSkillScope {
   AppSkillScopeUser
   AppSkillScopeRepo
   AppSkillScopeSystem
   AppSkillScopeAdmin
 } derive(Debug)
+
+///|
+pub extend AppSkillScope with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSkillScope with fn from_json(value, path) {
@@ -978,9 +1080,15 @@ pub impl FromJson for AppSkillScope with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSkillScope with @json.FromJson::{from_json}
+
+///|
 pub struct AppSkillDependencies {
   tools : ArrayView[AppSkillToolDependency]
 } derive(Debug)
+
+///|
+pub extend AppSkillDependencies with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSkillDependencies with fn from_json(value, path) {
@@ -991,6 +1099,9 @@ pub impl FromJson for AppSkillDependencies with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSkillDependencies with @json.FromJson::{from_json}
+
+///|
 pub struct AppSkillToolDependency {
   dep_type : String
   value : String
@@ -999,6 +1110,9 @@ pub struct AppSkillToolDependency {
   command : String?
   url : String?
 } derive(Debug)
+
+///|
+pub extend AppSkillToolDependency with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSkillToolDependency with fn from_json(value, path) {
@@ -1025,10 +1139,16 @@ pub impl FromJson for AppSkillToolDependency with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSkillToolDependency with @json.FromJson::{from_json}
+
+///|
 pub struct AppSkillErrorInfo {
   path : String
   message : String
 } derive(Debug)
+
+///|
+pub extend AppSkillErrorInfo with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSkillErrorInfo with fn from_json(value, path) {
@@ -1039,11 +1159,17 @@ pub impl FromJson for AppSkillErrorInfo with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSkillErrorInfo with @json.FromJson::{from_json}
+
+///|
 pub struct AppSkillsListEntry {
   cwd : String
   skills : ArrayView[AppSkillMetadata]
   errors : ArrayView[AppSkillErrorInfo]
 } derive(Debug)
+
+///|
+pub extend AppSkillsListEntry with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSkillsListEntry with fn from_json(value, path) {
@@ -1058,9 +1184,15 @@ pub impl FromJson for AppSkillsListEntry with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSkillsListEntry with @json.FromJson::{from_json}
+
+///|
 pub struct AppSkillsListResponse {
   data : ArrayView[AppSkillsListEntry]
 } derive(Debug)
+
+///|
+pub extend AppSkillsListResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSkillsListResponse with fn from_json(value, path) {
@@ -1071,12 +1203,18 @@ pub impl FromJson for AppSkillsListResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSkillsListResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppListParams {
   cursor : String?
   limit : UInt?
   thread_id : String?
   force_refetch : Bool?
 } derive(Debug)
+
+///|
+pub extend AppListParams with Debug::{to_repr}
 
 ///|
 pub fn AppListParams::new(
@@ -1090,7 +1228,7 @@ pub fn AppListParams::new(
 
 ///|
 pub impl ToJson for AppListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
     obj.set("cursor", cursor.to_json())
   }
@@ -1105,10 +1243,16 @@ pub impl ToJson for AppListParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppListParams with ToJson::{to_json}
+
+///|
 pub struct AppListResponse {
   data : ArrayView[AppInfo]
   next_cursor : String?
 } derive(Debug)
+
+///|
+pub extend AppListResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppListResponse with fn from_json(value, path) {
@@ -1122,6 +1266,9 @@ pub impl FromJson for AppListResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppListResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppInfo {
   id : String
   name : String
@@ -1131,6 +1278,9 @@ pub struct AppInfo {
   plugin_display_names : ArrayView[String]
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppInfo with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppInfo with fn from_json(value, path) {
@@ -1172,10 +1322,16 @@ pub impl FromJson for AppInfo with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppInfo with @json.FromJson::{from_json}
+
+///|
 pub struct AppConfigReadParams {
   include_layers : Bool
   cwd : String?
 } derive(Debug)
+
+///|
+pub extend AppConfigReadParams with Debug::{to_repr}
 
 ///|
 pub fn AppConfigReadParams::new(
@@ -1193,6 +1349,9 @@ pub impl ToJson for AppConfigReadParams with fn to_json(params) {
   }
   Json::object(obj)
 }
+
+///|
+pub extend AppConfigReadParams with ToJson::{to_json}
 
 ///|
 pub struct AppConfigSnapshot {
@@ -1225,11 +1384,14 @@ pub struct AppConfigSnapshot {
 } derive(Debug)
 
 ///|
+pub extend AppConfigSnapshot with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppConfigSnapshot with fn from_json(value, path) {
   guard value is Object(obj) else {
     raise JsonDecodeError((path, "expected config snapshot"))
   }
-  let additional : Map[String, Json] = {}
+  let additional : Map[String, Json] = Map([])
   obj.each((key, value) => {
     if !app_config_known_key(key) {
       additional.set(key, value)
@@ -1378,9 +1540,15 @@ pub impl FromJson for AppConfigSnapshot with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppConfigSnapshot with @json.FromJson::{from_json}
+
+///|
 pub impl ToJson for AppConfigSnapshot with fn to_json(snapshot) {
   snapshot.raw
 }
+
+///|
+pub extend AppConfigSnapshot with ToJson::{to_json}
 
 ///|
 pub struct AppSandboxWorkspaceWrite {
@@ -1389,6 +1557,9 @@ pub struct AppSandboxWorkspaceWrite {
   exclude_tmpdir_env_var : Bool
   exclude_slash_tmp : Bool
 } derive(Debug)
+
+///|
+pub extend AppSandboxWorkspaceWrite with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSandboxWorkspaceWrite with fn from_json(value, path) {
@@ -1420,10 +1591,16 @@ pub impl FromJson for AppSandboxWorkspaceWrite with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSandboxWorkspaceWrite with @json.FromJson::{from_json}
+
+///|
 pub enum AppForcedLoginMethod {
   AppForcedLoginChatGPT
   AppForcedLoginApi
 } derive(Debug)
+
+///|
+pub extend AppForcedLoginMethod with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppForcedLoginMethod with fn from_json(value, path) {
@@ -1435,11 +1612,17 @@ pub impl FromJson for AppForcedLoginMethod with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppForcedLoginMethod with @json.FromJson::{from_json}
+
+///|
 pub enum AppModelVerbosity {
   AppVerbosityLow
   AppVerbosityMedium
   AppVerbosityHigh
 } derive(Debug)
+
+///|
+pub extend AppModelVerbosity with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppModelVerbosity with fn from_json(value, path) {
@@ -1452,10 +1635,16 @@ pub impl FromJson for AppModelVerbosity with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppModelVerbosity with @json.FromJson::{from_json}
+
+///|
 pub struct AppConfigToolsV2 {
   web_search : AppWebSearchToolConfig?
   view_image : Bool?
 } derive(Debug)
+
+///|
+pub extend AppConfigToolsV2 with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppConfigToolsV2 with fn from_json(value, path) {
@@ -1473,11 +1662,17 @@ pub impl FromJson for AppConfigToolsV2 with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppConfigToolsV2 with @json.FromJson::{from_json}
+
+///|
 pub enum AppWebSearchContextSize {
   AppWebSearchContextLow
   AppWebSearchContextMedium
   AppWebSearchContextHigh
 } derive(Debug)
+
+///|
+pub extend AppWebSearchContextSize with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppWebSearchContextSize with fn from_json(value, path) {
@@ -1490,12 +1685,18 @@ pub impl FromJson for AppWebSearchContextSize with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppWebSearchContextSize with @json.FromJson::{from_json}
+
+///|
 pub struct AppWebSearchLocation {
   country : String?
   region : String?
   city : String?
   timezone : String?
 } derive(Debug)
+
+///|
+pub extend AppWebSearchLocation with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppWebSearchLocation with fn from_json(value, path) {
@@ -1518,11 +1719,17 @@ pub impl FromJson for AppWebSearchLocation with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppWebSearchLocation with @json.FromJson::{from_json}
+
+///|
 pub struct AppWebSearchToolConfig {
   context_size : AppWebSearchContextSize?
   allowed_domains : ArrayView[String]?
   location : AppWebSearchLocation?
 } derive(Debug)
+
+///|
+pub extend AppWebSearchToolConfig with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppWebSearchToolConfig with fn from_json(value, path) {
@@ -1554,6 +1761,9 @@ pub impl FromJson for AppWebSearchToolConfig with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppWebSearchToolConfig with @json.FromJson::{from_json}
+
+///|
 pub struct AppProfileV2 {
   model : String?
   model_provider : String?
@@ -1571,11 +1781,14 @@ pub struct AppProfileV2 {
 } derive(Debug)
 
 ///|
+pub extend AppProfileV2 with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppProfileV2 with fn from_json(value, path) {
   guard value is Object(obj) else {
     raise JsonDecodeError((path, "expected config profile"))
   }
-  let additional : Map[String, Json] = {}
+  let additional : Map[String, Json] = Map([])
   obj.each((key, value) => {
     if !app_profile_known_key(key) {
       additional.set(key, value)
@@ -1656,6 +1869,9 @@ pub impl FromJson for AppProfileV2 with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppProfileV2 with @json.FromJson::{from_json}
+
+///|
 pub struct AppAnalyticsConfig {
   enabled : Bool?
   additional : Map[String, Json]
@@ -1663,11 +1879,14 @@ pub struct AppAnalyticsConfig {
 } derive(Debug)
 
 ///|
+pub extend AppAnalyticsConfig with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppAnalyticsConfig with fn from_json(value, path) {
   guard value is Object(obj) else {
     raise JsonDecodeError((path, "expected analytics config"))
   }
-  let additional : Map[String, Json] = {}
+  let additional : Map[String, Json] = Map([])
   obj.each((key, value) => if key != "enabled" { additional.set(key, value) })
   guard value is { "enabled"? : enabled, .. } else {
     raise JsonDecodeError((path, "expected analytics config"))
@@ -1680,11 +1899,17 @@ pub impl FromJson for AppAnalyticsConfig with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppAnalyticsConfig with @json.FromJson::{from_json}
+
+///|
 pub enum AppToolApproval {
   AppToolApprovalAuto
   AppToolApprovalPrompt
   AppToolApprovalApprove
 } derive(Debug)
+
+///|
+pub extend AppToolApproval with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppToolApproval with fn from_json(value, path) {
@@ -1697,10 +1922,16 @@ pub impl FromJson for AppToolApproval with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppToolApproval with @json.FromJson::{from_json}
+
+///|
 pub struct AppToolConfig {
   enabled : Bool?
   approval_mode : AppToolApproval?
 } derive(Debug)
+
+///|
+pub extend AppToolConfig with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppToolConfig with fn from_json(value, path) {
@@ -1718,9 +1949,15 @@ pub impl FromJson for AppToolConfig with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppToolConfig with @json.FromJson::{from_json}
+
+///|
 pub struct AppToolsConfig {
   tools : Map[String, AppToolConfig]
 } derive(Debug)
+
+///|
+pub extend AppToolsConfig with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppToolsConfig with fn from_json(value, path) {
@@ -1731,6 +1968,9 @@ pub impl FromJson for AppToolsConfig with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppToolsConfig with @json.FromJson::{from_json}
+
+///|
 pub struct AppConnectorConfig {
   enabled : Bool
   destructive_enabled : Bool?
@@ -1739,6 +1979,9 @@ pub struct AppConnectorConfig {
   default_tools_enabled : Bool?
   tools : AppToolsConfig?
 } derive(Debug)
+
+///|
+pub extend AppConnectorConfig with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppConnectorConfig with fn from_json(value, path) {
@@ -1786,11 +2029,17 @@ pub impl FromJson for AppConnectorConfig with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppConnectorConfig with @json.FromJson::{from_json}
+
+///|
 pub struct AppAppsDefaultConfig {
   enabled : Bool
   destructive_enabled : Bool
   open_world_enabled : Bool
 } derive(Debug)
+
+///|
+pub extend AppAppsDefaultConfig with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAppsDefaultConfig with fn from_json(value, path) {
@@ -1817,17 +2066,23 @@ pub impl FromJson for AppAppsDefaultConfig with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppAppsDefaultConfig with @json.FromJson::{from_json}
+
+///|
 pub struct AppAppsConfig {
   default_config : AppAppsDefaultConfig?
   apps : Map[String, AppConnectorConfig]
 } derive(Debug)
 
 ///|
+pub extend AppAppsConfig with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppAppsConfig with fn from_json(value, path) {
   guard value is Object(obj) else {
     raise JsonDecodeError((path, "expected apps config"))
   }
-  let apps : Map[String, AppConnectorConfig] = {}
+  let apps : Map[String, AppConnectorConfig] = Map([])
   obj.each((key, app) => {
     if key != "_default" {
       apps.set(key, @json.from_json(app, path=path.add_key(key)))
@@ -1846,12 +2101,18 @@ pub impl FromJson for AppAppsConfig with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppAppsConfig with @json.FromJson::{from_json}
+
+///|
 pub struct AppConfigLayer {
   name : AppConfigLayerSource
   version : String
   config : Json
   disabled_reason : String?
 } derive(Debug)
+
+///|
+pub extend AppConfigLayer with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppConfigLayer with fn from_json(value, path) {
@@ -1875,6 +2136,9 @@ pub impl FromJson for AppConfigLayer with fn from_json(value, path) {
     ),
   }
 }
+
+///|
+pub extend AppConfigLayer with @json.FromJson::{from_json}
 
 ///|
 fn app_config_known_key(key : String) -> Bool {
@@ -1933,6 +2197,9 @@ pub struct AppConfigReadResponse {
 } derive(Debug)
 
 ///|
+pub extend AppConfigReadResponse with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppConfigReadResponse with fn from_json(value, path) {
   guard value
     is { "config": config, "origins": origins, "layers"? : layers, .. } else {
@@ -1949,11 +2216,17 @@ pub impl FromJson for AppConfigReadResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppConfigReadResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppModelProviderCapabilitiesReadResponse {
   namespace_tools : Bool
   image_generation : Bool
   web_search : Bool
 } derive(Debug)
+
+///|
+pub extend AppModelProviderCapabilitiesReadResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppModelProviderCapabilitiesReadResponse with fn from_json(
@@ -1982,6 +2255,11 @@ pub impl FromJson for AppModelProviderCapabilitiesReadResponse with fn from_json
 }
 
 ///|
+pub extend AppModelProviderCapabilitiesReadResponse with @json.FromJson::{
+  from_json,
+}
+
+///|
 /// Parameters for the app-server `thread/list` request.
 pub struct AppThreadListParams {
   cursor : String?
@@ -1995,6 +2273,9 @@ pub struct AppThreadListParams {
   use_state_db_only : Bool?
   search_term : String?
 } derive(Debug)
+
+///|
+pub extend AppThreadListParams with Debug::{to_repr}
 
 ///|
 pub fn AppThreadListParams::new(
@@ -2025,7 +2306,7 @@ pub fn AppThreadListParams::new(
 
 ///|
 pub impl ToJson for AppThreadListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
     obj.set("cursor", cursor.to_json())
   }
@@ -2058,10 +2339,16 @@ pub impl ToJson for AppThreadListParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadListParams with ToJson::{to_json}
+
+///|
 pub(all) enum AppThreadListCwd {
   OneCwd(String)
   ManyCwds(Array[String])
 } derive(Debug)
+
+///|
+pub extend AppThreadListCwd with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadListCwd with fn to_json(cwd) {
@@ -2072,10 +2359,16 @@ pub impl ToJson for AppThreadListCwd with fn to_json(cwd) {
 }
 
 ///|
+pub extend AppThreadListCwd with ToJson::{to_json}
+
+///|
 pub(all) enum AppThreadSortKey {
   ThreadCreatedAt
   ThreadUpdatedAt
 } derive(Debug)
+
+///|
+pub extend AppThreadSortKey with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadSortKey with fn to_json(key) {
@@ -2086,10 +2379,16 @@ pub impl ToJson for AppThreadSortKey with fn to_json(key) {
 }
 
 ///|
+pub extend AppThreadSortKey with ToJson::{to_json}
+
+///|
 pub(all) enum AppSortDirection {
   SortAsc
   SortDesc
 } derive(Debug)
+
+///|
+pub extend AppSortDirection with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppSortDirection with fn to_json(direction) {
@@ -2098,6 +2397,9 @@ pub impl ToJson for AppSortDirection with fn to_json(direction) {
     SortDesc => "desc".to_json()
   }
 }
+
+///|
+pub extend AppSortDirection with ToJson::{to_json}
 
 ///|
 pub(all) enum AppThreadSourceKind {
@@ -2114,6 +2416,9 @@ pub(all) enum AppThreadSourceKind {
 } derive(Debug)
 
 ///|
+pub extend AppThreadSourceKind with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadSourceKind with fn to_json(kind) {
   match kind {
     SourceCli => "cli".to_json()
@@ -2128,6 +2433,9 @@ pub impl ToJson for AppThreadSourceKind with fn to_json(kind) {
     SourceUnknown => "unknown".to_json()
   }
 }
+
+///|
+pub extend AppThreadSourceKind with ToJson::{to_json}
 
 ///|
 /// Parameters for the app-server `thread/start` request.
@@ -2149,6 +2457,9 @@ pub struct AppThreadStartParams {
   /// Optional client-supplied analytics classification for this thread.
   thread_source : String?
 } derive(Debug)
+
+///|
+pub extend AppThreadStartParams with Debug::{to_repr}
 
 ///|
 pub fn AppThreadStartParams::new(
@@ -2189,7 +2500,7 @@ pub fn AppThreadStartParams::new(
 
 ///|
 pub impl ToJson for AppThreadStartParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.model is Some(model) {
     obj.set("model", model.to_json())
   }
@@ -2235,6 +2546,9 @@ pub impl ToJson for AppThreadStartParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadStartParams with ToJson::{to_json}
+
+///|
 pub(all) enum AppApprovalPolicy {
   AppApprovalUntrusted
   AppApprovalOnFailure
@@ -2248,6 +2562,9 @@ pub(all) enum AppApprovalPolicy {
     mcp_elicitations~ : Bool
   )
 } derive(Debug)
+
+///|
+pub extend AppApprovalPolicy with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppApprovalPolicy with fn to_json(policy) {
@@ -2274,6 +2591,9 @@ pub impl ToJson for AppApprovalPolicy with fn to_json(policy) {
       }
   }
 }
+
+///|
+pub extend AppApprovalPolicy with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppApprovalPolicy with fn from_json(value, path) {
@@ -2317,11 +2637,17 @@ pub impl FromJson for AppApprovalPolicy with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppApprovalPolicy with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppApprovalsReviewer {
   AppReviewerUser
   AppReviewerAutoReview
   AppReviewerGuardianSubagent
 } derive(Debug)
+
+///|
+pub extend AppApprovalsReviewer with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppApprovalsReviewer with fn to_json(reviewer) {
@@ -2331,6 +2657,9 @@ pub impl ToJson for AppApprovalsReviewer with fn to_json(reviewer) {
     AppReviewerGuardianSubagent => "guardian_subagent".to_json()
   }
 }
+
+///|
+pub extend AppApprovalsReviewer with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppApprovalsReviewer with fn from_json(value, path) {
@@ -2343,11 +2672,17 @@ pub impl FromJson for AppApprovalsReviewer with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppApprovalsReviewer with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppPersonality {
   AppNoPersonality
   AppFriendlyPersonality
   AppPragmaticPersonality
 } derive(Debug)
+
+///|
+pub extend AppPersonality with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppPersonality with fn to_json(personality) {
@@ -2359,10 +2694,16 @@ pub impl ToJson for AppPersonality with fn to_json(personality) {
 }
 
 ///|
+pub extend AppPersonality with ToJson::{to_json}
+
+///|
 pub(all) enum AppThreadStartSource {
   AppThreadStartup
   AppThreadClear
 } derive(Debug)
+
+///|
+pub extend AppThreadStartSource with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadStartSource with fn to_json(source) {
@@ -2373,6 +2714,9 @@ pub impl ToJson for AppThreadStartSource with fn to_json(source) {
 }
 
 ///|
+pub extend AppThreadStartSource with ToJson::{to_json}
+
+///|
 pub impl ToJson for SandboxMode with fn to_json(mode) {
   match mode {
     ReadOnly => "read-only".to_json()
@@ -2380,6 +2724,9 @@ pub impl ToJson for SandboxMode with fn to_json(mode) {
     DangerFullAccess => "danger-full-access".to_json()
   }
 }
+
+///|
+pub extend SandboxMode with ToJson::{to_json}
 
 ///|
 pub impl FromJson for SandboxMode with fn from_json(value, path) {
@@ -2392,11 +2739,17 @@ pub impl FromJson for SandboxMode with fn from_json(value, path) {
 }
 
 ///|
+pub extend SandboxMode with @json.FromJson::{from_json}
+
+///|
 /// Parameters for the app-server `thread/read` request.
 pub struct AppThreadReadParams {
   thread_id : String
   include_turns : Bool
 } derive(Debug)
+
+///|
+pub extend AppThreadReadParams with Debug::{to_repr}
 
 ///|
 pub fn AppThreadReadParams::new(
@@ -2410,6 +2763,9 @@ pub fn AppThreadReadParams::new(
 pub impl ToJson for AppThreadReadParams with fn to_json(params) {
   { "threadId": params.thread_id, "includeTurns": params.include_turns }
 }
+
+///|
+pub extend AppThreadReadParams with ToJson::{to_json}
 
 ///|
 /// Parameters for the app-server `turn/start` request.
@@ -2428,6 +2784,9 @@ pub struct AppTurnStartParams {
   personality : AppPersonality?
   output_schema : Json?
 } derive(Debug)
+
+///|
+pub extend AppTurnStartParams with Debug::{to_repr}
 
 ///|
 pub fn AppTurnStartParams::new(
@@ -2501,6 +2860,9 @@ pub impl ToJson for AppTurnStartParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppTurnStartParams with ToJson::{to_json}
+
+///|
 pub(all) enum AppUserInput {
   AppInputText(text~ : String)
   AppInputTextWithElements(
@@ -2516,6 +2878,9 @@ pub(all) enum AppUserInput {
   AppInputSkill(name~ : String, path~ : String)
   AppInputMention(name~ : String, path~ : String)
 } derive(Debug)
+
+///|
+pub extend AppUserInput with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppUserInput with fn to_json(input) {
@@ -2539,6 +2904,9 @@ pub impl ToJson for AppUserInput with fn to_json(input) {
 }
 
 ///|
+pub extend AppUserInput with ToJson::{to_json}
+
+///|
 /// Requested fidelity for image inputs.
 pub(all) enum AppImageDetail {
   AppImageAuto
@@ -2546,6 +2914,9 @@ pub(all) enum AppImageDetail {
   AppImageHigh
   AppImageOriginal
 } derive(Debug)
+
+///|
+pub extend AppImageDetail with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppImageDetail with fn to_json(detail) {
@@ -2556,6 +2927,9 @@ pub impl ToJson for AppImageDetail with fn to_json(detail) {
     AppImageOriginal => "original".to_json()
   }
 }
+
+///|
+pub extend AppImageDetail with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppImageDetail with fn from_json(value, path) {
@@ -2569,10 +2943,16 @@ pub impl FromJson for AppImageDetail with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppImageDetail with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppNetworkAccess {
   AppNetworkRestricted
   AppNetworkEnabled
 } derive(Debug)
+
+///|
+pub extend AppNetworkAccess with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppNetworkAccess with fn to_json(access) {
@@ -2583,6 +2963,9 @@ pub impl ToJson for AppNetworkAccess with fn to_json(access) {
 }
 
 ///|
+pub extend AppNetworkAccess with ToJson::{to_json}
+
+///|
 pub impl FromJson for AppNetworkAccess with fn from_json(value, path) {
   match value {
     String("restricted") => AppNetworkRestricted
@@ -2590,6 +2973,9 @@ pub impl FromJson for AppNetworkAccess with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected network access"))
   }
 }
+
+///|
+pub extend AppNetworkAccess with @json.FromJson::{from_json}
 
 ///|
 pub(all) enum AppSandboxPolicy {
@@ -2603,6 +2989,9 @@ pub(all) enum AppSandboxPolicy {
     exclude_slash_tmp~ : Bool
   )
 } derive(Debug)
+
+///|
+pub extend AppSandboxPolicy with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppSandboxPolicy with fn to_json(policy) {
@@ -2627,6 +3016,9 @@ pub impl ToJson for AppSandboxPolicy with fn to_json(policy) {
       }
   }
 }
+
+///|
+pub extend AppSandboxPolicy with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppSandboxPolicy with fn from_json(value, path) {
@@ -2671,6 +3063,9 @@ pub impl FromJson for AppSandboxPolicy with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSandboxPolicy with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppReasoningEffort {
   AppEffortNone
   AppEffortMinimal
@@ -2683,6 +3078,9 @@ pub(all) enum AppReasoningEffort {
   /// A server-defined reasoning effort not known to this SDK version.
   AppEffortCustom(String)
 } derive(Debug)
+
+///|
+pub extend AppReasoningEffort with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppReasoningEffort with fn to_json(effort) {
@@ -2698,6 +3096,9 @@ pub impl ToJson for AppReasoningEffort with fn to_json(effort) {
     AppEffortCustom(value) => value.to_json()
   }
 }
+
+///|
+pub extend AppReasoningEffort with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppReasoningEffort with fn from_json(value, path) {
@@ -2716,12 +3117,18 @@ pub impl FromJson for AppReasoningEffort with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppReasoningEffort with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppReasoningSummary {
   AppSummaryAuto
   AppSummaryConcise
   AppSummaryDetailed
   AppSummaryNone
 } derive(Debug)
+
+///|
+pub extend AppReasoningSummary with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppReasoningSummary with fn to_json(summary) {
@@ -2732,6 +3139,9 @@ pub impl ToJson for AppReasoningSummary with fn to_json(summary) {
     AppSummaryNone => "none".to_json()
   }
 }
+
+///|
+pub extend AppReasoningSummary with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppReasoningSummary with fn from_json(value, path) {
@@ -2745,11 +3155,17 @@ pub impl FromJson for AppReasoningSummary with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppReasoningSummary with @json.FromJson::{from_json}
+
+///|
 /// Parameters for the app-server `turn/interrupt` request.
 pub struct AppTurnInterruptParams {
   thread_id : String
   turn_id : String
 } derive(Debug)
+
+///|
+pub extend AppTurnInterruptParams with Debug::{to_repr}
 
 ///|
 pub fn AppTurnInterruptParams::new(
@@ -2763,6 +3179,9 @@ pub fn AppTurnInterruptParams::new(
 pub impl ToJson for AppTurnInterruptParams with fn to_json(params) {
   { "threadId": params.thread_id, "turnId": params.turn_id }
 }
+
+///|
+pub extend AppTurnInterruptParams with ToJson::{to_json}
 
 ///|
 /// Call `model/list`.
@@ -2784,6 +3203,9 @@ pub struct AppModelListResponse {
 } derive(Debug)
 
 ///|
+pub extend AppModelListResponse with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppModelListResponse with fn from_json(value, path) {
   guard value is { "data": data, "nextCursor"? : next_cursor, .. } else {
     raise JsonDecodeError((path, "expected model/list response"))
@@ -2795,6 +3217,9 @@ pub impl FromJson for AppModelListResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppModelListResponse with @json.FromJson::{from_json}
+
+///|
 /// Multi-agent runtime advertised by a Codex model.
 pub(all) enum AppMultiAgentVersion {
   AppMultiAgentDisabled
@@ -2802,6 +3227,9 @@ pub(all) enum AppMultiAgentVersion {
   AppMultiAgentV2
   AppMultiAgentCustom(String)
 } derive(Debug)
+
+///|
+pub extend AppMultiAgentVersion with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMultiAgentVersion with fn from_json(value, path) {
@@ -2813,6 +3241,9 @@ pub impl FromJson for AppMultiAgentVersion with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected multi-agent version"))
   }
 }
+
+///|
+pub extend AppMultiAgentVersion with @json.FromJson::{from_json}
 
 ///|
 pub struct AppModel {
@@ -2836,6 +3267,9 @@ pub struct AppModel {
   is_default : Bool
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppModel with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppModel with fn from_json(value, path) {
@@ -2934,12 +3368,18 @@ pub impl FromJson for AppModel with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppModel with @json.FromJson::{from_json}
+
+///|
 pub struct AppModelUpgradeInfo {
   model : String
   upgrade_copy : String?
   model_link : String?
   migration_markdown : String?
 } derive(Debug)
+
+///|
+pub extend AppModelUpgradeInfo with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppModelUpgradeInfo with fn from_json(value, path) {
@@ -2965,9 +3405,15 @@ pub impl FromJson for AppModelUpgradeInfo with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppModelUpgradeInfo with @json.FromJson::{from_json}
+
+///|
 pub struct AppModelAvailabilityNux {
   message : String
 } derive(Debug)
+
+///|
+pub extend AppModelAvailabilityNux with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppModelAvailabilityNux with fn from_json(value, path) {
@@ -2978,11 +3424,17 @@ pub impl FromJson for AppModelAvailabilityNux with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppModelAvailabilityNux with @json.FromJson::{from_json}
+
+///|
 pub struct AppModelServiceTier {
   id : String
   name : String
   description : String
 } derive(Debug)
+
+///|
+pub extend AppModelServiceTier with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppModelServiceTier with fn from_json(value, path) {
@@ -2999,10 +3451,16 @@ pub impl FromJson for AppModelServiceTier with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppModelServiceTier with @json.FromJson::{from_json}
+
+///|
 pub struct AppReasoningEffortOption {
   reasoning_effort : AppReasoningEffort
   description : String
 } derive(Debug)
+
+///|
+pub extend AppReasoningEffortOption with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppReasoningEffortOption with fn from_json(value, path) {
@@ -3024,10 +3482,16 @@ pub impl FromJson for AppReasoningEffortOption with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppReasoningEffortOption with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppInputModality {
   AppTextModality
   AppImageModality
 } derive(Debug)
+
+///|
+pub extend AppInputModality with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppInputModality with fn from_json(value, path) {
@@ -3037,6 +3501,9 @@ pub impl FromJson for AppInputModality with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected input modality"))
   }
 }
+
+///|
+pub extend AppInputModality with @json.FromJson::{from_json}
 
 ///|
 /// Parameters for the app-server `model/list` request.
@@ -3050,6 +3517,9 @@ pub struct AppModelListParams {
 } derive(Debug)
 
 ///|
+pub extend AppModelListParams with Debug::{to_repr}
+
+///|
 pub fn AppModelListParams::new(
   cursor? : String,
   limit? : UInt,
@@ -3060,7 +3530,7 @@ pub fn AppModelListParams::new(
 
 ///|
 pub impl ToJson for AppModelListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
     obj.set("cursor", cursor.to_json())
   }
@@ -3072,6 +3542,9 @@ pub impl ToJson for AppModelListParams with fn to_json(params) {
   }
   Json::object(obj)
 }
+
+///|
+pub extend AppModelListParams with ToJson::{to_json}
 
 ///|
 /// Send one app-server JSON-RPC notification.
@@ -3148,6 +3621,9 @@ pub struct AppServerRequest {
 } derive(Debug)
 
 ///|
+pub extend AppServerRequest with Debug::{to_repr}
+
+///|
 pub enum AppServerRequestDetails {
   AppCommandExecutionApprovalRequest(AppCommandExecutionApprovalRequest)
   AppFileChangeApprovalRequest(AppFileChangeApprovalRequest)
@@ -3161,6 +3637,9 @@ pub enum AppServerRequestDetails {
   /// experimental methods available to request handlers without data loss.
   AppRawServerRequest(rpc_method~ : String, params~ : Json?)
 } derive(Debug)
+
+///|
+pub extend AppServerRequestDetails with Debug::{to_repr}
 
 ///|
 pub(all) enum AppServerResponse {
@@ -3196,6 +3675,9 @@ pub(all) enum AppServerResponse {
   /// JSON-RPC error for a raw or unsupported server-initiated request.
   AppRawServerError(code~ : Int64, message~ : String, data~ : Json?)
 } derive(Debug)
+
+///|
+pub extend AppServerResponse with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppServerResponse with fn to_json(response) {
@@ -3256,6 +3738,9 @@ pub impl ToJson for AppServerResponse with fn to_json(response) {
 }
 
 ///|
+pub extend AppServerResponse with ToJson::{to_json}
+
+///|
 pub(all) struct AppCommandExecutionApprovalRequest {
   kind : AppCommandExecutionApprovalKind
   thread_id : String
@@ -3275,10 +3760,16 @@ pub(all) struct AppCommandExecutionApprovalRequest {
 } derive(Debug)
 
 ///|
+pub extend AppCommandExecutionApprovalRequest with Debug::{to_repr}
+
+///|
 pub(all) enum AppCommandExecutionApprovalKind {
   AppCommandApprovalCommand
   AppCommandApprovalWriteStdin
 } derive(Debug)
+
+///|
+pub extend AppCommandExecutionApprovalKind with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppCommandExecutionApprovalKind with fn from_json(
@@ -3293,12 +3784,18 @@ pub impl FromJson for AppCommandExecutionApprovalKind with fn from_json(
 }
 
 ///|
+pub extend AppCommandExecutionApprovalKind with @json.FromJson::{from_json}
+
+///|
 pub enum AppNetworkApprovalProtocol {
   AppNetworkApprovalHttp
   AppNetworkApprovalHttps
   AppNetworkApprovalSocks5Tcp
   AppNetworkApprovalSocks5Udp
 } derive(Debug)
+
+///|
+pub extend AppNetworkApprovalProtocol with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppNetworkApprovalProtocol with fn from_json(value, path) {
@@ -3312,10 +3809,16 @@ pub impl FromJson for AppNetworkApprovalProtocol with fn from_json(value, path) 
 }
 
 ///|
+pub extend AppNetworkApprovalProtocol with @json.FromJson::{from_json}
+
+///|
 pub struct AppNetworkApprovalContext {
   host : String
   protocol : AppNetworkApprovalProtocol
 } derive(Debug)
+
+///|
+pub extend AppNetworkApprovalContext with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppNetworkApprovalContext with fn from_json(value, path) {
@@ -3326,12 +3829,18 @@ pub impl FromJson for AppNetworkApprovalContext with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppNetworkApprovalContext with @json.FromJson::{from_json}
+
+///|
 pub enum AppCommandAction {
   AppCommandReadAction(command~ : String, name~ : String, path~ : String)
   AppCommandListFilesAction(command~ : String, path~ : String?)
   AppCommandSearchAction(command~ : String, query~ : String?, path~ : String?)
   AppCommandUnknownAction(command~ : String)
 } derive(Debug)
+
+///|
+pub extend AppCommandAction with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppCommandAction with fn from_json(value, path) {
@@ -3368,6 +3877,9 @@ pub impl FromJson for AppCommandAction with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected command action type"))
   }
 }
+
+///|
+pub extend AppCommandAction with @json.FromJson::{from_json}
 
 ///|
 pub impl FromJson for AppCommandExecutionApprovalRequest with fn from_json(
@@ -3449,6 +3961,9 @@ pub impl FromJson for AppCommandExecutionApprovalRequest with fn from_json(
 }
 
 ///|
+pub extend AppCommandExecutionApprovalRequest with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppCommandExecutionApprovalDecision {
   AppCommandAccept
   AppCommandAcceptForSession
@@ -3459,10 +3974,16 @@ pub(all) enum AppCommandExecutionApprovalDecision {
 } derive(Debug)
 
 ///|
+pub extend AppCommandExecutionApprovalDecision with Debug::{to_repr}
+
+///|
 pub(all) enum AppNetworkPolicyRuleAction {
   AppNetworkPolicyAllow
   AppNetworkPolicyDeny
 } derive(Debug)
+
+///|
+pub extend AppNetworkPolicyRuleAction with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppNetworkPolicyRuleAction with fn to_json(action) {
@@ -3471,6 +3992,9 @@ pub impl ToJson for AppNetworkPolicyRuleAction with fn to_json(action) {
     AppNetworkPolicyDeny => "deny".to_json()
   }
 }
+
+///|
+pub extend AppNetworkPolicyRuleAction with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppNetworkPolicyRuleAction with fn from_json(value, path) {
@@ -3482,15 +4006,24 @@ pub impl FromJson for AppNetworkPolicyRuleAction with fn from_json(value, path) 
 }
 
 ///|
+pub extend AppNetworkPolicyRuleAction with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppNetworkPolicyAmendment {
   host : String
   action : AppNetworkPolicyRuleAction
 } derive(Debug)
 
 ///|
+pub extend AppNetworkPolicyAmendment with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppNetworkPolicyAmendment with fn to_json(amendment) {
   { "host": amendment.host, "action": amendment.action }
 }
+
+///|
+pub extend AppNetworkPolicyAmendment with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppNetworkPolicyAmendment with fn from_json(value, path) {
@@ -3499,6 +4032,9 @@ pub impl FromJson for AppNetworkPolicyAmendment with fn from_json(value, path) {
   }
   { host, action: @json.from_json(action, path=path.add_key("action")), }
 }
+
+///|
+pub extend AppNetworkPolicyAmendment with @json.FromJson::{from_json}
 
 ///|
 pub impl ToJson for AppCommandExecutionApprovalDecision with fn to_json(
@@ -3519,6 +4055,9 @@ pub impl ToJson for AppCommandExecutionApprovalDecision with fn to_json(
 }
 
 ///|
+pub extend AppCommandExecutionApprovalDecision with ToJson::{to_json}
+
+///|
 pub(all) struct AppFileChangeApprovalRequest {
   thread_id : String
   turn_id : String
@@ -3528,6 +4067,9 @@ pub(all) struct AppFileChangeApprovalRequest {
   grant_root : String?
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppFileChangeApprovalRequest with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppFileChangeApprovalRequest with fn from_json(
@@ -3558,12 +4100,18 @@ pub impl FromJson for AppFileChangeApprovalRequest with fn from_json(
 }
 
 ///|
+pub extend AppFileChangeApprovalRequest with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppFileChangeApprovalDecision {
   AppFileChangeAccept
   AppFileChangeAcceptForSession
   AppFileChangeDecline
   AppFileChangeCancel
 } derive(Debug)
+
+///|
+pub extend AppFileChangeApprovalDecision with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFileChangeApprovalDecision with fn to_json(decision) {
@@ -3576,6 +4124,9 @@ pub impl ToJson for AppFileChangeApprovalDecision with fn to_json(decision) {
 }
 
 ///|
+pub extend AppFileChangeApprovalDecision with ToJson::{to_json}
+
+///|
 pub(all) struct AppToolRequestUserInputRequest {
   thread_id : String
   turn_id : String
@@ -3585,6 +4136,9 @@ pub(all) struct AppToolRequestUserInputRequest {
   auto_resolution_ms : Int64?
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppToolRequestUserInputRequest with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppToolRequestUserInputRequest with fn from_json(
@@ -3621,6 +4175,9 @@ pub impl FromJson for AppToolRequestUserInputRequest with fn from_json(
 }
 
 ///|
+pub extend AppToolRequestUserInputRequest with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppDynamicToolCallRequest {
   thread_id : String
   turn_id : String
@@ -3630,6 +4187,9 @@ pub(all) struct AppDynamicToolCallRequest {
   arguments : Json
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppDynamicToolCallRequest with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppDynamicToolCallRequest with fn from_json(value, path) {
@@ -3660,6 +4220,9 @@ pub impl FromJson for AppDynamicToolCallRequest with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppDynamicToolCallRequest with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppToolRequestUserInputQuestion {
   id : String
   header : String
@@ -3668,6 +4231,9 @@ pub(all) struct AppToolRequestUserInputQuestion {
   is_secret : Bool
   options : ArrayView[AppToolRequestUserInputOption]?
 } derive(Debug)
+
+///|
+pub extend AppToolRequestUserInputQuestion with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppToolRequestUserInputQuestion with fn from_json(
@@ -3701,15 +4267,30 @@ pub impl FromJson for AppToolRequestUserInputQuestion with fn from_json(
 }
 
 ///|
+pub extend AppToolRequestUserInputQuestion with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppToolRequestUserInputOption {
   label : String
   description : String
 } derive(Debug, FromJson)
 
 ///|
+pub extend AppToolRequestUserInputOption with Debug::{to_repr}
+
+///|
+pub extend AppToolRequestUserInputOption with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppToolRequestUserInputAnswer {
   answers : ArrayView[String]
 } derive(Debug, ToJson)
+
+///|
+pub extend AppToolRequestUserInputAnswer with Debug::{to_repr}
+
+///|
+pub extend AppToolRequestUserInputAnswer with ToJson::{to_json}
 
 ///|
 /// Respond to a server-initiated JSON-RPC request.
@@ -3737,7 +4318,7 @@ async fn CodexAppConnection::send(
   self : CodexAppConnection,
   message : AppClientMessage,
 ) -> Unit {
-  self.outgoing.put(message.to_json())
+  self.outgoing.put(ToJson::to_json(message))
 }
 
 ///|
@@ -3786,12 +4367,21 @@ pub enum AppRequestId {
 } derive(Debug, Eq)
 
 ///|
+pub extend AppRequestId with Debug::{to_repr}
+
+///|
+pub extend AppRequestId with Eq::{not_equal, equal}
+
+///|
 pub impl ToJson for AppRequestId with fn to_json(id) {
   match id {
     StringId(value) => value.to_json()
     IntId(value) => Json::number(value.to_double())
   }
 }
+
+///|
+pub extend AppRequestId with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppRequestId with fn from_json(value, path) {
@@ -3806,6 +4396,9 @@ pub impl FromJson for AppRequestId with fn from_json(value, path) {
       )
   }
 }
+
+///|
+pub extend AppRequestId with @json.FromJson::{from_json}
 
 ///|
 priv struct AppRpcError {
@@ -3867,12 +4460,18 @@ pub(all) enum AppNullableString {
 } derive(Debug)
 
 ///|
+pub extend AppNullableString with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppNullableString with fn to_json(value) {
   match value {
     AppNullableStringNull => Json::null()
     AppNullableStringValue(value) => value.to_json()
   }
 }
+
+///|
+pub extend AppNullableString with ToJson::{to_json}
 
 ///|
 fn app_put_nullable_string(
@@ -3887,7 +4486,7 @@ fn app_put_nullable_string(
 
 ///|
 fn app_env_to_json(env : Map[String, String?]) -> Json {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   for key, value in env {
     match value {
       Some(value) => obj.set(key, value.to_json())
@@ -3962,11 +4561,17 @@ pub(all) struct AppClientInfo {
 } derive(Debug)
 
 ///|
+pub extend AppClientInfo with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppClientInfo with fn to_json(info) {
   let obj : Map[String, Json] = { "name": info.name, "version": info.version }
   app_put_string(obj, "title", info.title)
   Json::object(obj)
 }
+
+///|
+pub extend AppClientInfo with ToJson::{to_json}
 
 ///|
 pub(all) struct AppInitializeCapabilities {
@@ -3979,6 +4584,9 @@ pub(all) struct AppInitializeCapabilities {
   /// MCP extension settings declared by this client.
   extensions : Map[String, Json]?
 } derive(Debug)
+
+///|
+pub extend AppInitializeCapabilities with Debug::{to_repr}
 
 ///|
 pub fn AppInitializeCapabilities::new(
@@ -4020,10 +4628,16 @@ pub impl ToJson for AppInitializeCapabilities with fn to_json(capabilities) {
 }
 
 ///|
+pub extend AppInitializeCapabilities with ToJson::{to_json}
+
+///|
 pub(all) struct AppInitializeParams {
   client_info : AppClientInfo
   capabilities : AppInitializeCapabilities?
 } derive(Debug)
+
+///|
+pub extend AppInitializeParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppInitializeParams with fn to_json(params) {
@@ -4034,6 +4648,9 @@ pub impl ToJson for AppInitializeParams with fn to_json(params) {
   }
   Json::object(obj)
 }
+
+///|
+pub extend AppInitializeParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppThreadForkParams {
@@ -4053,6 +4670,9 @@ pub(all) struct AppThreadForkParams {
   ephemeral : Bool?
   thread_source : String?
 } derive(Debug)
+
+///|
+pub extend AppThreadForkParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadForkParams with fn to_json(params) {
@@ -4082,6 +4702,9 @@ pub impl ToJson for AppThreadForkParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadForkParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadMetadataGitInfoUpdateParams {
   sha : AppNullableString?
   branch : AppNullableString?
@@ -4089,8 +4712,11 @@ pub(all) struct AppThreadMetadataGitInfoUpdateParams {
 } derive(Debug)
 
 ///|
+pub extend AppThreadMetadataGitInfoUpdateParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadMetadataGitInfoUpdateParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_nullable_string(obj, "sha", params.sha)
   app_put_nullable_string(obj, "branch", params.branch)
   app_put_nullable_string(obj, "originUrl", params.origin_url)
@@ -4098,10 +4724,16 @@ pub impl ToJson for AppThreadMetadataGitInfoUpdateParams with fn to_json(params)
 }
 
 ///|
+pub extend AppThreadMetadataGitInfoUpdateParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadMetadataUpdateParams {
   thread_id : String
   git_info : AppThreadMetadataGitInfoUpdateParams?
 } derive(Debug)
+
+///|
+pub extend AppThreadMetadataUpdateParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadMetadataUpdateParams with fn to_json(params) {
@@ -4113,10 +4745,16 @@ pub impl ToJson for AppThreadMetadataUpdateParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadMetadataUpdateParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadShellCommandParams {
   thread_id : String
   command : String
 } derive(Debug)
+
+///|
+pub extend AppThreadShellCommandParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadShellCommandParams with fn to_json(params) {
@@ -4124,10 +4762,16 @@ pub impl ToJson for AppThreadShellCommandParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadShellCommandParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadApproveGuardianDeniedActionParams {
   thread_id : String
   event : Json
 } derive(Debug)
+
+///|
+pub extend AppThreadApproveGuardianDeniedActionParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadApproveGuardianDeniedActionParams with fn to_json(
@@ -4137,15 +4781,24 @@ pub impl ToJson for AppThreadApproveGuardianDeniedActionParams with fn to_json(
 }
 
 ///|
+pub extend AppThreadApproveGuardianDeniedActionParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadRollbackParams {
   thread_id : String
   num_turns : UInt
 } derive(Debug)
 
 ///|
+pub extend AppThreadRollbackParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadRollbackParams with fn to_json(params) {
   { "threadId": params.thread_id, "numTurns": params.num_turns }
 }
+
+///|
+pub extend AppThreadRollbackParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppThreadInjectItemsParams {
@@ -4154,9 +4807,15 @@ pub(all) struct AppThreadInjectItemsParams {
 } derive(Debug)
 
 ///|
+pub extend AppThreadInjectItemsParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadInjectItemsParams with fn to_json(params) {
   { "threadId": params.thread_id, "items": params.items }
 }
+
+///|
+pub extend AppThreadInjectItemsParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppHooksListParams {
@@ -4164,11 +4823,17 @@ pub(all) struct AppHooksListParams {
 } derive(Debug)
 
 ///|
+pub extend AppHooksListParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppHooksListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_strings(obj, "cwds", params.cwds)
   Json::object(obj)
 }
+
+///|
+pub extend AppHooksListParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppMarketplaceAddParams {
@@ -4176,6 +4841,9 @@ pub(all) struct AppMarketplaceAddParams {
   ref_name : String?
   sparse_paths : Array[String]?
 } derive(Debug)
+
+///|
+pub extend AppMarketplaceAddParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppMarketplaceAddParams with fn to_json(params) {
@@ -4186,9 +4854,15 @@ pub impl ToJson for AppMarketplaceAddParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppMarketplaceAddParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppMarketplaceRemoveParams {
   marketplace_name : String
 } derive(Debug)
+
+///|
+pub extend AppMarketplaceRemoveParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppMarketplaceRemoveParams with fn to_json(params) {
@@ -4196,16 +4870,25 @@ pub impl ToJson for AppMarketplaceRemoveParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppMarketplaceRemoveParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppMarketplaceUpgradeParams {
   marketplace_name : String?
 } derive(Debug)
 
 ///|
+pub extend AppMarketplaceUpgradeParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppMarketplaceUpgradeParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_string(obj, "marketplaceName", params.marketplace_name)
   Json::object(obj)
 }
+
+///|
+pub extend AppMarketplaceUpgradeParams with ToJson::{to_json}
 
 ///|
 pub(all) enum AppPluginListMarketplaceKind {
@@ -4213,6 +4896,9 @@ pub(all) enum AppPluginListMarketplaceKind {
   AppPluginMarketplaceWorkspaceDirectory
   AppPluginMarketplaceSharedWithMe
 } derive(Debug)
+
+///|
+pub extend AppPluginListMarketplaceKind with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppPluginListMarketplaceKind with fn to_json(kind) {
@@ -4224,14 +4910,20 @@ pub impl ToJson for AppPluginListMarketplaceKind with fn to_json(kind) {
 }
 
 ///|
+pub extend AppPluginListMarketplaceKind with ToJson::{to_json}
+
+///|
 pub(all) struct AppPluginListParams {
   cwds : Array[String]?
   marketplace_kinds : Array[AppPluginListMarketplaceKind]?
 } derive(Debug)
 
 ///|
+pub extend AppPluginListParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppPluginListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_strings(obj, "cwds", params.cwds)
   if params.marketplace_kinds is Some(value) {
     obj.set("marketplaceKinds", value.to_json())
@@ -4240,11 +4932,17 @@ pub impl ToJson for AppPluginListParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppPluginListParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppPluginReadParams {
   marketplace_path : String?
   remote_marketplace_name : String?
   plugin_name : String
 } derive(Debug)
+
+///|
+pub extend AppPluginReadParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppPluginReadParams with fn to_json(params) {
@@ -4255,14 +4953,23 @@ pub impl ToJson for AppPluginReadParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppPluginReadParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppFsPathParams {
   path : String
 } derive(Debug)
 
 ///|
+pub extend AppFsPathParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppFsPathParams with fn to_json(params) {
   { "path": params.path }
 }
+
+///|
+pub extend AppFsPathParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppFsWriteFileParams {
@@ -4271,15 +4978,24 @@ pub(all) struct AppFsWriteFileParams {
 } derive(Debug)
 
 ///|
+pub extend AppFsWriteFileParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppFsWriteFileParams with fn to_json(params) {
   { "path": params.path, "dataBase64": params.data_base64 }
 }
+
+///|
+pub extend AppFsWriteFileParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppFsCreateDirectoryParams {
   path : String
   recursive : Bool?
 } derive(Debug)
+
+///|
+pub extend AppFsCreateDirectoryParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFsCreateDirectoryParams with fn to_json(params) {
@@ -4289,11 +5005,17 @@ pub impl ToJson for AppFsCreateDirectoryParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppFsCreateDirectoryParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppFsRemoveParams {
   path : String
   recursive : Bool?
   force : Bool?
 } derive(Debug)
+
+///|
+pub extend AppFsRemoveParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFsRemoveParams with fn to_json(params) {
@@ -4304,11 +5026,17 @@ pub impl ToJson for AppFsRemoveParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppFsRemoveParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppFsCopyParams {
   source_path : String
   destination_path : String
   recursive : Bool?
 } derive(Debug)
+
+///|
+pub extend AppFsCopyParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFsCopyParams with fn to_json(params) {
@@ -4321,10 +5049,16 @@ pub impl ToJson for AppFsCopyParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppFsCopyParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppFsWatchParams {
   watch_id : String
   path : String
 } derive(Debug)
+
+///|
+pub extend AppFsWatchParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFsWatchParams with fn to_json(params) {
@@ -4332,9 +5066,15 @@ pub impl ToJson for AppFsWatchParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppFsWatchParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppFsUnwatchParams {
   watch_id : String
 } derive(Debug)
+
+///|
+pub extend AppFsUnwatchParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFsUnwatchParams with fn to_json(params) {
@@ -4342,11 +5082,17 @@ pub impl ToJson for AppFsUnwatchParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppFsUnwatchParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppSkillsConfigWriteParams {
   path : String?
   name : String?
   enabled : Bool
 } derive(Debug)
+
+///|
+pub extend AppSkillsConfigWriteParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppSkillsConfigWriteParams with fn to_json(params) {
@@ -4357,11 +5103,17 @@ pub impl ToJson for AppSkillsConfigWriteParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppSkillsConfigWriteParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppPluginInstallParams {
   marketplace_path : String?
   remote_marketplace_name : String?
   plugin_name : String
 } derive(Debug)
+
+///|
+pub extend AppPluginInstallParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppPluginInstallParams with fn to_json(params) {
@@ -4372,14 +5124,23 @@ pub impl ToJson for AppPluginInstallParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppPluginInstallParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppPluginUninstallParams {
   plugin_id : String
 } derive(Debug)
 
 ///|
+pub extend AppPluginUninstallParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppPluginUninstallParams with fn to_json(params) {
   { "pluginId": params.plugin_id }
 }
+
+///|
+pub extend AppPluginUninstallParams with ToJson::{to_json}
 
 ///|
 pub(all) enum AppReviewTarget {
@@ -4388,6 +5149,9 @@ pub(all) enum AppReviewTarget {
   AppReviewCommit(sha~ : String, title~ : String?)
   AppReviewCustom(instructions~ : String)
 } derive(Debug)
+
+///|
+pub extend AppReviewTarget with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppReviewTarget with fn to_json(target) {
@@ -4408,10 +5172,16 @@ pub impl ToJson for AppReviewTarget with fn to_json(target) {
 }
 
 ///|
+pub extend AppReviewTarget with ToJson::{to_json}
+
+///|
 pub(all) enum AppReviewDelivery {
   AppReviewInline
   AppReviewDetached
 } derive(Debug)
+
+///|
+pub extend AppReviewDelivery with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppReviewDelivery with fn to_json(delivery) {
@@ -4422,11 +5192,17 @@ pub impl ToJson for AppReviewDelivery with fn to_json(delivery) {
 }
 
 ///|
+pub extend AppReviewDelivery with ToJson::{to_json}
+
+///|
 pub(all) struct AppReviewStartParams {
   thread_id : String
   target : AppReviewTarget
   delivery : AppReviewDelivery?
 } derive(Debug)
+
+///|
+pub extend AppReviewStartParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppReviewStartParams with fn to_json(params) {
@@ -4441,23 +5217,35 @@ pub impl ToJson for AppReviewStartParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppReviewStartParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppCursorLimitParams {
   cursor : String?
   limit : UInt?
 } derive(Debug)
 
 ///|
+pub extend AppCursorLimitParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppCursorLimitParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_string(obj, "cursor", params.cursor)
   app_put_uint(obj, "limit", params.limit)
   Json::object(obj)
 }
 
 ///|
+pub extend AppCursorLimitParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppExperimentalFeatureEnablementSetParams {
   enablement : Map[String, Bool]
 } derive(Debug)
+
+///|
+pub extend AppExperimentalFeatureEnablementSetParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppExperimentalFeatureEnablementSetParams with fn to_json(
@@ -4467,11 +5255,17 @@ pub impl ToJson for AppExperimentalFeatureEnablementSetParams with fn to_json(
 }
 
 ///|
+pub extend AppExperimentalFeatureEnablementSetParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppMcpServerOauthLoginParams {
   name : String
   scopes : Array[String]?
   timeout_secs : Int64?
 } derive(Debug)
+
+///|
+pub extend AppMcpServerOauthLoginParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppMcpServerOauthLoginParams with fn to_json(params) {
@@ -4482,10 +5276,16 @@ pub impl ToJson for AppMcpServerOauthLoginParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppMcpServerOauthLoginParams with ToJson::{to_json}
+
+///|
 pub(all) enum AppMcpServerStatusDetail {
   AppMcpServerStatusFull
   AppMcpServerStatusToolsAndAuthOnly
 } derive(Debug)
+
+///|
+pub extend AppMcpServerStatusDetail with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppMcpServerStatusDetail with fn to_json(detail) {
@@ -4496,6 +5296,9 @@ pub impl ToJson for AppMcpServerStatusDetail with fn to_json(detail) {
 }
 
 ///|
+pub extend AppMcpServerStatusDetail with ToJson::{to_json}
+
+///|
 pub(all) struct AppMcpServerStatusListParams {
   cursor : String?
   limit : UInt?
@@ -4503,8 +5306,11 @@ pub(all) struct AppMcpServerStatusListParams {
 } derive(Debug)
 
 ///|
+pub extend AppMcpServerStatusListParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppMcpServerStatusListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_string(obj, "cursor", params.cursor)
   app_put_uint(obj, "limit", params.limit)
   if params.detail is Some(value) {
@@ -4514,11 +5320,17 @@ pub impl ToJson for AppMcpServerStatusListParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppMcpServerStatusListParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppMcpResourceReadParams {
   thread_id : String?
   server : String
   uri : String
 } derive(Debug)
+
+///|
+pub extend AppMcpResourceReadParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppMcpResourceReadParams with fn to_json(params) {
@@ -4528,6 +5340,9 @@ pub impl ToJson for AppMcpResourceReadParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppMcpResourceReadParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppMcpServerToolCallParams {
   thread_id : String
   server : String
@@ -4535,6 +5350,9 @@ pub(all) struct AppMcpServerToolCallParams {
   arguments : Json?
   meta : Json?
 } derive(Debug)
+
+///|
+pub extend AppMcpServerToolCallParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppMcpServerToolCallParams with fn to_json(params) {
@@ -4549,10 +5367,16 @@ pub impl ToJson for AppMcpServerToolCallParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppMcpServerToolCallParams with ToJson::{to_json}
+
+///|
 pub(all) enum AppWindowsSandboxSetupMode {
   AppWindowsSandboxElevated
   AppWindowsSandboxUnelevated
 } derive(Debug)
+
+///|
+pub extend AppWindowsSandboxSetupMode with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppWindowsSandboxSetupMode with fn to_json(mode) {
@@ -4561,6 +5385,9 @@ pub impl ToJson for AppWindowsSandboxSetupMode with fn to_json(mode) {
     AppWindowsSandboxUnelevated => "unelevated".to_json()
   }
 }
+
+///|
+pub extend AppWindowsSandboxSetupMode with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppWindowsSandboxSetupMode with fn from_json(value, path) {
@@ -4572,10 +5399,16 @@ pub impl FromJson for AppWindowsSandboxSetupMode with fn from_json(value, path) 
 }
 
 ///|
+pub extend AppWindowsSandboxSetupMode with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppWindowsSandboxSetupStartParams {
   mode : AppWindowsSandboxSetupMode
   cwd : String?
 } derive(Debug)
+
+///|
+pub extend AppWindowsSandboxSetupStartParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppWindowsSandboxSetupStartParams with fn to_json(params) {
@@ -4583,6 +5416,9 @@ pub impl ToJson for AppWindowsSandboxSetupStartParams with fn to_json(params) {
   app_put_string(obj, "cwd", params.cwd)
   Json::object(obj)
 }
+
+///|
+pub extend AppWindowsSandboxSetupStartParams with ToJson::{to_json}
 
 ///|
 pub(all) enum AppLoginAccountParams {
@@ -4595,6 +5431,9 @@ pub(all) enum AppLoginAccountParams {
     chatgpt_plan_type~ : String?
   )
 } derive(Debug)
+
+///|
+pub extend AppLoginAccountParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppLoginAccountParams with fn to_json(params) {
@@ -4623,9 +5462,15 @@ pub impl ToJson for AppLoginAccountParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppLoginAccountParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppCancelLoginAccountParams {
   login_id : String
 } derive(Debug)
+
+///|
+pub extend AppCancelLoginAccountParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppCancelLoginAccountParams with fn to_json(params) {
@@ -4633,10 +5478,16 @@ pub impl ToJson for AppCancelLoginAccountParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppCancelLoginAccountParams with ToJson::{to_json}
+
+///|
 pub(all) enum AppAddCreditsNudgeKind {
   AppNudgeCredits
   AppNudgeUsageLimit
 } derive(Debug)
+
+///|
+pub extend AppAddCreditsNudgeKind with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppAddCreditsNudgeKind with fn to_json(kind) {
@@ -4647,14 +5498,23 @@ pub impl ToJson for AppAddCreditsNudgeKind with fn to_json(kind) {
 }
 
 ///|
+pub extend AppAddCreditsNudgeKind with ToJson::{to_json}
+
+///|
 pub(all) struct AppSendAddCreditsNudgeEmailParams {
   kind : AppAddCreditsNudgeKind
 } derive(Debug)
 
 ///|
+pub extend AppSendAddCreditsNudgeEmailParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppSendAddCreditsNudgeEmailParams with fn to_json(params) {
   { "creditType": params.kind }
 }
+
+///|
+pub extend AppSendAddCreditsNudgeEmailParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppFeedbackUploadParams {
@@ -4665,6 +5525,9 @@ pub(all) struct AppFeedbackUploadParams {
   extra_log_files : Array[String]?
   tags : Map[String, String]?
 } derive(Debug)
+
+///|
+pub extend AppFeedbackUploadParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFeedbackUploadParams with fn to_json(params) {
@@ -4682,15 +5545,24 @@ pub impl ToJson for AppFeedbackUploadParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppFeedbackUploadParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppCommandExecTerminalSize {
   rows : UInt16
   cols : UInt16
 } derive(Debug)
 
 ///|
+pub extend AppCommandExecTerminalSize with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppCommandExecTerminalSize with fn to_json(size) {
   { "rows": size.rows, "cols": size.cols }
 }
+
+///|
+pub extend AppCommandExecTerminalSize with ToJson::{to_json}
 
 ///|
 pub(all) struct AppCommandExecParams {
@@ -4708,6 +5580,9 @@ pub(all) struct AppCommandExecParams {
   size : AppCommandExecTerminalSize?
   sandbox_policy : AppSandboxPolicy?
 } derive(Debug)
+
+///|
+pub extend AppCommandExecParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppCommandExecParams with fn to_json(params) {
@@ -4734,11 +5609,17 @@ pub impl ToJson for AppCommandExecParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppCommandExecParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppCommandExecWriteParams {
   process_id : String
   delta_base64 : String?
   close_stdin : Bool?
 } derive(Debug)
+
+///|
+pub extend AppCommandExecWriteParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppCommandExecWriteParams with fn to_json(params) {
@@ -4749,14 +5630,23 @@ pub impl ToJson for AppCommandExecWriteParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppCommandExecWriteParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppCommandExecProcessParams {
   process_id : String
 } derive(Debug)
 
 ///|
+pub extend AppCommandExecProcessParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppCommandExecProcessParams with fn to_json(params) {
   { "processId": params.process_id }
 }
+
+///|
+pub extend AppCommandExecProcessParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppCommandExecResizeParams {
@@ -4765,9 +5655,15 @@ pub(all) struct AppCommandExecResizeParams {
 } derive(Debug)
 
 ///|
+pub extend AppCommandExecResizeParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppCommandExecResizeParams with fn to_json(params) {
   { "processId": params.process_id, "size": params.size }
 }
+
+///|
+pub extend AppCommandExecResizeParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppExternalAgentConfigDetectParams {
@@ -4776,12 +5672,18 @@ pub(all) struct AppExternalAgentConfigDetectParams {
 } derive(Debug)
 
 ///|
+pub extend AppExternalAgentConfigDetectParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppExternalAgentConfigDetectParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_true(obj, "includeHome", params.include_home)
   app_put_strings(obj, "cwds", params.cwds)
   Json::object(obj)
 }
+
+///|
+pub extend AppExternalAgentConfigDetectParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppExternalAgentConfigMigrationItem {
@@ -4790,6 +5692,9 @@ pub(all) struct AppExternalAgentConfigMigrationItem {
   cwd : String?
   details : AppMigrationDetails?
 } derive(Debug)
+
+///|
+pub extend AppExternalAgentConfigMigrationItem with Debug::{to_repr}
 
 ///|
 pub(all) enum AppExternalAgentConfigMigrationItemType {
@@ -4803,6 +5708,9 @@ pub(all) enum AppExternalAgentConfigMigrationItemType {
   AppMigrationCommands
   AppMigrationSessions
 } derive(Debug)
+
+///|
+pub extend AppExternalAgentConfigMigrationItemType with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppExternalAgentConfigMigrationItemType with fn to_json(
@@ -4820,6 +5728,9 @@ pub impl ToJson for AppExternalAgentConfigMigrationItemType with fn to_json(
     AppMigrationSessions => "SESSIONS".to_json()
   }
 }
+
+///|
+pub extend AppExternalAgentConfigMigrationItemType with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppExternalAgentConfigMigrationItemType with fn from_json(
@@ -4844,6 +5755,11 @@ pub impl FromJson for AppExternalAgentConfigMigrationItemType with fn from_json(
 }
 
 ///|
+pub extend AppExternalAgentConfigMigrationItemType with @json.FromJson::{
+  from_json,
+}
+
+///|
 pub(all) struct AppMigrationDetails {
   plugins : ArrayView[AppPluginsMigration]
   sessions : ArrayView[AppSessionMigration]
@@ -4852,6 +5768,9 @@ pub(all) struct AppMigrationDetails {
   subagents : ArrayView[AppNamedMigration]
   commands : ArrayView[AppNamedMigration]
 } derive(Debug)
+
+///|
+pub extend AppMigrationDetails with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppMigrationDetails with fn to_json(details) {
@@ -4864,6 +5783,9 @@ pub impl ToJson for AppMigrationDetails with fn to_json(details) {
     "commands": details.commands,
   }
 }
+
+///|
+pub extend AppMigrationDetails with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppMigrationDetails with fn from_json(value, path) {
@@ -4908,10 +5830,16 @@ pub impl FromJson for AppMigrationDetails with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMigrationDetails with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppPluginsMigration {
   marketplace_name : String
   plugin_names : ArrayView[String]
 } derive(Debug)
+
+///|
+pub extend AppPluginsMigration with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppPluginsMigration with fn to_json(migration) {
@@ -4920,6 +5848,9 @@ pub impl ToJson for AppPluginsMigration with fn to_json(migration) {
     "pluginNames": migration.plugin_names,
   }
 }
+
+///|
+pub extend AppPluginsMigration with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppPluginsMigration with fn from_json(value, path) {
@@ -4941,11 +5872,17 @@ pub impl FromJson for AppPluginsMigration with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginsMigration with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppSessionMigration {
   path : String
   cwd : String
   title : String?
 } derive(Debug)
+
+///|
+pub extend AppSessionMigration with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppSessionMigration with fn to_json(migration) {
@@ -4956,6 +5893,9 @@ pub impl ToJson for AppSessionMigration with fn to_json(migration) {
   }
   Json::object(obj)
 }
+
+///|
+pub extend AppSessionMigration with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppSessionMigration with fn from_json(value, path) {
@@ -4976,14 +5916,23 @@ pub impl FromJson for AppSessionMigration with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSessionMigration with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppNamedMigration {
   name : String
 } derive(Debug)
 
 ///|
+pub extend AppNamedMigration with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppNamedMigration with fn to_json(migration) {
   { "name": migration.name }
 }
+
+///|
+pub extend AppNamedMigration with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppNamedMigration with fn from_json(value, path) {
@@ -4992,6 +5941,9 @@ pub impl FromJson for AppNamedMigration with fn from_json(value, path) {
   }
   { name, }
 }
+
+///|
+pub extend AppNamedMigration with @json.FromJson::{from_json}
 
 ///|
 pub impl ToJson for AppExternalAgentConfigMigrationItem with fn to_json(item) {
@@ -5008,9 +5960,15 @@ pub impl ToJson for AppExternalAgentConfigMigrationItem with fn to_json(item) {
 }
 
 ///|
+pub extend AppExternalAgentConfigMigrationItem with ToJson::{to_json}
+
+///|
 pub(all) struct AppExternalAgentConfigImportParams {
   migration_items : Array[AppExternalAgentConfigMigrationItem]
 } derive(Debug)
+
+///|
+pub extend AppExternalAgentConfigImportParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppExternalAgentConfigImportParams with fn to_json(params) {
@@ -5018,10 +5976,16 @@ pub impl ToJson for AppExternalAgentConfigImportParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppExternalAgentConfigImportParams with ToJson::{to_json}
+
+///|
 pub(all) enum AppMergeStrategy {
   AppMergeReplace
   AppMergeUpsert
 } derive(Debug)
+
+///|
+pub extend AppMergeStrategy with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppMergeStrategy with fn to_json(strategy) {
@@ -5032,11 +5996,17 @@ pub impl ToJson for AppMergeStrategy with fn to_json(strategy) {
 }
 
 ///|
+pub extend AppMergeStrategy with ToJson::{to_json}
+
+///|
 pub(all) struct AppConfigEdit {
   key_path : String
   value : Json
   merge_strategy : AppMergeStrategy
 } derive(Debug)
+
+///|
+pub extend AppConfigEdit with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppConfigEdit with fn to_json(edit) {
@@ -5048,6 +6018,9 @@ pub impl ToJson for AppConfigEdit with fn to_json(edit) {
 }
 
 ///|
+pub extend AppConfigEdit with ToJson::{to_json}
+
+///|
 pub(all) struct AppConfigValueWriteParams {
   key_path : String
   value : Json
@@ -5055,6 +6028,9 @@ pub(all) struct AppConfigValueWriteParams {
   file_path : String?
   expected_version : String?
 } derive(Debug)
+
+///|
+pub extend AppConfigValueWriteParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppConfigValueWriteParams with fn to_json(params) {
@@ -5069,12 +6045,18 @@ pub impl ToJson for AppConfigValueWriteParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppConfigValueWriteParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppConfigBatchWriteParams {
   edits : Array[AppConfigEdit]
   file_path : String?
   expected_version : String?
   reload_user_config : Bool?
 } derive(Debug)
+
+///|
+pub extend AppConfigBatchWriteParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppConfigBatchWriteParams with fn to_json(params) {
@@ -5086,9 +6068,15 @@ pub impl ToJson for AppConfigBatchWriteParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppConfigBatchWriteParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppAccountReadParams {
   refresh_token : Bool
 } derive(Debug)
+
+///|
+pub extend AppAccountReadParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppAccountReadParams with fn to_json(params) {
@@ -5096,11 +6084,17 @@ pub impl ToJson for AppAccountReadParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppAccountReadParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppFuzzyFileSearchParams {
   query : String
   roots : Array[String]
   cancellation_token : String?
 } derive(Debug)
+
+///|
+pub extend AppFuzzyFileSearchParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFuzzyFileSearchParams with fn to_json(params) {
@@ -5111,6 +6105,9 @@ pub impl ToJson for AppFuzzyFileSearchParams with fn to_json(params) {
   }
   Json::object(obj)
 }
+
+///|
+pub extend AppFuzzyFileSearchParams with ToJson::{to_json}
 
 ///|
 /// Send an arbitrary app-server request and return its raw JSON result.
@@ -5152,6 +6149,9 @@ pub struct AppInitializeResponse {
 } derive(Debug)
 
 ///|
+pub extend AppInitializeResponse with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppInitializeResponse with fn from_json(value, path) {
   guard value
     is {
@@ -5167,6 +6167,9 @@ pub impl FromJson for AppInitializeResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppInitializeResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadForkResponse {
   thread : AppThread
   model : String
@@ -5179,6 +6182,9 @@ pub struct AppThreadForkResponse {
   sandbox : AppSandboxPolicy
   reasoning_effort : AppReasoningEffort?
 } derive(Debug)
+
+///|
+pub extend AppThreadForkResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadForkResponse with fn from_json(value, path) {
@@ -5200,9 +6206,15 @@ pub impl FromJson for AppThreadForkResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadForkResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadMetadataUpdateResponse {
   thread : AppThread
 } derive(Debug)
+
+///|
+pub extend AppThreadMetadataUpdateResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadMetadataUpdateResponse with fn from_json(
@@ -5216,9 +6228,15 @@ pub impl FromJson for AppThreadMetadataUpdateResponse with fn from_json(
 }
 
 ///|
+pub extend AppThreadMetadataUpdateResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadRollbackResponse {
   thread : AppThread
 } derive(Debug)
+
+///|
+pub extend AppThreadRollbackResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadRollbackResponse with fn from_json(value, path) {
@@ -5229,10 +6247,16 @@ pub impl FromJson for AppThreadRollbackResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadRollbackResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppHookErrorInfo {
   path : String
   message : String
 } derive(Debug)
+
+///|
+pub extend AppHookErrorInfo with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookErrorInfo with fn from_json(value, path) {
@@ -5241,6 +6265,9 @@ pub impl FromJson for AppHookErrorInfo with fn from_json(value, path) {
   }
   { path: hook_path, message, }
 }
+
+///|
+pub extend AppHookErrorInfo with @json.FromJson::{from_json}
 
 ///|
 pub struct AppHookMetadata {
@@ -5263,6 +6290,9 @@ pub struct AppHookMetadata {
 } derive(Debug)
 
 ///|
+pub extend AppHookMetadata with Debug::{to_repr}
+
+///|
 pub enum AppHookEventName {
   AppHookPreToolUse
   AppHookPermissionRequest
@@ -5273,6 +6303,9 @@ pub enum AppHookEventName {
   AppHookUserPromptSubmit
   AppHookStop
 } derive(Debug)
+
+///|
+pub extend AppHookEventName with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookEventName with fn from_json(value, path) {
@@ -5290,11 +6323,17 @@ pub impl FromJson for AppHookEventName with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHookEventName with @json.FromJson::{from_json}
+
+///|
 pub enum AppHookHandlerType {
   AppHookCommandHandler
   AppHookPromptHandler
   AppHookAgentHandler
 } derive(Debug)
+
+///|
+pub extend AppHookHandlerType with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookHandlerType with fn from_json(value, path) {
@@ -5305,6 +6344,9 @@ pub impl FromJson for AppHookHandlerType with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected hook handler type"))
   }
 }
+
+///|
+pub extend AppHookHandlerType with @json.FromJson::{from_json}
 
 ///|
 pub enum AppHookSource {
@@ -5319,6 +6361,9 @@ pub enum AppHookSource {
   AppHookLegacyManagedConfigMdmSource
   AppHookUnknownSource
 } derive(Debug)
+
+///|
+pub extend AppHookSource with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookSource with fn from_json(value, path) {
@@ -5338,12 +6383,18 @@ pub impl FromJson for AppHookSource with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHookSource with @json.FromJson::{from_json}
+
+///|
 pub enum AppHookTrustStatus {
   AppHookManagedTrust
   AppHookUntrusted
   AppHookTrusted
   AppHookModified
 } derive(Debug)
+
+///|
+pub extend AppHookTrustStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookTrustStatus with fn from_json(value, path) {
@@ -5355,6 +6406,9 @@ pub impl FromJson for AppHookTrustStatus with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected hook trust status"))
   }
 }
+
+///|
+pub extend AppHookTrustStatus with @json.FromJson::{from_json}
 
 ///|
 pub impl FromJson for AppHookMetadata with fn from_json(value, path) {
@@ -5409,12 +6463,18 @@ pub impl FromJson for AppHookMetadata with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHookMetadata with @json.FromJson::{from_json}
+
+///|
 pub struct AppHooksListEntry {
   cwd : String
   hooks : ArrayView[AppHookMetadata]
   warnings : ArrayView[String]
   errors : ArrayView[AppHookErrorInfo]
 } derive(Debug)
+
+///|
+pub extend AppHooksListEntry with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHooksListEntry with fn from_json(value, path) {
@@ -5437,9 +6497,15 @@ pub impl FromJson for AppHooksListEntry with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHooksListEntry with @json.FromJson::{from_json}
+
+///|
 pub struct AppHooksListResponse {
   data : ArrayView[AppHooksListEntry]
 } derive(Debug)
+
+///|
+pub extend AppHooksListResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHooksListResponse with fn from_json(value, path) {
@@ -5450,11 +6516,17 @@ pub impl FromJson for AppHooksListResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHooksListResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppMarketplaceAddResponse {
   marketplace_name : String
   installed_root : String
   already_added : Bool
 } derive(Debug)
+
+///|
+pub extend AppMarketplaceAddResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMarketplaceAddResponse with fn from_json(value, path) {
@@ -5475,10 +6547,16 @@ pub impl FromJson for AppMarketplaceAddResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMarketplaceAddResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppMarketplaceRemoveResponse {
   marketplace_name : String
   installed_root : String?
 } derive(Debug)
+
+///|
+pub extend AppMarketplaceRemoveResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMarketplaceRemoveResponse with fn from_json(
@@ -5503,10 +6581,16 @@ pub impl FromJson for AppMarketplaceRemoveResponse with fn from_json(
 }
 
 ///|
+pub extend AppMarketplaceRemoveResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppMarketplaceUpgradeErrorInfo {
   marketplace_name : String
   message : String
 } derive(Debug)
+
+///|
+pub extend AppMarketplaceUpgradeErrorInfo with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMarketplaceUpgradeErrorInfo with fn from_json(
@@ -5525,11 +6609,17 @@ pub impl FromJson for AppMarketplaceUpgradeErrorInfo with fn from_json(
 }
 
 ///|
+pub extend AppMarketplaceUpgradeErrorInfo with @json.FromJson::{from_json}
+
+///|
 pub struct AppMarketplaceUpgradeResponse {
   selected_marketplaces : ArrayView[String]
   upgraded_roots : ArrayView[String]
   errors : ArrayView[AppMarketplaceUpgradeErrorInfo]
 } derive(Debug)
+
+///|
+pub extend AppMarketplaceUpgradeResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMarketplaceUpgradeResponse with fn from_json(
@@ -5559,10 +6649,16 @@ pub impl FromJson for AppMarketplaceUpgradeResponse with fn from_json(
 }
 
 ///|
+pub extend AppMarketplaceUpgradeResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppMarketplaceInterface {
   display_name : String?
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppMarketplaceInterface with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMarketplaceInterface with fn from_json(value, path) {
@@ -5576,10 +6672,16 @@ pub impl FromJson for AppMarketplaceInterface with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMarketplaceInterface with @json.FromJson::{from_json}
+
+///|
 pub enum AppPluginAuthPolicy {
   AppPluginAuthOnInstall
   AppPluginAuthOnUse
 } derive(Debug)
+
+///|
+pub extend AppPluginAuthPolicy with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppPluginAuthPolicy with fn from_json(value, path) {
@@ -5591,11 +6693,17 @@ pub impl FromJson for AppPluginAuthPolicy with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginAuthPolicy with @json.FromJson::{from_json}
+
+///|
 pub enum AppPluginInstallPolicy {
   AppPluginInstallNotAvailable
   AppPluginInstallAvailable
   AppPluginInstallInstalledByDefault
 } derive(Debug)
+
+///|
+pub extend AppPluginInstallPolicy with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppPluginInstallPolicy with fn from_json(value, path) {
@@ -5608,6 +6716,9 @@ pub impl FromJson for AppPluginInstallPolicy with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginInstallPolicy with @json.FromJson::{from_json}
+
+///|
 pub enum AppPluginSource {
   AppPluginSourceLocal(path~ : String)
   AppPluginSourceGit(
@@ -5618,6 +6729,9 @@ pub enum AppPluginSource {
   )
   AppPluginSourceRemote
 } derive(Debug)
+
+///|
+pub extend AppPluginSource with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppPluginSource with fn from_json(value, path) {
@@ -5655,6 +6769,9 @@ pub impl FromJson for AppPluginSource with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginSource with @json.FromJson::{from_json}
+
+///|
 pub struct AppPluginInterface {
   display_name : String?
   short_description : String?
@@ -5675,6 +6792,9 @@ pub struct AppPluginInterface {
   screenshot_urls : ArrayView[String]
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppPluginInterface with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppPluginInterface with fn from_json(value, path) {
@@ -5755,6 +6875,9 @@ pub impl FromJson for AppPluginInterface with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginInterface with @json.FromJson::{from_json}
+
+///|
 pub struct AppPluginSummary {
   id : String
   name : String
@@ -5766,6 +6889,9 @@ pub struct AppPluginSummary {
   interface : AppPluginInterface?
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppPluginSummary with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppPluginSummary with fn from_json(value, path) {
@@ -5804,6 +6930,9 @@ pub impl FromJson for AppPluginSummary with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginSummary with @json.FromJson::{from_json}
+
+///|
 pub struct AppPluginMarketplaceEntry {
   name : String
   path : String?
@@ -5811,6 +6940,9 @@ pub struct AppPluginMarketplaceEntry {
   plugins : ArrayView[AppPluginSummary]
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppPluginMarketplaceEntry with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppPluginMarketplaceEntry with fn from_json(value, path) {
@@ -5838,10 +6970,16 @@ pub impl FromJson for AppPluginMarketplaceEntry with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginMarketplaceEntry with @json.FromJson::{from_json}
+
+///|
 pub struct AppMarketplaceLoadErrorInfo {
   marketplace_path : String
   message : String
 } derive(Debug)
+
+///|
+pub extend AppMarketplaceLoadErrorInfo with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMarketplaceLoadErrorInfo with fn from_json(value, path) {
@@ -5857,11 +6995,17 @@ pub impl FromJson for AppMarketplaceLoadErrorInfo with fn from_json(value, path)
 }
 
 ///|
+pub extend AppMarketplaceLoadErrorInfo with @json.FromJson::{from_json}
+
+///|
 pub struct AppPluginListResponse {
   marketplaces : ArrayView[AppPluginMarketplaceEntry]
   marketplace_load_errors : ArrayView[AppMarketplaceLoadErrorInfo]
   featured_plugin_ids : ArrayView[String]
 } derive(Debug)
+
+///|
+pub extend AppPluginListResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppPluginListResponse with fn from_json(value, path) {
@@ -5893,6 +7037,9 @@ pub impl FromJson for AppPluginListResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginListResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppSummary {
   id : String
   name : String
@@ -5900,6 +7047,9 @@ pub struct AppSummary {
   install_url : String?
   needs_auth : Bool
 } derive(Debug)
+
+///|
+pub extend AppSummary with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSummary with fn from_json(value, path) {
@@ -5924,6 +7074,9 @@ pub impl FromJson for AppSummary with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSummary with @json.FromJson::{from_json}
+
+///|
 pub struct AppPluginDetail {
   marketplace_name : String
   marketplace_path : String?
@@ -5936,6 +7089,9 @@ pub struct AppPluginDetail {
 } derive(Debug)
 
 ///|
+pub extend AppPluginDetail with Debug::{to_repr}
+
+///|
 pub struct AppSkillSummary {
   name : String
   description : String
@@ -5944,6 +7100,9 @@ pub struct AppSkillSummary {
   path : String?
   enabled : Bool
 } derive(Debug)
+
+///|
+pub extend AppSkillSummary with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSkillSummary with fn from_json(value, path) {
@@ -5977,6 +7136,9 @@ pub impl FromJson for AppSkillSummary with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSkillSummary with @json.FromJson::{from_json}
+
+///|
 pub struct AppSkillInterface {
   display_name : String?
   short_description : String?
@@ -5985,6 +7147,9 @@ pub struct AppSkillInterface {
   brand_color : String?
   default_prompt : String?
 } derive(Debug)
+
+///|
+pub extend AppSkillInterface with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSkillInterface with fn from_json(value, path) {
@@ -6017,6 +7182,9 @@ pub impl FromJson for AppSkillInterface with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSkillInterface with @json.FromJson::{from_json}
+
+///|
 pub impl FromJson for AppPluginDetail with fn from_json(value, path) {
   guard value
     is {
@@ -6047,9 +7215,15 @@ pub impl FromJson for AppPluginDetail with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginDetail with @json.FromJson::{from_json}
+
+///|
 pub struct AppPluginReadResponse {
   plugin : AppPluginDetail
 } derive(Debug)
+
+///|
+pub extend AppPluginReadResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppPluginReadResponse with fn from_json(value, path) {
@@ -6060,9 +7234,15 @@ pub impl FromJson for AppPluginReadResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginReadResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppFsReadFileResponse {
   data_base64 : String
 } derive(Debug)
+
+///|
+pub extend AppFsReadFileResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppFsReadFileResponse with fn from_json(value, path) {
@@ -6073,6 +7253,9 @@ pub impl FromJson for AppFsReadFileResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppFsReadFileResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppFsGetMetadataResponse {
   is_directory : Bool
   is_file : Bool
@@ -6080,6 +7263,9 @@ pub struct AppFsGetMetadataResponse {
   created_at_ms : Int64
   modified_at_ms : Int64
 } derive(Debug)
+
+///|
+pub extend AppFsGetMetadataResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppFsGetMetadataResponse with fn from_json(value, path) {
@@ -6104,11 +7290,17 @@ pub impl FromJson for AppFsGetMetadataResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppFsGetMetadataResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppFsReadDirectoryEntry {
   file_name : String
   is_directory : Bool
   is_file : Bool
 } derive(Debug)
+
+///|
+pub extend AppFsReadDirectoryEntry with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppFsReadDirectoryEntry with fn from_json(value, path) {
@@ -6129,9 +7321,15 @@ pub impl FromJson for AppFsReadDirectoryEntry with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppFsReadDirectoryEntry with @json.FromJson::{from_json}
+
+///|
 pub struct AppFsReadDirectoryResponse {
   entries : ArrayView[AppFsReadDirectoryEntry]
 } derive(Debug)
+
+///|
+pub extend AppFsReadDirectoryResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppFsReadDirectoryResponse with fn from_json(value, path) {
@@ -6142,9 +7340,15 @@ pub impl FromJson for AppFsReadDirectoryResponse with fn from_json(value, path) 
 }
 
 ///|
+pub extend AppFsReadDirectoryResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppFsWatchResponse {
   path : String
 } derive(Debug)
+
+///|
+pub extend AppFsWatchResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppFsWatchResponse with fn from_json(value, path) {
@@ -6155,9 +7359,15 @@ pub impl FromJson for AppFsWatchResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppFsWatchResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppSkillsConfigWriteResponse {
   effective_enabled : Bool
 } derive(Debug)
+
+///|
+pub extend AppSkillsConfigWriteResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSkillsConfigWriteResponse with fn from_json(
@@ -6176,10 +7386,16 @@ pub impl FromJson for AppSkillsConfigWriteResponse with fn from_json(
 }
 
 ///|
+pub extend AppSkillsConfigWriteResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppPluginInstallResponse {
   auth_policy : AppPluginAuthPolicy
   apps_needing_auth : ArrayView[AppSummary]
 } derive(Debug)
+
+///|
+pub extend AppPluginInstallResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppPluginInstallResponse with fn from_json(value, path) {
@@ -6197,10 +7413,16 @@ pub impl FromJson for AppPluginInstallResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPluginInstallResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppReviewStartResponse {
   turn : AppTurn
   review_thread_id : String
 } derive(Debug)
+
+///|
+pub extend AppReviewStartResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppReviewStartResponse with fn from_json(value, path) {
@@ -6212,6 +7434,9 @@ pub impl FromJson for AppReviewStartResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppReviewStartResponse with @json.FromJson::{from_json}
+
+///|
 pub enum AppExperimentalFeatureStage {
   AppFeatureBeta
   AppFeatureUnderDevelopment
@@ -6219,6 +7444,9 @@ pub enum AppExperimentalFeatureStage {
   AppFeatureDeprecated
   AppFeatureRemoved
 } derive(Debug)
+
+///|
+pub extend AppExperimentalFeatureStage with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppExperimentalFeatureStage with fn from_json(value, path) {
@@ -6233,6 +7461,9 @@ pub impl FromJson for AppExperimentalFeatureStage with fn from_json(value, path)
 }
 
 ///|
+pub extend AppExperimentalFeatureStage with @json.FromJson::{from_json}
+
+///|
 pub struct AppExperimentalFeature {
   name : String
   stage : AppExperimentalFeatureStage
@@ -6242,6 +7473,9 @@ pub struct AppExperimentalFeature {
   enabled : Bool
   default_enabled : Bool
 } derive(Debug)
+
+///|
+pub extend AppExperimentalFeature with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppExperimentalFeature with fn from_json(value, path) {
@@ -6273,10 +7507,16 @@ pub impl FromJson for AppExperimentalFeature with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppExperimentalFeature with @json.FromJson::{from_json}
+
+///|
 pub struct AppExperimentalFeatureListResponse {
   data : ArrayView[AppExperimentalFeature]
   next_cursor : String?
 } derive(Debug)
+
+///|
+pub extend AppExperimentalFeatureListResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppExperimentalFeatureListResponse with fn from_json(
@@ -6293,9 +7533,15 @@ pub impl FromJson for AppExperimentalFeatureListResponse with fn from_json(
 }
 
 ///|
+pub extend AppExperimentalFeatureListResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppExperimentalFeatureEnablementSetResponse {
   enablement : Map[String, Bool]
 } derive(Debug)
+
+///|
+pub extend AppExperimentalFeatureEnablementSetResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppExperimentalFeatureEnablementSetResponse with fn from_json(
@@ -6311,9 +7557,17 @@ pub impl FromJson for AppExperimentalFeatureEnablementSetResponse with fn from_j
 }
 
 ///|
+pub extend AppExperimentalFeatureEnablementSetResponse with @json.FromJson::{
+  from_json,
+}
+
+///|
 pub struct AppMcpServerOauthLoginResponse {
   authorization_url : String
 } derive(Debug)
+
+///|
+pub extend AppMcpServerOauthLoginResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpServerOauthLoginResponse with fn from_json(
@@ -6327,12 +7581,18 @@ pub impl FromJson for AppMcpServerOauthLoginResponse with fn from_json(
 }
 
 ///|
+pub extend AppMcpServerOauthLoginResponse with @json.FromJson::{from_json}
+
+///|
 pub enum AppMcpAuthStatus {
   AppMcpUnsupported
   AppMcpNotLoggedIn
   AppMcpBearerToken
   AppMcpOAuth
 } derive(Debug)
+
+///|
+pub extend AppMcpAuthStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpAuthStatus with fn from_json(value, path) {
@@ -6346,6 +7606,9 @@ pub impl FromJson for AppMcpAuthStatus with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMcpAuthStatus with @json.FromJson::{from_json}
+
+///|
 pub struct AppMcpServerStatus {
   name : String
   tools : Map[String, AppMcpTool]
@@ -6353,6 +7616,9 @@ pub struct AppMcpServerStatus {
   resource_templates : ArrayView[AppMcpResourceTemplate]
   auth_status : AppMcpAuthStatus
 } derive(Debug)
+
+///|
+pub extend AppMcpServerStatus with Debug::{to_repr}
 
 ///|
 pub struct AppMcpTool {
@@ -6365,6 +7631,9 @@ pub struct AppMcpTool {
   icons : ArrayView[Json]?
   meta : Json?
 } derive(Debug)
+
+///|
+pub extend AppMcpTool with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpTool with fn from_json(value, path) {
@@ -6398,6 +7667,9 @@ pub impl FromJson for AppMcpTool with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMcpTool with @json.FromJson::{from_json}
+
+///|
 pub struct AppMcpResource {
   annotations : Json?
   description : String?
@@ -6409,6 +7681,9 @@ pub struct AppMcpResource {
   icons : ArrayView[Json]?
   meta : Json?
 } derive(Debug)
+
+///|
+pub extend AppMcpResource with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpResource with fn from_json(value, path) {
@@ -6444,6 +7719,9 @@ pub impl FromJson for AppMcpResource with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMcpResource with @json.FromJson::{from_json}
+
+///|
 pub struct AppMcpResourceTemplate {
   annotations : Json?
   uri_template : String
@@ -6452,6 +7730,9 @@ pub struct AppMcpResourceTemplate {
   description : String?
   mime_type : String?
 } derive(Debug)
+
+///|
+pub extend AppMcpResourceTemplate with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpResourceTemplate with fn from_json(value, path) {
@@ -6476,6 +7757,9 @@ pub impl FromJson for AppMcpResourceTemplate with fn from_json(value, path) {
     mime_type: app_optional_string(mime_type, path.add_key("mimeType")),
   }
 }
+
+///|
+pub extend AppMcpResourceTemplate with @json.FromJson::{from_json}
 
 ///|
 pub impl FromJson for AppMcpServerStatus with fn from_json(value, path) {
@@ -6503,10 +7787,16 @@ pub impl FromJson for AppMcpServerStatus with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMcpServerStatus with @json.FromJson::{from_json}
+
+///|
 pub struct AppMcpServerStatusListResponse {
   data : ArrayView[AppMcpServerStatus]
   next_cursor : String?
 } derive(Debug)
+
+///|
+pub extend AppMcpServerStatusListResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpServerStatusListResponse with fn from_json(
@@ -6523,9 +7813,15 @@ pub impl FromJson for AppMcpServerStatusListResponse with fn from_json(
 }
 
 ///|
+pub extend AppMcpServerStatusListResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppMcpServerResourceReadResponse {
   contents : ArrayView[AppMcpResourceContent]
 } derive(Debug)
+
+///|
+pub extend AppMcpServerResourceReadResponse with Debug::{to_repr}
 
 ///|
 pub enum AppMcpResourceContent {
@@ -6542,6 +7838,9 @@ pub enum AppMcpResourceContent {
     meta~ : Json?
   )
 } derive(Debug)
+
+///|
+pub extend AppMcpResourceContent with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpResourceContent with fn from_json(value, path) {
@@ -6577,6 +7876,9 @@ pub impl FromJson for AppMcpResourceContent with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMcpResourceContent with @json.FromJson::{from_json}
+
+///|
 pub impl FromJson for AppMcpServerResourceReadResponse with fn from_json(
   value,
   path,
@@ -6588,12 +7890,18 @@ pub impl FromJson for AppMcpServerResourceReadResponse with fn from_json(
 }
 
 ///|
+pub extend AppMcpServerResourceReadResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppMcpServerToolCallResponse {
   content : ArrayView[Json]
   structured_content : Json?
   is_error : Bool?
   meta : Json?
 } derive(Debug)
+
+///|
+pub extend AppMcpServerToolCallResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpServerToolCallResponse with fn from_json(
@@ -6619,9 +7927,15 @@ pub impl FromJson for AppMcpServerToolCallResponse with fn from_json(
 }
 
 ///|
+pub extend AppMcpServerToolCallResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppWindowsSandboxSetupStartResponse {
   started : Bool
 } derive(Debug)
+
+///|
+pub extend AppWindowsSandboxSetupStartResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppWindowsSandboxSetupStartResponse with fn from_json(
@@ -6637,6 +7951,9 @@ pub impl FromJson for AppWindowsSandboxSetupStartResponse with fn from_json(
 }
 
 ///|
+pub extend AppWindowsSandboxSetupStartResponse with @json.FromJson::{from_json}
+
+///|
 pub enum AppAccountLoginStartResponse {
   AppAccountLoginApiKey
   AppAccountLoginChatGPT(login_id~ : String, auth_url~ : String)
@@ -6647,6 +7964,9 @@ pub enum AppAccountLoginStartResponse {
   )
   AppAccountLoginChatGPTAuthTokens
 } derive(Debug)
+
+///|
+pub extend AppAccountLoginStartResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAccountLoginStartResponse with fn from_json(
@@ -6676,10 +7996,16 @@ pub impl FromJson for AppAccountLoginStartResponse with fn from_json(
 }
 
 ///|
+pub extend AppAccountLoginStartResponse with @json.FromJson::{from_json}
+
+///|
 pub enum AppCancelLoginAccountStatus {
   AppCancelLoginCanceled
   AppCancelLoginNotFound
 } derive(Debug)
+
+///|
+pub extend AppCancelLoginAccountStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppCancelLoginAccountStatus with fn from_json(value, path) {
@@ -6691,9 +8017,15 @@ pub impl FromJson for AppCancelLoginAccountStatus with fn from_json(value, path)
 }
 
 ///|
+pub extend AppCancelLoginAccountStatus with @json.FromJson::{from_json}
+
+///|
 pub struct AppAccountLoginCancelResponse {
   status : AppCancelLoginAccountStatus
 } derive(Debug)
+
+///|
+pub extend AppAccountLoginCancelResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAccountLoginCancelResponse with fn from_json(
@@ -6705,6 +8037,9 @@ pub impl FromJson for AppAccountLoginCancelResponse with fn from_json(
   }
   { status: @json.from_json(status, path=path.add_key("status")), }
 }
+
+///|
+pub extend AppAccountLoginCancelResponse with @json.FromJson::{from_json}
 
 ///|
 pub struct AppRateLimitSnapshot {
@@ -6719,11 +8054,17 @@ pub struct AppRateLimitSnapshot {
 } derive(Debug)
 
 ///|
+pub extend AppRateLimitSnapshot with Debug::{to_repr}
+
+///|
 pub struct AppRateLimitWindow {
   used_percent : Int
   window_duration_mins : Int64?
   resets_at : Int64?
 } derive(Debug)
+
+///|
+pub extend AppRateLimitWindow with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppRateLimitWindow with fn from_json(value, path) {
@@ -6747,11 +8088,17 @@ pub impl FromJson for AppRateLimitWindow with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppRateLimitWindow with @json.FromJson::{from_json}
+
+///|
 pub struct AppCreditsSnapshot {
   has_credits : Bool
   unlimited : Bool
   balance : String?
 } derive(Debug)
+
+///|
+pub extend AppCreditsSnapshot with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppCreditsSnapshot with fn from_json(value, path) {
@@ -6772,6 +8119,9 @@ pub impl FromJson for AppCreditsSnapshot with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppCreditsSnapshot with @json.FromJson::{from_json}
+
+///|
 pub enum AppPlanType {
   AppPlanFree
   AppPlanGo
@@ -6786,6 +8136,9 @@ pub enum AppPlanType {
   AppPlanEdu
   AppPlanUnknown
 } derive(Debug)
+
+///|
+pub extend AppPlanType with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppPlanType with fn from_json(value, path) {
@@ -6808,6 +8161,9 @@ pub impl FromJson for AppPlanType with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppPlanType with @json.FromJson::{from_json}
+
+///|
 pub enum AppRateLimitReachedType {
   AppRateLimitReached
   AppWorkspaceOwnerCreditsDepleted
@@ -6815,6 +8171,9 @@ pub enum AppRateLimitReachedType {
   AppWorkspaceOwnerUsageLimitReached
   AppWorkspaceMemberUsageLimitReached
 } derive(Debug)
+
+///|
+pub extend AppRateLimitReachedType with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppRateLimitReachedType with fn from_json(value, path) {
@@ -6831,6 +8190,9 @@ pub impl FromJson for AppRateLimitReachedType with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected rate limit reached type"))
   }
 }
+
+///|
+pub extend AppRateLimitReachedType with @json.FromJson::{from_json}
 
 ///|
 pub impl FromJson for AppRateLimitSnapshot with fn from_json(value, path) {
@@ -6877,10 +8239,16 @@ pub impl FromJson for AppRateLimitSnapshot with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppRateLimitSnapshot with @json.FromJson::{from_json}
+
+///|
 pub struct AppAccountRateLimitsReadResponse {
   rate_limits : AppRateLimitSnapshot
   rate_limits_by_limit_id : Map[String, AppRateLimitSnapshot]?
 } derive(Debug)
+
+///|
+pub extend AppAccountRateLimitsReadResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAccountRateLimitsReadResponse with fn from_json(
@@ -6906,10 +8274,16 @@ pub impl FromJson for AppAccountRateLimitsReadResponse with fn from_json(
 }
 
 ///|
+pub extend AppAccountRateLimitsReadResponse with @json.FromJson::{from_json}
+
+///|
 pub enum AppAddCreditsNudgeEmailStatus {
   AppAddCreditsNudgeSent
   AppAddCreditsNudgeCooldownActive
 } derive(Debug)
+
+///|
+pub extend AppAddCreditsNudgeEmailStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAddCreditsNudgeEmailStatus with fn from_json(
@@ -6924,9 +8298,15 @@ pub impl FromJson for AppAddCreditsNudgeEmailStatus with fn from_json(
 }
 
 ///|
+pub extend AppAddCreditsNudgeEmailStatus with @json.FromJson::{from_json}
+
+///|
 pub struct AppAccountSendAddCreditsNudgeEmailResponse {
   status : AppAddCreditsNudgeEmailStatus
 } derive(Debug)
+
+///|
+pub extend AppAccountSendAddCreditsNudgeEmailResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAccountSendAddCreditsNudgeEmailResponse with fn from_json(
@@ -6942,9 +8322,17 @@ pub impl FromJson for AppAccountSendAddCreditsNudgeEmailResponse with fn from_js
 }
 
 ///|
+pub extend AppAccountSendAddCreditsNudgeEmailResponse with @json.FromJson::{
+  from_json,
+}
+
+///|
 pub struct AppFeedbackUploadResponse {
   thread_id : String
 } derive(Debug)
+
+///|
+pub extend AppFeedbackUploadResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppFeedbackUploadResponse with fn from_json(value, path) {
@@ -6955,11 +8343,17 @@ pub impl FromJson for AppFeedbackUploadResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppFeedbackUploadResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppCommandExecResponse {
   exit_code : Int
   stdout : String
   stderr : String
 } derive(Debug)
+
+///|
+pub extend AppCommandExecResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppCommandExecResponse with fn from_json(value, path) {
@@ -6976,9 +8370,15 @@ pub impl FromJson for AppCommandExecResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppCommandExecResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppExternalAgentConfigDetectResponse {
   items : ArrayView[AppExternalAgentConfigMigrationItem]
 } derive(Debug)
+
+///|
+pub extend AppExternalAgentConfigDetectResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppExternalAgentConfigMigrationItem with fn from_json(
@@ -7009,6 +8409,9 @@ pub impl FromJson for AppExternalAgentConfigMigrationItem with fn from_json(
 }
 
 ///|
+pub extend AppExternalAgentConfigMigrationItem with @json.FromJson::{from_json}
+
+///|
 pub impl FromJson for AppExternalAgentConfigDetectResponse with fn from_json(
   value,
   path,
@@ -7022,10 +8425,16 @@ pub impl FromJson for AppExternalAgentConfigDetectResponse with fn from_json(
 }
 
 ///|
+pub extend AppExternalAgentConfigDetectResponse with @json.FromJson::{from_json}
+
+///|
 pub enum AppConfigWriteStatus {
   AppConfigWriteOk
   AppConfigWriteOkOverridden
 } derive(Debug)
+
+///|
+pub extend AppConfigWriteStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppConfigWriteStatus with fn from_json(value, path) {
@@ -7037,11 +8446,17 @@ pub impl FromJson for AppConfigWriteStatus with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppConfigWriteStatus with @json.FromJson::{from_json}
+
+///|
 pub struct AppConfigOverriddenMetadata {
   message : String
   overriding_layer : AppConfigLayerMetadata
   effective_value : Json
 } derive(Debug)
+
+///|
+pub extend AppConfigOverriddenMetadata with Debug::{to_repr}
 
 ///|
 pub struct AppConfigLayerMetadata {
@@ -7050,12 +8465,18 @@ pub struct AppConfigLayerMetadata {
 } derive(Debug)
 
 ///|
+pub extend AppConfigLayerMetadata with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppConfigLayerMetadata with fn from_json(value, path) {
   guard value is { "name": name, "version": String(version), .. } else {
     raise JsonDecodeError((path, "expected config layer metadata"))
   }
   { name: @json.from_json(name, path=path.add_key("name")), version, }
 }
+
+///|
+pub extend AppConfigLayerMetadata with @json.FromJson::{from_json}
 
 ///|
 pub enum AppConfigLayerSource {
@@ -7067,6 +8488,9 @@ pub enum AppConfigLayerSource {
   AppConfigLayerLegacyManagedConfigTomlFromFile(file~ : String)
   AppConfigLayerLegacyManagedConfigTomlFromMdm
 } derive(Debug)
+
+///|
+pub extend AppConfigLayerSource with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppConfigLayerSource with fn from_json(value, path) {
@@ -7095,6 +8519,9 @@ pub impl FromJson for AppConfigLayerSource with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppConfigLayerSource with @json.FromJson::{from_json}
+
+///|
 pub impl FromJson for AppConfigOverriddenMetadata with fn from_json(value, path) {
   guard value
     is {
@@ -7116,12 +8543,18 @@ pub impl FromJson for AppConfigOverriddenMetadata with fn from_json(value, path)
 }
 
 ///|
+pub extend AppConfigOverriddenMetadata with @json.FromJson::{from_json}
+
+///|
 pub struct AppConfigValueWriteResponse {
   status : AppConfigWriteStatus
   version : String
   file_path : String
   overridden_metadata : AppConfigOverriddenMetadata?
 } derive(Debug)
+
+///|
+pub extend AppConfigValueWriteResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppConfigValueWriteResponse with fn from_json(value, path) {
@@ -7148,12 +8581,18 @@ pub impl FromJson for AppConfigValueWriteResponse with fn from_json(value, path)
 }
 
 ///|
+pub extend AppConfigValueWriteResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppConfigBatchWriteResponse {
   status : AppConfigWriteStatus
   version : String
   file_path : String
   overridden_metadata : AppConfigOverriddenMetadata?
 } derive(Debug)
+
+///|
+pub extend AppConfigBatchWriteResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppConfigBatchWriteResponse with fn from_json(value, path) {
@@ -7180,9 +8619,15 @@ pub impl FromJson for AppConfigBatchWriteResponse with fn from_json(value, path)
 }
 
 ///|
+pub extend AppConfigBatchWriteResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppConfigRequirementsReadResponse {
   requirements : AppConfigRequirements?
 } derive(Debug)
+
+///|
+pub extend AppConfigRequirementsReadResponse with Debug::{to_repr}
 
 ///|
 pub struct AppConfigRequirements {
@@ -7193,6 +8638,9 @@ pub struct AppConfigRequirements {
   feature_requirements : Map[String, Bool]?
   enforce_residency : AppResidencyRequirement?
 } derive(Debug)
+
+///|
+pub extend AppConfigRequirements with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppConfigRequirements with fn from_json(value, path) {
@@ -7244,11 +8692,17 @@ pub impl FromJson for AppConfigRequirements with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppConfigRequirements with @json.FromJson::{from_json}
+
+///|
 pub enum AppWebSearchMode {
   AppWebSearchDisabled
   AppWebSearchCached
   AppWebSearchLive
 } derive(Debug)
+
+///|
+pub extend AppWebSearchMode with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppWebSearchMode with fn from_json(value, path) {
@@ -7261,9 +8715,15 @@ pub impl FromJson for AppWebSearchMode with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppWebSearchMode with @json.FromJson::{from_json}
+
+///|
 pub enum AppResidencyRequirement {
   AppResidencyUs
 } derive(Debug)
+
+///|
+pub extend AppResidencyRequirement with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppResidencyRequirement with fn from_json(value, path) {
@@ -7272,6 +8732,9 @@ pub impl FromJson for AppResidencyRequirement with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected residency requirement"))
   }
 }
+
+///|
+pub extend AppResidencyRequirement with @json.FromJson::{from_json}
 
 ///|
 pub impl FromJson for AppConfigRequirementsReadResponse with fn from_json(
@@ -7291,11 +8754,17 @@ pub impl FromJson for AppConfigRequirementsReadResponse with fn from_json(
 }
 
 ///|
+pub extend AppConfigRequirementsReadResponse with @json.FromJson::{from_json}
+
+///|
 pub enum AppAccount {
   AppAccountApiKey
   AppAccountChatGPT(email~ : String, plan_type~ : AppPlanType)
   AppAccountAmazonBedrock
 } derive(Debug)
+
+///|
+pub extend AppAccount with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAccount with fn from_json(value, path) {
@@ -7317,10 +8786,16 @@ pub impl FromJson for AppAccount with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppAccount with @json.FromJson::{from_json}
+
+///|
 pub struct AppAccountReadResponse {
   account : AppAccount?
   requires_openai_auth : Bool
 } derive(Debug)
+
+///|
+pub extend AppAccountReadResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAccountReadResponse with fn from_json(value, path) {
@@ -7341,11 +8816,17 @@ pub impl FromJson for AppAccountReadResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppAccountReadResponse with @json.FromJson::{from_json}
+
+///|
 pub struct AppConversationGitInfo {
   sha : String?
   branch : String?
   origin_url : String?
 } derive(Debug)
+
+///|
+pub extend AppConversationGitInfo with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppConversationGitInfo with fn from_json(value, path) {
@@ -7361,10 +8842,16 @@ pub impl FromJson for AppConversationGitInfo with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppConversationGitInfo with @json.FromJson::{from_json}
+
+///|
 pub enum AppFuzzyFileSearchMatchType {
   AppFuzzyFile
   AppFuzzyDirectory
 } derive(Debug)
+
+///|
+pub extend AppFuzzyFileSearchMatchType with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppFuzzyFileSearchMatchType with fn from_json(value, path) {
@@ -7376,6 +8863,9 @@ pub impl FromJson for AppFuzzyFileSearchMatchType with fn from_json(value, path)
 }
 
 ///|
+pub extend AppFuzzyFileSearchMatchType with @json.FromJson::{from_json}
+
+///|
 pub struct AppFuzzyFileSearchResult {
   root : String
   path : String
@@ -7384,6 +8874,9 @@ pub struct AppFuzzyFileSearchResult {
   score : UInt
   indices : ArrayView[UInt]?
 } derive(Debug)
+
+///|
+pub extend AppFuzzyFileSearchResult with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppFuzzyFileSearchResult with fn from_json(value, path) {
@@ -7432,9 +8925,15 @@ pub impl FromJson for AppFuzzyFileSearchResult with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppFuzzyFileSearchResult with @json.FromJson::{from_json}
+
+///|
 pub struct AppFuzzyFileSearchResponse {
   files : ArrayView[AppFuzzyFileSearchResult]
 } derive(Debug)
+
+///|
+pub extend AppFuzzyFileSearchResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppFuzzyFileSearchResponse with fn from_json(value, path) {
@@ -7443,6 +8942,9 @@ pub impl FromJson for AppFuzzyFileSearchResponse with fn from_json(value, path) 
   }
   { files: @json.from_json(files, path=path.add_key("files")), }
 }
+
+///|
+pub extend AppFuzzyFileSearchResponse with @json.FromJson::{from_json}
 
 ///|
 /// Call `initialize`.
@@ -8307,10 +9809,16 @@ pub enum AppServerEvent {
 } derive(Debug)
 
 ///|
+pub extend AppServerEvent with Debug::{to_repr}
+
+///|
 pub enum AppOutputStream {
   AppStdout
   AppStderr
 } derive(Debug)
+
+///|
+pub extend AppOutputStream with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppOutputStream with fn from_json(value, path) {
@@ -8322,12 +9830,18 @@ pub impl FromJson for AppOutputStream with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppOutputStream with @json.FromJson::{from_json}
+
+///|
 pub enum AppMcpServerStartupState {
   AppMcpServerStarting
   AppMcpServerReady
   AppMcpServerFailed
   AppMcpServerCancelled
 } derive(Debug)
+
+///|
+pub extend AppMcpServerStartupState with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMcpServerStartupState with fn from_json(value, path) {
@@ -8341,12 +9855,18 @@ pub impl FromJson for AppMcpServerStartupState with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMcpServerStartupState with @json.FromJson::{from_json}
+
+///|
 pub enum AppAuthMode {
   AppAuthApiKey
   AppAuthChatGPT
   AppAuthChatGPTAuthTokens
   AppAuthAgentIdentity
 } derive(Debug)
+
+///|
+pub extend AppAuthMode with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAuthMode with fn from_json(value, path) {
@@ -8358,6 +9878,9 @@ pub impl FromJson for AppAuthMode with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected auth mode"))
   }
 }
+
+///|
+pub extend AppAuthMode with @json.FromJson::{from_json}
 
 ///|
 pub impl FromJson for AppServerEvent with fn from_json(value, path) {
@@ -9387,6 +10910,9 @@ pub impl FromJson for AppServerEvent with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppServerEvent with @json.FromJson::{from_json}
+
+///|
 /// Convert app-server notifications that exactly match existing exec stream semantics.
 pub fn AppServerEvent::thread_event(self : AppServerEvent) -> Event? {
   match self {
@@ -9436,6 +10962,9 @@ pub struct AppThread {
   turns : ArrayView[AppTurn]
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppThread with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThread with fn from_json(value, path) {
@@ -9525,6 +11054,9 @@ pub impl FromJson for AppThread with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThread with @json.FromJson::{from_json}
+
+///|
 pub enum AppSessionSource {
   AppSessionCli
   AppSessionVsCode
@@ -9534,6 +11066,9 @@ pub enum AppSessionSource {
   AppSessionSubAgent(AppSubAgentSource)
   AppSessionUnknown
 } derive(Debug)
+
+///|
+pub extend AppSessionSource with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSessionSource with fn from_json(value, path) {
@@ -9552,6 +11087,9 @@ pub impl FromJson for AppSessionSource with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSessionSource with @json.FromJson::{from_json}
+
+///|
 pub enum AppSubAgentSource {
   AppSubAgentReview
   AppSubAgentCompact
@@ -9565,6 +11103,9 @@ pub enum AppSubAgentSource {
   AppSubAgentMemoryConsolidation
   AppSubAgentOther(String)
 } derive(Debug)
+
+///|
+pub extend AppSubAgentSource with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppSubAgentSource with fn from_json(value, path) {
@@ -9605,10 +11146,16 @@ pub impl FromJson for AppSubAgentSource with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppSubAgentSource with @json.FromJson::{from_json}
+
+///|
 pub enum AppThreadActiveFlag {
   AppThreadWaitingOnApproval
   AppThreadWaitingOnUserInput
 } derive(Debug)
+
+///|
+pub extend AppThreadActiveFlag with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadActiveFlag with fn from_json(value, path) {
@@ -9620,12 +11167,18 @@ pub impl FromJson for AppThreadActiveFlag with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadActiveFlag with @json.FromJson::{from_json}
+
+///|
 pub enum AppThreadStatus {
   ThreadNotLoaded
   ThreadIdle
   ThreadSystemError
   ThreadActive(active_flags~ : ArrayView[AppThreadActiveFlag])
 } derive(Debug)
+
+///|
+pub extend AppThreadStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadStatus with fn from_json(value, path) {
@@ -9645,6 +11198,9 @@ pub impl FromJson for AppThreadStatus with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadStatus with @json.FromJson::{from_json}
+
+///|
 pub struct AppTurn {
   id : String
   items : ArrayView[AppThreadItem]
@@ -9655,6 +11211,9 @@ pub struct AppTurn {
   duration_ms : Int64?
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppTurn with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppTurn with fn from_json(value, path) {
@@ -9688,10 +11247,16 @@ pub impl FromJson for AppTurn with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppTurn with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppByteRange {
   start : UInt64
   end : UInt64
 } derive(Debug)
+
+///|
+pub extend AppByteRange with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppByteRange with fn from_json(value, path) {
@@ -9702,15 +11267,24 @@ pub impl FromJson for AppByteRange with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppByteRange with @json.FromJson::{from_json}
+
+///|
 pub impl ToJson for AppByteRange with fn to_json(range) {
   { "start": range.start, "end": range.end }
 }
+
+///|
+pub extend AppByteRange with ToJson::{to_json}
 
 ///|
 pub(all) struct AppTextElement {
   byte_range : AppByteRange
   placeholder : String?
 } derive(Debug)
+
+///|
+pub extend AppTextElement with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppTextElement with fn from_json(value, path) {
@@ -9724,11 +11298,17 @@ pub impl FromJson for AppTextElement with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppTextElement with @json.FromJson::{from_json}
+
+///|
 pub impl ToJson for AppTextElement with fn to_json(element) {
   let obj : Map[String, Json] = { "byteRange": element.byte_range }
   app_put_string(obj, "placeholder", element.placeholder)
   Json::object(obj)
 }
+
+///|
+pub extend AppTextElement with ToJson::{to_json}
 
 ///|
 pub enum AppThreadUserInput {
@@ -9740,6 +11320,9 @@ pub enum AppThreadUserInput {
   AppThreadInputSkill(name~ : String, path~ : String)
   AppThreadInputMention(name~ : String, path~ : String)
 } derive(Debug)
+
+///|
+pub extend AppThreadUserInput with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadUserInput with fn from_json(value, path) {
@@ -9816,10 +11399,16 @@ pub impl FromJson for AppThreadUserInput with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadUserInput with @json.FromJson::{from_json}
+
+///|
 pub struct AppHookPromptFragment {
   text : String
   hook_run_id : String
 } derive(Debug)
+
+///|
+pub extend AppHookPromptFragment with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookPromptFragment with fn from_json(value, path) {
@@ -9830,10 +11419,16 @@ pub impl FromJson for AppHookPromptFragment with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHookPromptFragment with @json.FromJson::{from_json}
+
+///|
 pub enum AppMessagePhase {
   AppMessageCommentary
   AppMessageFinalAnswer
 } derive(Debug)
+
+///|
+pub extend AppMessagePhase with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMessagePhase with fn from_json(value, path) {
@@ -9845,12 +11440,18 @@ pub impl FromJson for AppMessagePhase with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMessagePhase with @json.FromJson::{from_json}
+
+///|
 pub struct AppMemoryCitationEntry {
   path : String
   line_start : UInt
   line_end : UInt
   note : String
 } derive(Debug)
+
+///|
+pub extend AppMemoryCitationEntry with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMemoryCitationEntry with fn from_json(value, path) {
@@ -9873,10 +11474,16 @@ pub impl FromJson for AppMemoryCitationEntry with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMemoryCitationEntry with @json.FromJson::{from_json}
+
+///|
 pub struct AppMemoryCitation {
   entries : ArrayView[AppMemoryCitationEntry]
   thread_ids : ArrayView[String]
 } derive(Debug)
+
+///|
+pub extend AppMemoryCitation with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMemoryCitation with fn from_json(value, path) {
@@ -9890,12 +11497,18 @@ pub impl FromJson for AppMemoryCitation with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppMemoryCitation with @json.FromJson::{from_json}
+
+///|
 pub enum AppThreadCommandExecutionSource {
   AppThreadCommandSourceAgent
   AppThreadCommandSourceUserShell
   AppThreadCommandSourceUnifiedExecStartup
   AppThreadCommandSourceUnifiedExecInteraction
 } derive(Debug)
+
+///|
+pub extend AppThreadCommandExecutionSource with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadCommandExecutionSource with fn from_json(
@@ -9913,12 +11526,18 @@ pub impl FromJson for AppThreadCommandExecutionSource with fn from_json(
 }
 
 ///|
+pub extend AppThreadCommandExecutionSource with @json.FromJson::{from_json}
+
+///|
 pub enum AppThreadCommandExecutionStatus {
   AppThreadCommandInProgress
   AppThreadCommandCompleted
   AppThreadCommandFailed
   AppThreadCommandDeclined
 } derive(Debug)
+
+///|
+pub extend AppThreadCommandExecutionStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadCommandExecutionStatus with fn from_json(
@@ -9935,11 +11554,17 @@ pub impl FromJson for AppThreadCommandExecutionStatus with fn from_json(
 }
 
 ///|
+pub extend AppThreadCommandExecutionStatus with @json.FromJson::{from_json}
+
+///|
 pub enum AppThreadPatchChangeKind {
   AppThreadPatchAdd
   AppThreadPatchDelete
   AppThreadPatchUpdate(move_path~ : String?)
 } derive(Debug)
+
+///|
+pub extend AppThreadPatchChangeKind with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadPatchChangeKind with fn from_json(value, path) {
@@ -9955,11 +11580,17 @@ pub impl FromJson for AppThreadPatchChangeKind with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadPatchChangeKind with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadFileUpdateChange {
   path : String
   kind : AppThreadPatchChangeKind
   diff : String
 } derive(Debug)
+
+///|
+pub extend AppThreadFileUpdateChange with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadFileUpdateChange with fn from_json(value, path) {
@@ -9975,12 +11606,18 @@ pub impl FromJson for AppThreadFileUpdateChange with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadFileUpdateChange with @json.FromJson::{from_json}
+
+///|
 pub enum AppThreadPatchApplyStatus {
   AppThreadPatchInProgress
   AppThreadPatchCompleted
   AppThreadPatchFailed
   AppThreadPatchDeclined
 } derive(Debug)
+
+///|
+pub extend AppThreadPatchApplyStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadPatchApplyStatus with fn from_json(value, path) {
@@ -9994,11 +11631,17 @@ pub impl FromJson for AppThreadPatchApplyStatus with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadPatchApplyStatus with @json.FromJson::{from_json}
+
+///|
 pub enum AppThreadMcpToolCallStatus {
   AppThreadMcpInProgress
   AppThreadMcpCompleted
   AppThreadMcpFailed
 } derive(Debug)
+
+///|
+pub extend AppThreadMcpToolCallStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadMcpToolCallStatus with fn from_json(value, path) {
@@ -10011,11 +11654,17 @@ pub impl FromJson for AppThreadMcpToolCallStatus with fn from_json(value, path) 
 }
 
 ///|
+pub extend AppThreadMcpToolCallStatus with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadMcpToolCallResult {
   content : ArrayView[Json]
   structured_content : Json?
   meta : Json?
 } derive(Debug)
+
+///|
+pub extend AppThreadMcpToolCallResult with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadMcpToolCallResult with fn from_json(value, path) {
@@ -10036,9 +11685,15 @@ pub impl FromJson for AppThreadMcpToolCallResult with fn from_json(value, path) 
 }
 
 ///|
+pub extend AppThreadMcpToolCallResult with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadMcpToolCallError {
   message : String
 } derive(Debug)
+
+///|
+pub extend AppThreadMcpToolCallError with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadMcpToolCallError with fn from_json(value, path) {
@@ -10049,11 +11704,17 @@ pub impl FromJson for AppThreadMcpToolCallError with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadMcpToolCallError with @json.FromJson::{from_json}
+
+///|
 pub enum AppThreadDynamicToolCallStatus {
   AppThreadDynamicInProgress
   AppThreadDynamicCompleted
   AppThreadDynamicFailed
 } derive(Debug)
+
+///|
+pub extend AppThreadDynamicToolCallStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadDynamicToolCallStatus with fn from_json(
@@ -10069,10 +11730,16 @@ pub impl FromJson for AppThreadDynamicToolCallStatus with fn from_json(
 }
 
 ///|
+pub extend AppThreadDynamicToolCallStatus with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppDynamicToolCallOutputContentItem {
   AppDynamicToolCallOutputText(text~ : String)
   AppDynamicToolCallOutputImage(image_url~ : String)
 } derive(Debug)
+
+///|
+pub extend AppDynamicToolCallOutputContentItem with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppDynamicToolCallOutputContentItem with fn from_json(
@@ -10089,6 +11756,9 @@ pub impl FromJson for AppDynamicToolCallOutputContentItem with fn from_json(
 }
 
 ///|
+pub extend AppDynamicToolCallOutputContentItem with @json.FromJson::{from_json}
+
+///|
 pub impl ToJson for AppDynamicToolCallOutputContentItem with fn to_json(item) {
   match item {
     AppDynamicToolCallOutputText(text~) => { "type": "inputText", "text": text }
@@ -10098,6 +11768,9 @@ pub impl ToJson for AppDynamicToolCallOutputContentItem with fn to_json(item) {
 }
 
 ///|
+pub extend AppDynamicToolCallOutputContentItem with ToJson::{to_json}
+
+///|
 pub enum AppThreadCollabAgentTool {
   AppThreadCollabSpawnAgent
   AppThreadCollabSendInput
@@ -10105,6 +11778,9 @@ pub enum AppThreadCollabAgentTool {
   AppThreadCollabWait
   AppThreadCollabCloseAgent
 } derive(Debug)
+
+///|
+pub extend AppThreadCollabAgentTool with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadCollabAgentTool with fn from_json(value, path) {
@@ -10119,11 +11795,17 @@ pub impl FromJson for AppThreadCollabAgentTool with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadCollabAgentTool with @json.FromJson::{from_json}
+
+///|
 pub enum AppThreadCollabAgentToolCallStatus {
   AppThreadCollabInProgress
   AppThreadCollabCompleted
   AppThreadCollabFailed
 } derive(Debug)
+
+///|
+pub extend AppThreadCollabAgentToolCallStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadCollabAgentToolCallStatus with fn from_json(
@@ -10139,6 +11821,9 @@ pub impl FromJson for AppThreadCollabAgentToolCallStatus with fn from_json(
 }
 
 ///|
+pub extend AppThreadCollabAgentToolCallStatus with @json.FromJson::{from_json}
+
+///|
 pub enum AppThreadCollabAgentStatus {
   AppThreadCollabAgentPendingInit
   AppThreadCollabAgentRunning
@@ -10148,6 +11833,9 @@ pub enum AppThreadCollabAgentStatus {
   AppThreadCollabAgentShutdown
   AppThreadCollabAgentNotFound
 } derive(Debug)
+
+///|
+pub extend AppThreadCollabAgentStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadCollabAgentStatus with fn from_json(value, path) {
@@ -10164,10 +11852,16 @@ pub impl FromJson for AppThreadCollabAgentStatus with fn from_json(value, path) 
 }
 
 ///|
+pub extend AppThreadCollabAgentStatus with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadCollabAgentState {
   status : AppThreadCollabAgentStatus
   message : String?
 } derive(Debug)
+
+///|
+pub extend AppThreadCollabAgentState with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadCollabAgentState with fn from_json(value, path) {
@@ -10181,12 +11875,18 @@ pub impl FromJson for AppThreadCollabAgentState with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadCollabAgentState with @json.FromJson::{from_json}
+
+///|
 pub enum AppWebSearchAction {
   AppWebSearchActionSearch(query~ : String?, queries~ : ArrayView[String]?)
   AppWebSearchActionOpenPage(url~ : String?)
   AppWebSearchActionFindInPage(url~ : String?, pattern~ : String?)
   AppWebSearchActionOther
 } derive(Debug)
+
+///|
+pub extend AppWebSearchAction with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppWebSearchAction with fn from_json(value, path) {
@@ -10226,6 +11926,9 @@ pub impl FromJson for AppWebSearchAction with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected web search action type"))
   }
 }
+
+///|
+pub extend AppWebSearchAction with @json.FromJson::{from_json}
 
 ///|
 pub enum AppThreadItem {
@@ -10317,6 +12020,9 @@ pub enum AppThreadItem {
 } derive(Debug)
 
 ///|
+pub extend AppThreadItem with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppThreadItem with fn from_json(value, path) {
   guard value
     is Object({ "type": String(item_type), "id": String(id), .. } as obj) else {
@@ -10373,9 +12079,7 @@ pub impl FromJson for AppThreadItem with fn from_json(value, path) {
       AppThreadPlanItem(id~, text~)
     }
     "reasoning" => {
-      guard obj is { "summary"? : summary, "content"? : content, .. } else {
-        raise JsonDecodeError((path, "expected reasoning item"))
-      }
+      guard obj is { "summary"? : summary, "content"? : content, .. }
       AppThreadReasoningItem(
         id~,
         summary=match summary {
@@ -10603,12 +12307,21 @@ pub impl FromJson for AppThreadItem with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadItem with @json.FromJson::{from_json}
+
+///|
 pub enum AppTurnStatus {
   AppTurnCompletedStatus
   AppTurnInterruptedStatus
   AppTurnFailedStatus
   AppTurnInProgressStatus
 } derive(Debug, Eq)
+
+///|
+pub extend AppTurnStatus with Debug::{to_repr}
+
+///|
+pub extend AppTurnStatus with Eq::{not_equal, equal}
 
 ///|
 pub impl FromJson for AppTurnStatus with fn from_json(value, path) {
@@ -10622,12 +12335,18 @@ pub impl FromJson for AppTurnStatus with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppTurnStatus with @json.FromJson::{from_json}
+
+///|
 pub struct AppTurnError {
   message : String
   codex_error_info : AppCodexErrorInfo?
   additional_details : String?
   priv raw : Json
 } derive(Debug)
+
+///|
+pub extend AppTurnError with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppTurnError with fn from_json(value, path) {
@@ -10656,10 +12375,16 @@ pub impl FromJson for AppTurnError with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppTurnError with @json.FromJson::{from_json}
+
+///|
 pub enum AppNonSteerableTurnKind {
   AppNonSteerableReview
   AppNonSteerableCompact
 } derive(Debug)
+
+///|
+pub extend AppNonSteerableTurnKind with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppNonSteerableTurnKind with fn from_json(value, path) {
@@ -10669,6 +12394,9 @@ pub impl FromJson for AppNonSteerableTurnKind with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected non-steerable turn kind"))
   }
 }
+
+///|
+pub extend AppNonSteerableTurnKind with @json.FromJson::{from_json}
 
 ///|
 pub enum AppCodexErrorInfo {
@@ -10688,6 +12416,9 @@ pub enum AppCodexErrorInfo {
   AppActiveTurnNotSteerable(turn_kind~ : AppNonSteerableTurnKind)
   AppCodexOtherError
 } derive(Debug)
+
+///|
+pub extend AppCodexErrorInfo with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppCodexErrorInfo with fn from_json(value, path) {
@@ -10743,6 +12474,9 @@ pub impl FromJson for AppCodexErrorInfo with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppCodexErrorInfo with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadItemEvent {
   thread_id : String
   turn_id : String
@@ -10751,6 +12485,9 @@ pub struct AppThreadItemEvent {
   raw_item : Json
   timestamp_ms : Int64
 } derive(Debug)
+
+///|
+pub extend AppThreadItemEvent with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadItemEvent with fn from_json(value, path) {
@@ -10807,11 +12544,17 @@ pub impl FromJson for AppThreadItemEvent with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadItemEvent with @json.FromJson::{from_json}
+
+///|
 pub struct AppThreadTokenUsage {
   total : AppTokenUsageBreakdown
   last : AppTokenUsageBreakdown
   model_context_window : Int64?
 } derive(Debug)
+
+///|
+pub extend AppThreadTokenUsage with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadTokenUsage with fn from_json(value, path) {
@@ -10835,6 +12578,9 @@ pub impl FromJson for AppThreadTokenUsage with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadTokenUsage with @json.FromJson::{from_json}
+
+///|
 pub struct AppTokenUsageBreakdown {
   total_tokens : Int64
   input_tokens : Int64
@@ -10844,9 +12590,15 @@ pub struct AppTokenUsageBreakdown {
 } derive(Debug)
 
 ///|
+pub extend AppTokenUsageBreakdown with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppTokenUsageBreakdown with fn from_json(value, path) {
   app_usage(value, path)
 }
+
+///|
+pub extend AppTokenUsageBreakdown with @json.FromJson::{from_json}
 
 ///|
 fn app_thread_item(

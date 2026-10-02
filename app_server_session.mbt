@@ -112,6 +112,12 @@ pub struct AppTurnStartOptions {
 } derive(Default, Debug)
 
 ///|
+pub extend AppTurnStartOptions with Default::{default}
+
+///|
+pub extend AppTurnStartOptions with Debug::{to_repr}
+
+///|
 pub fn AppTurnStartOptions::new(
   client_user_message_id? : String,
   cwd? : String,
