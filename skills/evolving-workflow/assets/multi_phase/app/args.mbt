@@ -50,7 +50,7 @@ fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
   }
   let arguments = Arguments::default()
   let parallelism = args.options.get("parallelism").unwrap_or("4")
-  arguments.parallelism = @strconv.parse_int(parallelism) catch {
+  arguments.parallelism = @string.parse_int(parallelism) catch {
     e => @error.fail_with("Invalid parallelism value", e)
   }
   if args.flags.get("verbose") is Some(true) {
@@ -68,7 +68,7 @@ fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
 fn apply_env_overrides(arguments : Arguments) -> Arguments {
   let env = @sys.get_env_vars()
   if env.get("WORKFLOW_PARALLELISM") is Some(value) {
-    arguments.parallelism = @strconv.parse_int(value) catch {
+    arguments.parallelism = @string.parse_int(value) catch {
       _ => arguments.parallelism
     }
   }
