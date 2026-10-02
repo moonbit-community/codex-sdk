@@ -60,14 +60,7 @@ pub async fn Job::task_start(config : Job, idx : Int) -> TaskHandle {
   }
   // Cache content at setup (not on retry)
   let content = read_item_content(config.project_root, item)
-  TaskHandle::{
-    item,
-    config,
-    idx,
-    attempt: 0,
-    content,
-    last_error: "",
-  }
+  TaskHandle::{ item, config, idx, attempt: 0, content, last_error: "", }
 }
 
 ///|
@@ -129,7 +122,7 @@ pub struct TaskResult {
 }
 
 ///|
-pub impl Show for TaskResult with output(self, logger) {
+pub impl Show for TaskResult with fn output(self, logger) {
   if self.success {
     logger.write_string("TaskResult::Success(\{self.item})")
   } else {
@@ -144,18 +137,14 @@ pub async fn TaskHandle::finish(self : TaskHandle) -> TaskResult {
     @stdio.stdout.write("info [\{self.item}] - Completed\n")
   }
   // === CUSTOMIZE: Save results, write files, etc. ===
-  TaskResult::{ item: self.item, success: true, error: "" }
+  TaskResult::{ item: self.item, success: true, error: "", }
 }
 
 ///|
 /// Handle task failure.
 pub async fn TaskHandle::error(self : TaskHandle, error : Error) -> TaskResult {
   @stdio.stderr.write("error [\{self.item}] - Failed: \{error}\n")
-  TaskResult::{
-    item: self.item,
-    success: false,
-    error: error.to_string(),
-  }
+  TaskResult::{ item: self.item, success: false, error: error.to_string(), }
 }
 
 ///|
@@ -192,7 +181,9 @@ async fn discover_items(path : String) -> Array[String] {
   // === CUSTOMIZE: Return list of items to process ===
   // Example: find all .mbt files, packages, directories, etc.
   let items : Array[String] = []
-  find_items_recursive(path, "", items) catch { _ => () }
+  find_items_recursive(path, "", items) catch {
+    _ => ()
+  }
   items
 }
 
@@ -201,7 +192,7 @@ async fn find_items_recursive(
   base : String,
   relative : String,
   out : Array[String],
-) -> Unit raise {
+) -> Unit {
   let dir = if relative.is_empty() { base } else { "\{base}/\{relative}" }
   let entries = @fs.readdir(dir, include_hidden=false)
   // Check if this directory has .mbt files
@@ -210,10 +201,17 @@ async fn find_items_recursive(
     out.push(relative)
   }
   for name in entries {
-    if name == "_build" || name == "target" || name == ".mooncakes" || name == ".git" {
+    if name == "_build" ||
+      name == "target" ||
+      name == ".mooncakes" ||
+      name == ".git" {
       continue
     }
-    let rel_path = if relative.is_empty() { name } else { "\{relative}/\{name}" }
+    let rel_path = if relative.is_empty() {
+      name
+    } else {
+      "\{relative}/\{name}"
+    }
     let full_path = "\{base}/\{rel_path}"
     if @fs.kind(full_path) == Directory {
       find_items_recursive(base, rel_path, out)
@@ -225,7 +223,11 @@ async fn find_items_recursive(
 /// Read content for an item. Customize for your workflow.
 async fn read_item_content(project_root : String, item : String) -> String {
   // === CUSTOMIZE: Read the content needed for the prompt ===
-  let path = if item.is_empty() { project_root } else { "\{project_root}/\{item}" }
+  let path = if item.is_empty() {
+    project_root
+  } else {
+    "\{project_root}/\{item}"
+  }
   // Example: read first .mbt file in directory
   let entries = @fs.readdir(path, include_hidden=false) catch { _ => return "" }
   for entry in entries {

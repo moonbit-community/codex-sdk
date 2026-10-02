@@ -56,7 +56,7 @@ pub async fn Job::summarize_start(config : Job, idx : Int) -> SummarizeHandle {
   }
   // Cache content at setup
   let content = read_item_content(config.project_root, item)
-  SummarizeHandle::{ item, config, idx, attempt: 0, content, last_error: "" }
+  SummarizeHandle::{ item, config, idx, attempt: 0, content, last_error: "", }
 }
 
 ///|
@@ -111,7 +111,7 @@ pub fn SummarizeHandle::finish(
   self : SummarizeHandle,
   summary : String,
 ) -> ItemSummary {
-  ItemSummary::{ item: self.item, content: self.content, summary }
+  ItemSummary::{ item: self.item, content: self.content, summary, }
 }
 
 ///|
@@ -120,7 +120,11 @@ pub async fn SummarizeHandle::error(
   e : Error,
 ) -> ItemSummary {
   @stdio.stderr.write("error [\{self.item}] - Summarize failed: \{e}\n")
-  ItemSummary::{ item: self.item, content: self.content, summary: "(failed to summarize)" }
+  ItemSummary::{
+    item: self.item,
+    content: self.content,
+    summary: "(failed to summarize)",
+  }
 }
 
 // =============================================================================
@@ -148,8 +152,15 @@ pub async fn Job::plan_start(
   if skipped > 0 {
     @stdio.stdout.write("Skipping \{skipped} items that failed to summarize\n")
   }
-  @stdio.stdout.write("Planning: grouping \{valid_summaries.length()} items...\n")
-  PlanHandle::{ summaries: valid_summaries, config, attempt: 0, last_error: "" }
+  @stdio.stdout.write(
+    "Planning: grouping \{valid_summaries.length()} items...\n",
+  )
+  PlanHandle::{
+    summaries: valid_summaries,
+    config,
+    attempt: 0,
+    last_error: "",
+  }
 }
 
 ///|
@@ -303,7 +314,14 @@ pub async fn Job::process_start(
       $|
     content_sections = content_sections + section
   }
-  ProcessHandle::{ group, config, idx, attempt: 0, content_sections, last_error: "" }
+  ProcessHandle::{
+    group,
+    config,
+    idx,
+    attempt: 0,
+    content_sections,
+    last_error: "",
+  }
 }
 
 ///|
@@ -369,13 +387,19 @@ pub async fn ProcessHandle::finish(
   }
   // === CUSTOMIZE: Save results to file ===
   save_group_result(group_result, self.config.output_dir) catch {
-    e => @stdio.stderr.write("warning: Failed to save result for \{self.group.name}: \{e}\n")
+    e =>
+      @stdio.stderr.write(
+        "warning: Failed to save result for \{self.group.name}: \{e}\n",
+      )
   }
   group_result
 }
 
 ///|
-pub async fn ProcessHandle::error(self : ProcessHandle, e : Error) -> GroupResult {
+pub async fn ProcessHandle::error(
+  self : ProcessHandle,
+  e : Error,
+) -> GroupResult {
   @stdio.stderr.write("error [\{self.group.name}] - Processing failed: \{e}\n")
   GroupResult::{
     group_name: self.group.name,
@@ -483,7 +507,7 @@ fn parse_item_groups(json : Json) -> Array[ItemGroup] raise {
       guard i is String(s) else { continue }
       items.push(s)
     }
-    groups.push(ItemGroup::{ name, items, rationale })
+    groups.push(ItemGroup::{ name, items, rationale, })
   }
   groups
 }
@@ -493,7 +517,9 @@ async fn save_group_result(result : GroupResult, output_dir : String) -> Unit {
   if not(result.success) {
     return
   }
-  mkdir_recursive(output_dir) catch { e => @error.reraise(e) }
+  mkdir_recursive(output_dir) catch {
+    e => @error.reraise(e)
+  }
   let file_name = result.group_name
     .replace_all(old=" ", new="_")
     .replace_all(old="/", new="_")
@@ -517,7 +543,7 @@ async fn save_group_result(result : GroupResult, output_dir : String) -> Unit {
 }
 
 ///|
-async fn mkdir_recursive(path : String) -> Unit raise {
+async fn mkdir_recursive(path : String) -> Unit {
   if @fs.exists(path) {
     return
   }
@@ -539,7 +565,9 @@ async fn mkdir_recursive(path : String) -> Unit raise {
 ///|
 async fn discover_items(path : String) -> Array[String] {
   let items : Array[String] = []
-  find_items_recursive(path, "", items) catch { _ => () }
+  find_items_recursive(path, "", items) catch {
+    _ => ()
+  }
   items
 }
 
@@ -548,7 +576,7 @@ async fn find_items_recursive(
   base : String,
   relative : String,
   out : Array[String],
-) -> Unit raise {
+) -> Unit {
   let dir = if relative.is_empty() { base } else { "\{base}/\{relative}" }
   let entries = @fs.readdir(dir, include_hidden=false)
   let has_sources = entries.iter().any(fn(name) { name.has_suffix(".mbt") })
@@ -556,10 +584,17 @@ async fn find_items_recursive(
     out.push(relative)
   }
   for name in entries {
-    if name == "_build" || name == "target" || name == ".mooncakes" || name == ".git" {
+    if name == "_build" ||
+      name == "target" ||
+      name == ".mooncakes" ||
+      name == ".git" {
       continue
     }
-    let rel_path = if relative.is_empty() { name } else { "\{relative}/\{name}" }
+    let rel_path = if relative.is_empty() {
+      name
+    } else {
+      "\{relative}/\{name}"
+    }
     let full_path = "\{base}/\{rel_path}"
     if @fs.kind(full_path) == Directory {
       find_items_recursive(base, rel_path, out)
@@ -569,7 +604,11 @@ async fn find_items_recursive(
 
 ///|
 async fn read_item_content(project_root : String, item : String) -> String {
-  let path = if item.is_empty() { project_root } else { "\{project_root}/\{item}" }
+  let path = if item.is_empty() {
+    project_root
+  } else {
+    "\{project_root}/\{item}"
+  }
   let entries = @fs.readdir(path, include_hidden=false) catch { _ => return "" }
   for entry in entries {
     if entry.has_suffix(".mbt") {
