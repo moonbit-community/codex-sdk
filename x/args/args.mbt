@@ -24,9 +24,9 @@ pub fn parse(
   stop_early? : Bool = false,
 ) -> Args raise {
   let positional : Array[String] = []
-  let flags_map : Map[String, Bool] = {}
-  let options_map : Map[String, String] = {}
-  let collections_map : Map[String, Array[String]] = {}
+  let flags_map : Map[String, Bool] = Map([])
+  let options_map : Map[String, String] = Map([])
+  let collections_map : Map[String, Array[String]] = Map([])
 
   // Create sets for O(1) lookup
   let flag_set = Set::from_array(flags.map(s => s[:]))

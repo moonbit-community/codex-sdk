@@ -1,5 +1,4 @@
 import {
-  "moonbitlang/async/io",
   "moonbitlang/async/process",
   "moonbit-community/codex/x/error",
   "moonbitlang/core/string",

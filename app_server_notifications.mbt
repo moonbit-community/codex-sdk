@@ -25,6 +25,9 @@ pub(all) struct AppThreadGoal {
 } derive(Debug)
 
 ///|
+pub extend AppThreadGoal with Debug::{to_repr}
+
+///|
 pub impl FromJson for AppThreadGoal with fn from_json(value, path) {
   guard value
     is {
@@ -53,12 +56,18 @@ pub impl FromJson for AppThreadGoal with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadGoal with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppThreadGoalStatus {
   AppThreadGoalActive
   AppThreadGoalPaused
   AppThreadGoalBudgetLimited
   AppThreadGoalComplete
 } derive(Debug)
+
+///|
+pub extend AppThreadGoalStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadGoalStatus with fn from_json(value, path) {
@@ -72,10 +81,16 @@ pub impl FromJson for AppThreadGoalStatus with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadGoalStatus with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppTurnPlanStep {
   step : String
   status : AppTurnPlanStepStatus
 } derive(Debug)
+
+///|
+pub extend AppTurnPlanStep with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppTurnPlanStep with fn from_json(value, path) {
@@ -86,11 +101,17 @@ pub impl FromJson for AppTurnPlanStep with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppTurnPlanStep with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppTurnPlanStepStatus {
   AppTurnPlanPending
   AppTurnPlanInProgress
   AppTurnPlanCompleted
 } derive(Debug)
+
+///|
+pub extend AppTurnPlanStepStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppTurnPlanStepStatus with fn from_json(value, path) {
@@ -103,12 +124,18 @@ pub impl FromJson for AppTurnPlanStepStatus with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppTurnPlanStepStatus with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppRemoteControlConnectionStatus {
   AppRemoteControlDisabled
   AppRemoteControlConnecting
   AppRemoteControlConnected
   AppRemoteControlErrored
 } derive(Debug)
+
+///|
+pub extend AppRemoteControlConnectionStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppRemoteControlConnectionStatus with fn from_json(
@@ -125,9 +152,15 @@ pub impl FromJson for AppRemoteControlConnectionStatus with fn from_json(
 }
 
 ///|
+pub extend AppRemoteControlConnectionStatus with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppModelRerouteReason {
   AppModelRerouteHighRiskCyberActivity
 } derive(Debug)
+
+///|
+pub extend AppModelRerouteReason with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppModelRerouteReason with fn from_json(value, path) {
@@ -138,9 +171,15 @@ pub impl FromJson for AppModelRerouteReason with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppModelRerouteReason with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppModelVerification {
   AppModelVerificationTrustedAccessForCyber
 } derive(Debug)
+
+///|
+pub extend AppModelVerification with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppModelVerification with fn from_json(value, path) {
@@ -151,10 +190,16 @@ pub impl FromJson for AppModelVerification with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppModelVerification with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppTextPosition {
   line : UInt64
   column : UInt64
 } derive(Debug)
+
+///|
+pub extend AppTextPosition with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppTextPosition with fn from_json(value, path) {
@@ -165,10 +210,16 @@ pub impl FromJson for AppTextPosition with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppTextPosition with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppTextRange {
   start : AppTextPosition
   end : AppTextPosition
 } derive(Debug)
+
+///|
+pub extend AppTextRange with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppTextRange with fn from_json(value, path) {
@@ -180,6 +231,9 @@ pub impl FromJson for AppTextRange with fn from_json(value, path) {
     end: @json.from_json(end, path=path.add_key("end")),
   }
 }
+
+///|
+pub extend AppTextRange with @json.FromJson::{from_json}
 
 ///|
 pub(all) struct AppHookRunSummary {
@@ -198,6 +252,9 @@ pub(all) struct AppHookRunSummary {
   duration_ms : Int64?
   entries : ArrayView[AppHookOutputEntry]
 } derive(Debug)
+
+///|
+pub extend AppHookRunSummary with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookRunSummary with fn from_json(value, path) {
@@ -252,10 +309,16 @@ pub impl FromJson for AppHookRunSummary with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHookRunSummary with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppHookExecutionMode {
   AppHookSyncExecution
   AppHookAsyncExecution
 } derive(Debug)
+
+///|
+pub extend AppHookExecutionMode with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookExecutionMode with fn from_json(value, path) {
@@ -267,10 +330,16 @@ pub impl FromJson for AppHookExecutionMode with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHookExecutionMode with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppHookScope {
   AppHookThreadScope
   AppHookTurnScope
 } derive(Debug)
+
+///|
+pub extend AppHookScope with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookScope with fn from_json(value, path) {
@@ -282,6 +351,9 @@ pub impl FromJson for AppHookScope with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHookScope with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppHookRunStatus {
   AppHookRunning
   AppHookCompleted
@@ -289,6 +361,9 @@ pub(all) enum AppHookRunStatus {
   AppHookBlocked
   AppHookStopped
 } derive(Debug)
+
+///|
+pub extend AppHookRunStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookRunStatus with fn from_json(value, path) {
@@ -303,10 +378,16 @@ pub impl FromJson for AppHookRunStatus with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHookRunStatus with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppHookOutputEntry {
   kind : AppHookOutputEntryKind
   text : String
 } derive(Debug)
+
+///|
+pub extend AppHookOutputEntry with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookOutputEntry with fn from_json(value, path) {
@@ -317,6 +398,9 @@ pub impl FromJson for AppHookOutputEntry with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHookOutputEntry with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppHookOutputEntryKind {
   AppHookOutputWarning
   AppHookOutputStop
@@ -324,6 +408,9 @@ pub(all) enum AppHookOutputEntryKind {
   AppHookOutputContext
   AppHookOutputError
 } derive(Debug)
+
+///|
+pub extend AppHookOutputEntryKind with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppHookOutputEntryKind with fn from_json(value, path) {
@@ -338,10 +425,16 @@ pub impl FromJson for AppHookOutputEntryKind with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppHookOutputEntryKind with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppRealtimeConversationVersion {
   AppRealtimeConversationV1
   AppRealtimeConversationV2
 } derive(Debug)
+
+///|
+pub extend AppRealtimeConversationVersion with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppRealtimeConversationVersion with fn from_json(
@@ -356,6 +449,9 @@ pub impl FromJson for AppRealtimeConversationVersion with fn from_json(
 }
 
 ///|
+pub extend AppRealtimeConversationVersion with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppThreadRealtimeAudioChunk {
   data : String
   sample_rate : UInt
@@ -363,6 +459,9 @@ pub(all) struct AppThreadRealtimeAudioChunk {
   samples_per_channel : UInt?
   item_id : String?
 } derive(Debug)
+
+///|
+pub extend AppThreadRealtimeAudioChunk with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadRealtimeAudioChunk with fn from_json(value, path) {
@@ -390,12 +489,18 @@ pub impl FromJson for AppThreadRealtimeAudioChunk with fn from_json(value, path)
 }
 
 ///|
+pub extend AppThreadRealtimeAudioChunk with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppGuardianApprovalReview {
   status : AppGuardianApprovalReviewStatus
   risk_level : AppGuardianRiskLevel?
   user_authorization : AppGuardianUserAuthorization?
   rationale : String?
 } derive(Debug)
+
+///|
+pub extend AppGuardianApprovalReview with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppGuardianApprovalReview with fn from_json(value, path) {
@@ -426,6 +531,9 @@ pub impl FromJson for AppGuardianApprovalReview with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppGuardianApprovalReview with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppGuardianApprovalReviewStatus {
   AppGuardianReviewInProgress
   AppGuardianReviewApproved
@@ -433,6 +541,9 @@ pub(all) enum AppGuardianApprovalReviewStatus {
   AppGuardianReviewTimedOut
   AppGuardianReviewAborted
 } derive(Debug)
+
+///|
+pub extend AppGuardianApprovalReviewStatus with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppGuardianApprovalReviewStatus with fn from_json(
@@ -450,9 +561,15 @@ pub impl FromJson for AppGuardianApprovalReviewStatus with fn from_json(
 }
 
 ///|
+pub extend AppGuardianApprovalReviewStatus with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppAutoReviewDecisionSource {
   AppAutoReviewDecisionAgent
 } derive(Debug)
+
+///|
+pub extend AppAutoReviewDecisionSource with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppAutoReviewDecisionSource with fn from_json(value, path) {
@@ -463,12 +580,18 @@ pub impl FromJson for AppAutoReviewDecisionSource with fn from_json(value, path)
 }
 
 ///|
+pub extend AppAutoReviewDecisionSource with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppGuardianRiskLevel {
   AppGuardianRiskLow
   AppGuardianRiskMedium
   AppGuardianRiskHigh
   AppGuardianRiskCritical
 } derive(Debug)
+
+///|
+pub extend AppGuardianRiskLevel with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppGuardianRiskLevel with fn from_json(value, path) {
@@ -482,12 +605,18 @@ pub impl FromJson for AppGuardianRiskLevel with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppGuardianRiskLevel with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppGuardianUserAuthorization {
   AppGuardianUserAuthorizationUnknown
   AppGuardianUserAuthorizationLow
   AppGuardianUserAuthorizationMedium
   AppGuardianUserAuthorizationHigh
 } derive(Debug)
+
+///|
+pub extend AppGuardianUserAuthorization with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppGuardianUserAuthorization with fn from_json(
@@ -504,10 +633,16 @@ pub impl FromJson for AppGuardianUserAuthorization with fn from_json(
 }
 
 ///|
+pub extend AppGuardianUserAuthorization with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppGuardianCommandSource {
   AppGuardianCommandSourceShell
   AppGuardianCommandSourceUnifiedExec
 } derive(Debug)
+
+///|
+pub extend AppGuardianCommandSource with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppGuardianCommandSource with fn from_json(value, path) {
@@ -517,6 +652,9 @@ pub impl FromJson for AppGuardianCommandSource with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected guardian command source"))
   }
 }
+
+///|
+pub extend AppGuardianCommandSource with @json.FromJson::{from_json}
 
 ///|
 pub(all) enum AppGuardianApprovalReviewAction {
@@ -550,6 +688,9 @@ pub(all) enum AppGuardianApprovalReviewAction {
     permissions~ : AppRequestPermissionProfile
   )
 } derive(Debug)
+
+///|
+pub extend AppGuardianApprovalReviewAction with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppGuardianApprovalReviewAction with fn from_json(
@@ -667,3 +808,6 @@ pub impl FromJson for AppGuardianApprovalReviewAction with fn from_json(
       )
   }
 }
+
+///|
+pub extend AppGuardianApprovalReviewAction with @json.FromJson::{from_json}

@@ -202,9 +202,7 @@ pub async fn MoonProject::discover(path : String) -> MoonProject? {
     let content = @fs.read_file("\{path}/moon.mod.json").text()
     let schema = @json.parse(content)
     guard schema is Object({ "name": String(name), .. }) else {
-      fail(
-        "Invalid moon.mod.json at \{path} with content \{@debug.to_repr(schema)}",
-      )
+      fail("Invalid moon.mod.json at \{path} with content \{Repr(schema)}")
     }
     Some({ root: path, name, })
   } else {
@@ -284,7 +282,7 @@ async fn run_moon_command(
   root : String,
   args : Array[String],
 ) -> ValidationResult {
-  let full_args = Array::new(capacity=args.length() + 2)
+  let full_args = Array(capacity=args.length() + 2)
   for arg in args {
     full_args.push(arg)
   }

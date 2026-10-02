@@ -50,12 +50,15 @@ pub impl ToJson for Event with fn to_json(event) {
 }
 
 ///|
+pub extend Event with ToJson::{to_json}
+
+///|
 pub impl @json.FromJson for Event with fn from_json(value, path) {
   guard value is Object({ "type": String(ty), .. } as obj) else {
     raise JsonDecodeError(
       (
         path,
-        "expected object containing 'type' field for Event, got \{@debug.to_repr(value)}",
+        "expected object containing 'type' field for Event, got \{Repr(value)}",
       ),
     )
   }
@@ -63,7 +66,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "thread.started" => {
       guard obj is { "thread_id": String(thread_id), .. } else {
         raise JsonDecodeError(
-          (path, "expected ThreadStarted event, got \{@debug.to_repr(obj)}"),
+          (path, "expected ThreadStarted event, got \{Repr(obj)}"),
         )
       }
       ThreadStarted(thread_id~)
@@ -72,7 +75,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "turn.completed" => {
       guard obj is { "usage": usage_json, .. } else {
         raise JsonDecodeError(
-          (path, "expected TurnCompleted event, got \{@debug.to_repr(obj)}"),
+          (path, "expected TurnCompleted event, got \{Repr(obj)}"),
         )
       }
       let usage = @json.FromJson::from_json(usage_json, path.add_key("usage")) catch {
@@ -83,7 +86,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "turn.failed" => {
       guard obj is { "error": error_json, .. } else {
         raise JsonDecodeError(
-          (path, "expected TurnFailed event, got \{@debug.to_repr(obj)}"),
+          (path, "expected TurnFailed event, got \{Repr(obj)}"),
         )
       }
       let error = @json.FromJson::from_json(error_json, path.add_key("error")) catch {
@@ -93,9 +96,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     }
     "item.started" | "item.updated" | "item.completed" => {
       guard obj is { "item": item_json, .. } else {
-        raise JsonDecodeError(
-          (path, "expected Item event, got \{@debug.to_repr(obj)}"),
-        )
+        raise JsonDecodeError((path, "expected Item event, got \{Repr(obj)}"))
       }
       let item = @json.FromJson::from_json(item_json, path.add_key("item")) catch {
         error => raise JsonDecodeError((path, "error parsing item: \{error}"))
@@ -110,7 +111,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "error" => {
       guard obj is { "message": String(message), .. } else {
         raise JsonDecodeError(
-          (path, "expected ThreadErrorEvent, got \{@debug.to_repr(obj)}"),
+          (path, "expected ThreadErrorEvent, got \{Repr(obj)}"),
         )
       }
       ThreadErrorEvent(message)
@@ -118,6 +119,9 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     _ => raise JsonDecodeError((path, "expected Event"))
   }
 }
+
+///|
+pub extend Event with @json.FromJson::{from_json}
 
 ///|
 /// Describes the usage of tokens during a turn.
@@ -136,6 +140,9 @@ pub struct Usage {
 } derive(Debug)
 
 ///|
+pub extend Usage with Debug::{to_repr}
+
+///|
 pub impl ToJson for Usage with fn to_json(usage) {
   {
     "input_tokens": usage.input_tokens,
@@ -145,6 +152,9 @@ pub impl ToJson for Usage with fn to_json(usage) {
     "reasoning_output_tokens": usage.reasoning_output_tokens,
   }
 }
+
+///|
+pub extend Usage with ToJson::{to_json}
 
 ///|
 pub impl FromJson for Usage with fn from_json(value, path) {
@@ -180,6 +190,15 @@ pub impl FromJson for Usage with fn from_json(value, path) {
 }
 
 ///|
+pub extend Usage with @json.FromJson::{from_json}
+
+///|
 pub struct ThreadError {
   message : String
 } derive(ToJson, FromJson)
+
+///|
+pub extend ThreadError with ToJson::{to_json}
+
+///|
+pub extend ThreadError with @json.FromJson::{from_json}
