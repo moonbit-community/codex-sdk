@@ -5,6 +5,7 @@
     "moonbitlang/async/fs",
     "moonbitlang/async/stdio",
     "moonbit-community/codex/x/args",
-    "moonbit-community/codex/x/error"
+    "moonbit-community/codex/x/error",
+    "moonbitlang/core/string"
   ]
 }
