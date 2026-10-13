@@ -13,7 +13,7 @@ pub suberror AppErrors {
 pub struct Job {
   project_root : String
   items : Array[String] // Items to process (e.g., file paths, package names)
-  parallelism : Int
+  parallelism : Int32
   output_dir : String
   verbose : Bool
 }
@@ -44,15 +44,15 @@ pub async fn initialize() -> Job {
 pub struct TaskHandle {
   item : String
   config : Job
-  idx : Int
-  mut attempt : Int
+  idx : Int32
+  mut attempt : Int32
   content : String // Cached content (read once at start)
   mut last_error : String
 }
 
 ///|
 /// Start a new task. Cache any data needed for the prompt here.
-pub async fn Job::task_start(config : Job, idx : Int) -> TaskHandle {
+pub async fn Job::task_start(config : Job, idx : Int32) -> TaskHandle {
   let item = config.items[idx]
   let total = config.items.length()
   if config.verbose {

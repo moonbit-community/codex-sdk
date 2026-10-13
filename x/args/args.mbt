@@ -15,18 +15,18 @@ pub struct Args {
 /// Parse command line arguments with simple configuration
 pub fn parse(
   args : ArrayView[String],
-  flags? : ArrayView[String] = [],
-  options? : ArrayView[String] = [],
-  collections? : ArrayView[String] = [],
-  aliases? : Map[String, String] = {},
-  negatable? : ArrayView[String] = [],
-  double_dash? : Bool = true,
-  stop_early? : Bool = false,
+  flags~ : ArrayView[String] = [],
+  options~ : ArrayView[String] = [],
+  collections~ : ArrayView[String] = [],
+  aliases~ : Map[String, String] = {},
+  negatable~ : ArrayView[String] = [],
+  double_dash~ : Bool = true,
+  stop_early~ : Bool = false,
 ) -> Args raise {
   let positional : Array[String] = []
-  let flags_map : Map[String, Bool] = {}
-  let options_map : Map[String, String] = {}
-  let collections_map : Map[String, Array[String]] = {}
+  let flags_map : Map[String, Bool] = Map([])
+  let options_map : Map[String, String] = Map([])
+  let collections_map : Map[String, Array[String]] = Map([])
 
   // Create sets for O(1) lookup
   let flag_set = Set::from_array(flags.map(s => s[:]))

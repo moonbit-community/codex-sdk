@@ -29,8 +29,8 @@ async test {
   let turn = thread.run("Hello, what model are you using?")
   // I’m `GPT-5.2`, running inside the Codex CLI harness in your repo (`/Users/../codex-sdk`).
   println(turn.final_response)
-  println(turn.items.to_json().stringify())
-  println(turn.usage.to_json().stringify())
+  println(Json(turn.items).stringify())
+  println(Json(turn.usage).stringify())
 }
 ```
 
@@ -46,8 +46,8 @@ async test {
   )
   let turn = thread.run("Hello?")
   println(turn.final_response)
-  println(turn.items.to_json().stringify())
-  println(turn.usage.to_json().stringify())
+  println(Json(turn.items).stringify())
+  println(Json(turn.usage).stringify())
 }
 ```
 

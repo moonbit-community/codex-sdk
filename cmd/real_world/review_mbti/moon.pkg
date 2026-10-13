@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbit-community/codex",
+  "moonbit-community/codex-example/real_world/review_mbti/app",
+  "moonbit-community/codex-example/real_world/shared",
+}
+
+pkgtype(kind: "executable")

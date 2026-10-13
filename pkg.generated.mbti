@@ -18,11 +18,15 @@ pub enum AppAccount {
   AppAccountChatGPT(email~ : String, plan_type~ : AppPlanType)
   AppAccountAmazonBedrock
 } derive(@debug.Debug)
+pub fn AppAccount::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAccount::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAccount
 
 pub struct AppAccountLoginCancelResponse {
   status : AppCancelLoginAccountStatus
 } derive(@debug.Debug)
+pub fn AppAccountLoginCancelResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAccountLoginCancelResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAccountLoginCancelResponse
 
 pub enum AppAccountLoginStartResponse {
@@ -31,40 +35,54 @@ pub enum AppAccountLoginStartResponse {
   AppAccountLoginChatGPTDeviceCode(login_id~ : String, verification_url~ : String, user_code~ : String)
   AppAccountLoginChatGPTAuthTokens
 } derive(@debug.Debug)
+pub fn AppAccountLoginStartResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAccountLoginStartResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAccountLoginStartResponse
 
 pub struct AppAccountRateLimitsReadResponse {
   rate_limits : AppRateLimitSnapshot
   rate_limits_by_limit_id : Map[String, AppRateLimitSnapshot]?
 } derive(@debug.Debug)
+pub fn AppAccountRateLimitsReadResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAccountRateLimitsReadResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAccountRateLimitsReadResponse
 
 pub(all) struct AppAccountReadParams {
   refresh_token : Bool
 } derive(@debug.Debug)
+pub fn AppAccountReadParams::to_json(Self) -> Json
+pub fn AppAccountReadParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppAccountReadParams
 
 pub struct AppAccountReadResponse {
   account : AppAccount?
   requires_openai_auth : Bool
 } derive(@debug.Debug)
+pub fn AppAccountReadResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAccountReadResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAccountReadResponse
 
 pub struct AppAccountSendAddCreditsNudgeEmailResponse {
   status : AppAddCreditsNudgeEmailStatus
 } derive(@debug.Debug)
+pub fn AppAccountSendAddCreditsNudgeEmailResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAccountSendAddCreditsNudgeEmailResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAccountSendAddCreditsNudgeEmailResponse
 
 pub enum AppAddCreditsNudgeEmailStatus {
   AppAddCreditsNudgeSent
   AppAddCreditsNudgeCooldownActive
 } derive(@debug.Debug)
+pub fn AppAddCreditsNudgeEmailStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAddCreditsNudgeEmailStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAddCreditsNudgeEmailStatus
 
 pub(all) enum AppAddCreditsNudgeKind {
   AppNudgeCredits
   AppNudgeUsageLimit
 } derive(@debug.Debug)
+pub fn AppAddCreditsNudgeKind::to_json(Self) -> Json
+pub fn AppAddCreditsNudgeKind::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppAddCreditsNudgeKind
 
 pub(all) struct AppAdditionalFileSystemPermissions {
@@ -73,12 +91,18 @@ pub(all) struct AppAdditionalFileSystemPermissions {
   glob_scan_max_depth : UInt64?
   entries : ArrayView[AppFileSystemSandboxEntry]?
 } derive(@debug.Debug)
+pub fn AppAdditionalFileSystemPermissions::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAdditionalFileSystemPermissions::to_json(Self) -> Json
+pub fn AppAdditionalFileSystemPermissions::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppAdditionalFileSystemPermissions
 pub impl @json.FromJson for AppAdditionalFileSystemPermissions
 
 pub(all) struct AppAdditionalNetworkPermissions {
   enabled : Bool?
 } derive(@debug.Debug)
+pub fn AppAdditionalNetworkPermissions::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAdditionalNetworkPermissions::to_json(Self) -> Json
+pub fn AppAdditionalNetworkPermissions::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppAdditionalNetworkPermissions
 pub impl @json.FromJson for AppAdditionalNetworkPermissions
 
@@ -87,6 +111,8 @@ pub struct AppAnalyticsConfig {
   additional : Map[String, Json]
   // private fields
 } derive(@debug.Debug)
+pub fn AppAnalyticsConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAnalyticsConfig::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAnalyticsConfig
 
 pub(all) enum AppApprovalPolicy {
@@ -96,6 +122,9 @@ pub(all) enum AppApprovalPolicy {
   AppApprovalNever
   AppApprovalGranular(sandbox_approval~ : Bool, rules~ : Bool, skill_approval~ : Bool, request_permissions~ : Bool, mcp_elicitations~ : Bool)
 } derive(@debug.Debug)
+pub fn AppApprovalPolicy::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppApprovalPolicy::to_json(Self) -> Json
+pub fn AppApprovalPolicy::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppApprovalPolicy
 pub impl @json.FromJson for AppApprovalPolicy
 
@@ -104,6 +133,9 @@ pub(all) enum AppApprovalsReviewer {
   AppReviewerAutoReview
   AppReviewerGuardianSubagent
 } derive(@debug.Debug)
+pub fn AppApprovalsReviewer::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppApprovalsReviewer::to_json(Self) -> Json
+pub fn AppApprovalsReviewer::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppApprovalsReviewer
 pub impl @json.FromJson for AppApprovalsReviewer
 
@@ -111,6 +143,8 @@ pub struct AppAppsConfig {
   default_config : AppAppsDefaultConfig?
   apps : Map[String, AppConnectorConfig]
 } derive(@debug.Debug)
+pub fn AppAppsConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAppsConfig::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAppsConfig
 
 pub struct AppAppsDefaultConfig {
@@ -118,11 +152,15 @@ pub struct AppAppsDefaultConfig {
   destructive_enabled : Bool
   open_world_enabled : Bool
 } derive(@debug.Debug)
+pub fn AppAppsDefaultConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAppsDefaultConfig::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAppsDefaultConfig
 
 pub(all) struct AppAttestationGenerateRequest {
   // private fields
 } derive(@debug.Debug)
+pub fn AppAttestationGenerateRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAttestationGenerateRequest::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAttestationGenerateRequest
 
 pub enum AppAuthMode {
@@ -131,34 +169,47 @@ pub enum AppAuthMode {
   AppAuthChatGPTAuthTokens
   AppAuthAgentIdentity
 } derive(@debug.Debug)
+pub fn AppAuthMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAuthMode::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAuthMode
 
 pub(all) enum AppAutoReviewDecisionSource {
   AppAutoReviewDecisionAgent
 } derive(@debug.Debug)
+pub fn AppAutoReviewDecisionSource::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppAutoReviewDecisionSource::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppAutoReviewDecisionSource
 
 pub(all) struct AppByteRange {
   start : UInt64
   end : UInt64
 } derive(@debug.Debug)
+pub fn AppByteRange::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppByteRange::to_json(Self) -> Json
+pub fn AppByteRange::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppByteRange
 pub impl @json.FromJson for AppByteRange
 
 pub(all) struct AppCancelLoginAccountParams {
   login_id : String
 } derive(@debug.Debug)
+pub fn AppCancelLoginAccountParams::to_json(Self) -> Json
+pub fn AppCancelLoginAccountParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppCancelLoginAccountParams
 
 pub enum AppCancelLoginAccountStatus {
   AppCancelLoginCanceled
   AppCancelLoginNotFound
 } derive(@debug.Debug)
+pub fn AppCancelLoginAccountStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppCancelLoginAccountStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppCancelLoginAccountStatus
 
 pub(all) enum AppChatgptAuthTokensRefreshReason {
   AppChatgptAuthTokensUnauthorized
 } derive(@debug.Debug)
+pub fn AppChatgptAuthTokensRefreshReason::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppChatgptAuthTokensRefreshReason::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppChatgptAuthTokensRefreshReason
 
 pub(all) struct AppChatgptAuthTokensRefreshRequest {
@@ -166,6 +217,8 @@ pub(all) struct AppChatgptAuthTokensRefreshRequest {
   previous_account_id : String?
   // private fields
 } derive(@debug.Debug)
+pub fn AppChatgptAuthTokensRefreshRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppChatgptAuthTokensRefreshRequest::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppChatgptAuthTokensRefreshRequest
 
 pub(all) struct AppClientInfo {
@@ -173,6 +226,8 @@ pub(all) struct AppClientInfo {
   title : String?
   version : String
 } derive(@debug.Debug)
+pub fn AppClientInfo::to_json(Self) -> Json
+pub fn AppClientInfo::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppClientInfo
 
 pub enum AppCodexErrorInfo {
@@ -192,17 +247,23 @@ pub enum AppCodexErrorInfo {
   AppActiveTurnNotSteerable(turn_kind~ : AppNonSteerableTurnKind)
   AppCodexOtherError
 } derive(@debug.Debug)
+pub fn AppCodexErrorInfo::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppCodexErrorInfo::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppCodexErrorInfo
 
 pub(all) enum AppCollaborationModeKind {
   AppCollaborationPlan
   AppCollaborationDefault
 } derive(@debug.Debug)
+pub fn AppCollaborationModeKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppCollaborationModeKind::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppCollaborationModeKind
 
 pub(all) struct AppCollaborationModeListResponse {
   data : ArrayView[AppCollaborationModeMask]
 } derive(@debug.Debug)
+pub fn AppCollaborationModeListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppCollaborationModeListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppCollaborationModeListResponse
 
 pub(all) struct AppCollaborationModeMask {
@@ -211,6 +272,8 @@ pub(all) struct AppCollaborationModeMask {
   model : String?
   reasoning_effort : AppReasoningEffort?
 } derive(@debug.Debug)
+pub fn AppCollaborationModeMask::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppCollaborationModeMask::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppCollaborationModeMask
 
 pub enum AppCommandAction {
@@ -219,6 +282,8 @@ pub enum AppCommandAction {
   AppCommandSearchAction(command~ : String, query~ : String?, path~ : String?)
   AppCommandUnknownAction(command~ : String)
 } derive(@debug.Debug)
+pub fn AppCommandAction::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppCommandAction::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppCommandAction
 
 pub(all) struct AppCommandExecParams {
@@ -236,17 +301,23 @@ pub(all) struct AppCommandExecParams {
   size : AppCommandExecTerminalSize?
   sandbox_policy : AppSandboxPolicy?
 } derive(@debug.Debug)
+pub fn AppCommandExecParams::to_json(Self) -> Json
+pub fn AppCommandExecParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppCommandExecParams
 
 pub(all) struct AppCommandExecProcessParams {
   process_id : String
 } derive(@debug.Debug)
+pub fn AppCommandExecProcessParams::to_json(Self) -> Json
+pub fn AppCommandExecProcessParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppCommandExecProcessParams
 
 pub(all) struct AppCommandExecResizeParams {
   process_id : String
   size : AppCommandExecTerminalSize
 } derive(@debug.Debug)
+pub fn AppCommandExecResizeParams::to_json(Self) -> Json
+pub fn AppCommandExecResizeParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppCommandExecResizeParams
 
 pub struct AppCommandExecResponse {
@@ -254,12 +325,16 @@ pub struct AppCommandExecResponse {
   stdout : String
   stderr : String
 } derive(@debug.Debug)
+pub fn AppCommandExecResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppCommandExecResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppCommandExecResponse
 
 pub(all) struct AppCommandExecTerminalSize {
   rows : UInt16
   cols : UInt16
 } derive(@debug.Debug)
+pub fn AppCommandExecTerminalSize::to_json(Self) -> Json
+pub fn AppCommandExecTerminalSize::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppCommandExecTerminalSize
 
 pub(all) struct AppCommandExecWriteParams {
@@ -267,6 +342,8 @@ pub(all) struct AppCommandExecWriteParams {
   delta_base64 : String?
   close_stdin : Bool?
 } derive(@debug.Debug)
+pub fn AppCommandExecWriteParams::to_json(Self) -> Json
+pub fn AppCommandExecWriteParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppCommandExecWriteParams
 
 pub(all) enum AppCommandExecutionApprovalDecision {
@@ -277,12 +354,16 @@ pub(all) enum AppCommandExecutionApprovalDecision {
   AppCommandAcceptWithExecpolicyAmendment(ArrayView[String])
   AppCommandApplyNetworkPolicyAmendment(AppNetworkPolicyAmendment)
 } derive(@debug.Debug)
+pub fn AppCommandExecutionApprovalDecision::to_json(Self) -> Json
+pub fn AppCommandExecutionApprovalDecision::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppCommandExecutionApprovalDecision
 
 pub(all) enum AppCommandExecutionApprovalKind {
   AppCommandApprovalCommand
   AppCommandApprovalWriteStdin
 } derive(@debug.Debug)
+pub fn AppCommandExecutionApprovalKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppCommandExecutionApprovalKind::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppCommandExecutionApprovalKind
 
 pub(all) struct AppCommandExecutionApprovalRequest {
@@ -302,6 +383,8 @@ pub(all) struct AppCommandExecutionApprovalRequest {
   proposed_network_policy_amendments : ArrayView[AppNetworkPolicyAmendment]?
   // private fields
 } derive(@debug.Debug)
+pub fn AppCommandExecutionApprovalRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppCommandExecutionApprovalRequest::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppCommandExecutionApprovalRequest
 
 pub(all) struct AppConfigBatchWriteParams {
@@ -310,6 +393,8 @@ pub(all) struct AppConfigBatchWriteParams {
   expected_version : String?
   reload_user_config : Bool?
 } derive(@debug.Debug)
+pub fn AppConfigBatchWriteParams::to_json(Self) -> Json
+pub fn AppConfigBatchWriteParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppConfigBatchWriteParams
 
 pub struct AppConfigBatchWriteResponse {
@@ -318,6 +403,8 @@ pub struct AppConfigBatchWriteResponse {
   file_path : String
   overridden_metadata : AppConfigOverriddenMetadata?
 } derive(@debug.Debug)
+pub fn AppConfigBatchWriteResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigBatchWriteResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigBatchWriteResponse
 
 pub(all) struct AppConfigEdit {
@@ -325,6 +412,8 @@ pub(all) struct AppConfigEdit {
   value : Json
   merge_strategy : AppMergeStrategy
 } derive(@debug.Debug)
+pub fn AppConfigEdit::to_json(Self) -> Json
+pub fn AppConfigEdit::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppConfigEdit
 
 pub struct AppConfigLayer {
@@ -333,12 +422,16 @@ pub struct AppConfigLayer {
   config : Json
   disabled_reason : String?
 } derive(@debug.Debug)
+pub fn AppConfigLayer::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigLayer::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigLayer
 
 pub struct AppConfigLayerMetadata {
   name : AppConfigLayerSource
   version : String
 } derive(@debug.Debug)
+pub fn AppConfigLayerMetadata::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigLayerMetadata::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigLayerMetadata
 
 pub enum AppConfigLayerSource {
@@ -350,6 +443,8 @@ pub enum AppConfigLayerSource {
   AppConfigLayerLegacyManagedConfigTomlFromFile(file~ : String)
   AppConfigLayerLegacyManagedConfigTomlFromMdm
 } derive(@debug.Debug)
+pub fn AppConfigLayerSource::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigLayerSource::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigLayerSource
 
 pub struct AppConfigOverriddenMetadata {
@@ -357,6 +452,8 @@ pub struct AppConfigOverriddenMetadata {
   overriding_layer : AppConfigLayerMetadata
   effective_value : Json
 } derive(@debug.Debug)
+pub fn AppConfigOverriddenMetadata::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigOverriddenMetadata::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigOverriddenMetadata
 
 pub struct AppConfigReadParams {
@@ -364,6 +461,8 @@ pub struct AppConfigReadParams {
   cwd : String?
 } derive(@debug.Debug)
 pub fn AppConfigReadParams::new(Bool, cwd? : String) -> Self
+pub fn AppConfigReadParams::to_json(Self) -> Json
+pub fn AppConfigReadParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppConfigReadParams
 
 pub struct AppConfigReadResponse {
@@ -371,6 +470,8 @@ pub struct AppConfigReadResponse {
   origins : Map[String, AppConfigLayerMetadata]
   layers : ArrayView[AppConfigLayer]?
 } derive(@debug.Debug)
+pub fn AppConfigReadResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigReadResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigReadResponse
 
 pub struct AppConfigRequirements {
@@ -381,11 +482,15 @@ pub struct AppConfigRequirements {
   feature_requirements : Map[String, Bool]?
   enforce_residency : AppResidencyRequirement?
 } derive(@debug.Debug)
+pub fn AppConfigRequirements::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigRequirements::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigRequirements
 
 pub struct AppConfigRequirementsReadResponse {
   requirements : AppConfigRequirements?
 } derive(@debug.Debug)
+pub fn AppConfigRequirementsReadResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigRequirementsReadResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigRequirementsReadResponse
 
 pub struct AppConfigSnapshot {
@@ -416,6 +521,9 @@ pub struct AppConfigSnapshot {
   additional : Map[String, Json]
   // private fields
 } derive(@debug.Debug)
+pub fn AppConfigSnapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigSnapshot::to_json(Self) -> Json
+pub fn AppConfigSnapshot::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppConfigSnapshot
 pub impl @json.FromJson for AppConfigSnapshot
 
@@ -423,6 +531,8 @@ pub struct AppConfigToolsV2 {
   web_search : AppWebSearchToolConfig?
   view_image : Bool?
 } derive(@debug.Debug)
+pub fn AppConfigToolsV2::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigToolsV2::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigToolsV2
 
 pub(all) struct AppConfigValueWriteParams {
@@ -432,6 +542,8 @@ pub(all) struct AppConfigValueWriteParams {
   file_path : String?
   expected_version : String?
 } derive(@debug.Debug)
+pub fn AppConfigValueWriteParams::to_json(Self) -> Json
+pub fn AppConfigValueWriteParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppConfigValueWriteParams
 
 pub struct AppConfigValueWriteResponse {
@@ -440,12 +552,16 @@ pub struct AppConfigValueWriteResponse {
   file_path : String
   overridden_metadata : AppConfigOverriddenMetadata?
 } derive(@debug.Debug)
+pub fn AppConfigValueWriteResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigValueWriteResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigValueWriteResponse
 
 pub enum AppConfigWriteStatus {
   AppConfigWriteOk
   AppConfigWriteOkOverridden
 } derive(@debug.Debug)
+pub fn AppConfigWriteStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfigWriteStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConfigWriteStatus
 
 pub struct AppConnectorConfig {
@@ -456,6 +572,8 @@ pub struct AppConnectorConfig {
   default_tools_enabled : Bool?
   tools : AppToolsConfig?
 } derive(@debug.Debug)
+pub fn AppConnectorConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConnectorConfig::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConnectorConfig
 
 pub struct AppConversationGitInfo {
@@ -463,6 +581,8 @@ pub struct AppConversationGitInfo {
   branch : String?
   origin_url : String?
 } derive(@debug.Debug)
+pub fn AppConversationGitInfo::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConversationGitInfo::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppConversationGitInfo
 
 pub struct AppCreditsSnapshot {
@@ -470,18 +590,25 @@ pub struct AppCreditsSnapshot {
   unlimited : Bool
   balance : String?
 } derive(@debug.Debug)
+pub fn AppCreditsSnapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppCreditsSnapshot::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppCreditsSnapshot
 
 pub(all) struct AppCursorLimitParams {
   cursor : String?
   limit : UInt?
 } derive(@debug.Debug)
+pub fn AppCursorLimitParams::to_json(Self) -> Json
+pub fn AppCursorLimitParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppCursorLimitParams
 
 pub(all) enum AppDynamicToolCallOutputContentItem {
   AppDynamicToolCallOutputText(text~ : String)
   AppDynamicToolCallOutputImage(image_url~ : String)
 } derive(@debug.Debug)
+pub fn AppDynamicToolCallOutputContentItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppDynamicToolCallOutputContentItem::to_json(Self) -> Json
+pub fn AppDynamicToolCallOutputContentItem::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppDynamicToolCallOutputContentItem
 pub impl @json.FromJson for AppDynamicToolCallOutputContentItem
 
@@ -494,6 +621,8 @@ pub(all) struct AppDynamicToolCallRequest {
   arguments : Json
   // private fields
 } derive(@debug.Debug)
+pub fn AppDynamicToolCallRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppDynamicToolCallRequest::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppDynamicToolCallRequest
 
 pub struct AppExperimentalFeature {
@@ -505,22 +634,30 @@ pub struct AppExperimentalFeature {
   enabled : Bool
   default_enabled : Bool
 } derive(@debug.Debug)
+pub fn AppExperimentalFeature::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppExperimentalFeature::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppExperimentalFeature
 
 pub(all) struct AppExperimentalFeatureEnablementSetParams {
   enablement : Map[String, Bool]
 } derive(@debug.Debug)
+pub fn AppExperimentalFeatureEnablementSetParams::to_json(Self) -> Json
+pub fn AppExperimentalFeatureEnablementSetParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppExperimentalFeatureEnablementSetParams
 
 pub struct AppExperimentalFeatureEnablementSetResponse {
   enablement : Map[String, Bool]
 } derive(@debug.Debug)
+pub fn AppExperimentalFeatureEnablementSetResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppExperimentalFeatureEnablementSetResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppExperimentalFeatureEnablementSetResponse
 
 pub struct AppExperimentalFeatureListResponse {
   data : ArrayView[AppExperimentalFeature]
   next_cursor : String?
 } derive(@debug.Debug)
+pub fn AppExperimentalFeatureListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppExperimentalFeatureListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppExperimentalFeatureListResponse
 
 pub enum AppExperimentalFeatureStage {
@@ -530,22 +667,30 @@ pub enum AppExperimentalFeatureStage {
   AppFeatureDeprecated
   AppFeatureRemoved
 } derive(@debug.Debug)
+pub fn AppExperimentalFeatureStage::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppExperimentalFeatureStage::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppExperimentalFeatureStage
 
 pub(all) struct AppExternalAgentConfigDetectParams {
   include_home : Bool?
   cwds : Array[String]?
 } derive(@debug.Debug)
+pub fn AppExternalAgentConfigDetectParams::to_json(Self) -> Json
+pub fn AppExternalAgentConfigDetectParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppExternalAgentConfigDetectParams
 
 pub struct AppExternalAgentConfigDetectResponse {
   items : ArrayView[AppExternalAgentConfigMigrationItem]
 } derive(@debug.Debug)
+pub fn AppExternalAgentConfigDetectResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppExternalAgentConfigDetectResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppExternalAgentConfigDetectResponse
 
 pub(all) struct AppExternalAgentConfigImportParams {
   migration_items : Array[AppExternalAgentConfigMigrationItem]
 } derive(@debug.Debug)
+pub fn AppExternalAgentConfigImportParams::to_json(Self) -> Json
+pub fn AppExternalAgentConfigImportParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppExternalAgentConfigImportParams
 
 pub(all) struct AppExternalAgentConfigMigrationItem {
@@ -554,6 +699,9 @@ pub(all) struct AppExternalAgentConfigMigrationItem {
   cwd : String?
   details : AppMigrationDetails?
 } derive(@debug.Debug)
+pub fn AppExternalAgentConfigMigrationItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppExternalAgentConfigMigrationItem::to_json(Self) -> Json
+pub fn AppExternalAgentConfigMigrationItem::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppExternalAgentConfigMigrationItem
 pub impl @json.FromJson for AppExternalAgentConfigMigrationItem
 
@@ -568,6 +716,9 @@ pub(all) enum AppExternalAgentConfigMigrationItemType {
   AppMigrationCommands
   AppMigrationSessions
 } derive(@debug.Debug)
+pub fn AppExternalAgentConfigMigrationItemType::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppExternalAgentConfigMigrationItemType::to_json(Self) -> Json
+pub fn AppExternalAgentConfigMigrationItemType::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppExternalAgentConfigMigrationItemType
 pub impl @json.FromJson for AppExternalAgentConfigMigrationItemType
 
@@ -579,11 +730,15 @@ pub(all) struct AppFeedbackUploadParams {
   extra_log_files : Array[String]?
   tags : Map[String, String]?
 } derive(@debug.Debug)
+pub fn AppFeedbackUploadParams::to_json(Self) -> Json
+pub fn AppFeedbackUploadParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFeedbackUploadParams
 
 pub struct AppFeedbackUploadResponse {
   thread_id : String
 } derive(@debug.Debug)
+pub fn AppFeedbackUploadResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFeedbackUploadResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppFeedbackUploadResponse
 
 pub(all) enum AppFileChangeApprovalDecision {
@@ -592,6 +747,8 @@ pub(all) enum AppFileChangeApprovalDecision {
   AppFileChangeDecline
   AppFileChangeCancel
 } derive(@debug.Debug)
+pub fn AppFileChangeApprovalDecision::to_json(Self) -> Json
+pub fn AppFileChangeApprovalDecision::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFileChangeApprovalDecision
 
 pub(all) struct AppFileChangeApprovalRequest {
@@ -603,6 +760,8 @@ pub(all) struct AppFileChangeApprovalRequest {
   grant_root : String?
   // private fields
 } derive(@debug.Debug)
+pub fn AppFileChangeApprovalRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFileChangeApprovalRequest::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppFileChangeApprovalRequest
 
 pub(all) enum AppFileSystemAccessMode {
@@ -610,6 +769,9 @@ pub(all) enum AppFileSystemAccessMode {
   AppFileSystemWriteAccess
   AppFileSystemNoAccess
 } derive(@debug.Debug)
+pub fn AppFileSystemAccessMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFileSystemAccessMode::to_json(Self) -> Json
+pub fn AppFileSystemAccessMode::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFileSystemAccessMode
 pub impl @json.FromJson for AppFileSystemAccessMode
 
@@ -618,6 +780,9 @@ pub(all) enum AppFileSystemPath {
   AppFileSystemGlobPattern(pattern~ : String)
   AppFileSystemSpecialPath(value~ : AppFileSystemSpecialPath)
 } derive(@debug.Debug)
+pub fn AppFileSystemPath::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFileSystemPath::to_json(Self) -> Json
+pub fn AppFileSystemPath::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFileSystemPath
 pub impl @json.FromJson for AppFileSystemPath
 
@@ -625,6 +790,9 @@ pub(all) struct AppFileSystemSandboxEntry {
   path : AppFileSystemPath
   access : AppFileSystemAccessMode
 } derive(@debug.Debug)
+pub fn AppFileSystemSandboxEntry::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFileSystemSandboxEntry::to_json(Self) -> Json
+pub fn AppFileSystemSandboxEntry::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFileSystemSandboxEntry
 pub impl @json.FromJson for AppFileSystemSandboxEntry
 
@@ -636,6 +804,9 @@ pub(all) enum AppFileSystemSpecialPath {
   AppFileSystemSlashTmp
   AppFileSystemUnknown(path~ : String, subpath~ : String?)
 } derive(@debug.Debug)
+pub fn AppFileSystemSpecialPath::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFileSystemSpecialPath::to_json(Self) -> Json
+pub fn AppFileSystemSpecialPath::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFileSystemSpecialPath
 pub impl @json.FromJson for AppFileSystemSpecialPath
 
@@ -643,6 +814,8 @@ pub enum AppForcedLoginMethod {
   AppForcedLoginChatGPT
   AppForcedLoginApi
 } derive(@debug.Debug)
+pub fn AppForcedLoginMethod::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppForcedLoginMethod::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppForcedLoginMethod
 
 pub(all) struct AppFsCopyParams {
@@ -650,12 +823,16 @@ pub(all) struct AppFsCopyParams {
   destination_path : String
   recursive : Bool?
 } derive(@debug.Debug)
+pub fn AppFsCopyParams::to_json(Self) -> Json
+pub fn AppFsCopyParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFsCopyParams
 
 pub(all) struct AppFsCreateDirectoryParams {
   path : String
   recursive : Bool?
 } derive(@debug.Debug)
+pub fn AppFsCreateDirectoryParams::to_json(Self) -> Json
+pub fn AppFsCreateDirectoryParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFsCreateDirectoryParams
 
 pub struct AppFsGetMetadataResponse {
@@ -665,11 +842,15 @@ pub struct AppFsGetMetadataResponse {
   created_at_ms : Int64
   modified_at_ms : Int64
 } derive(@debug.Debug)
+pub fn AppFsGetMetadataResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFsGetMetadataResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppFsGetMetadataResponse
 
 pub(all) struct AppFsPathParams {
   path : String
 } derive(@debug.Debug)
+pub fn AppFsPathParams::to_json(Self) -> Json
+pub fn AppFsPathParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFsPathParams
 
 pub struct AppFsReadDirectoryEntry {
@@ -677,16 +858,22 @@ pub struct AppFsReadDirectoryEntry {
   is_directory : Bool
   is_file : Bool
 } derive(@debug.Debug)
+pub fn AppFsReadDirectoryEntry::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFsReadDirectoryEntry::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppFsReadDirectoryEntry
 
 pub struct AppFsReadDirectoryResponse {
   entries : ArrayView[AppFsReadDirectoryEntry]
 } derive(@debug.Debug)
+pub fn AppFsReadDirectoryResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFsReadDirectoryResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppFsReadDirectoryResponse
 
 pub struct AppFsReadFileResponse {
   data_base64 : String
 } derive(@debug.Debug)
+pub fn AppFsReadFileResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFsReadFileResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppFsReadFileResponse
 
 pub(all) struct AppFsRemoveParams {
@@ -694,34 +881,46 @@ pub(all) struct AppFsRemoveParams {
   recursive : Bool?
   force : Bool?
 } derive(@debug.Debug)
+pub fn AppFsRemoveParams::to_json(Self) -> Json
+pub fn AppFsRemoveParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFsRemoveParams
 
 pub(all) struct AppFsUnwatchParams {
   watch_id : String
 } derive(@debug.Debug)
+pub fn AppFsUnwatchParams::to_json(Self) -> Json
+pub fn AppFsUnwatchParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFsUnwatchParams
 
 pub(all) struct AppFsWatchParams {
   watch_id : String
   path : String
 } derive(@debug.Debug)
+pub fn AppFsWatchParams::to_json(Self) -> Json
+pub fn AppFsWatchParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFsWatchParams
 
 pub struct AppFsWatchResponse {
   path : String
 } derive(@debug.Debug)
+pub fn AppFsWatchResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFsWatchResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppFsWatchResponse
 
 pub(all) struct AppFsWriteFileParams {
   path : String
   data_base64 : String
 } derive(@debug.Debug)
+pub fn AppFsWriteFileParams::to_json(Self) -> Json
+pub fn AppFsWriteFileParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFsWriteFileParams
 
 pub enum AppFuzzyFileSearchMatchType {
   AppFuzzyFile
   AppFuzzyDirectory
 } derive(@debug.Debug)
+pub fn AppFuzzyFileSearchMatchType::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFuzzyFileSearchMatchType::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppFuzzyFileSearchMatchType
 
 pub(all) struct AppFuzzyFileSearchParams {
@@ -729,11 +928,15 @@ pub(all) struct AppFuzzyFileSearchParams {
   roots : Array[String]
   cancellation_token : String?
 } derive(@debug.Debug)
+pub fn AppFuzzyFileSearchParams::to_json(Self) -> Json
+pub fn AppFuzzyFileSearchParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFuzzyFileSearchParams
 
 pub struct AppFuzzyFileSearchResponse {
   files : ArrayView[AppFuzzyFileSearchResult]
 } derive(@debug.Debug)
+pub fn AppFuzzyFileSearchResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFuzzyFileSearchResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppFuzzyFileSearchResponse
 
 pub struct AppFuzzyFileSearchResult {
@@ -744,29 +947,40 @@ pub struct AppFuzzyFileSearchResult {
   score : UInt
   indices : ArrayView[UInt]?
 } derive(@debug.Debug)
+pub fn AppFuzzyFileSearchResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppFuzzyFileSearchResult::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppFuzzyFileSearchResult
 
 pub(all) struct AppFuzzyFileSearchSessionStartParams {
   session_id : String
   roots : Array[String]
 } derive(@debug.Debug)
+pub fn AppFuzzyFileSearchSessionStartParams::to_json(Self) -> Json
+pub fn AppFuzzyFileSearchSessionStartParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFuzzyFileSearchSessionStartParams
 
 pub(all) struct AppFuzzyFileSearchSessionStopParams {
   session_id : String
 } derive(@debug.Debug)
+pub fn AppFuzzyFileSearchSessionStopParams::to_json(Self) -> Json
+pub fn AppFuzzyFileSearchSessionStopParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFuzzyFileSearchSessionStopParams
 
 pub(all) struct AppFuzzyFileSearchSessionUpdateParams {
   session_id : String
   query : String
 } derive(@debug.Debug)
+pub fn AppFuzzyFileSearchSessionUpdateParams::to_json(Self) -> Json
+pub fn AppFuzzyFileSearchSessionUpdateParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppFuzzyFileSearchSessionUpdateParams
 
 pub(all) struct AppGrantedPermissionProfile {
   network : AppAdditionalNetworkPermissions?
   file_system : AppAdditionalFileSystemPermissions?
 } derive(@debug.Debug)
+pub fn AppGrantedPermissionProfile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppGrantedPermissionProfile::to_json(Self) -> Json
+pub fn AppGrantedPermissionProfile::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppGrantedPermissionProfile
 pub impl @json.FromJson for AppGrantedPermissionProfile
 
@@ -776,6 +990,8 @@ pub(all) struct AppGuardianApprovalReview {
   user_authorization : AppGuardianUserAuthorization?
   rationale : String?
 } derive(@debug.Debug)
+pub fn AppGuardianApprovalReview::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppGuardianApprovalReview::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppGuardianApprovalReview
 
 pub(all) enum AppGuardianApprovalReviewAction {
@@ -786,6 +1002,8 @@ pub(all) enum AppGuardianApprovalReviewAction {
   AppGuardianMcpToolCallAction(server~ : String, tool_name~ : String, connector_id~ : String?, connector_name~ : String?, tool_title~ : String?)
   AppGuardianRequestPermissionsAction(reason~ : String?, permissions~ : AppRequestPermissionProfile)
 } derive(@debug.Debug)
+pub fn AppGuardianApprovalReviewAction::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppGuardianApprovalReviewAction::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppGuardianApprovalReviewAction
 
 pub(all) enum AppGuardianApprovalReviewStatus {
@@ -795,12 +1013,16 @@ pub(all) enum AppGuardianApprovalReviewStatus {
   AppGuardianReviewTimedOut
   AppGuardianReviewAborted
 } derive(@debug.Debug)
+pub fn AppGuardianApprovalReviewStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppGuardianApprovalReviewStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppGuardianApprovalReviewStatus
 
 pub(all) enum AppGuardianCommandSource {
   AppGuardianCommandSourceShell
   AppGuardianCommandSourceUnifiedExec
 } derive(@debug.Debug)
+pub fn AppGuardianCommandSource::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppGuardianCommandSource::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppGuardianCommandSource
 
 pub(all) enum AppGuardianRiskLevel {
@@ -809,6 +1031,8 @@ pub(all) enum AppGuardianRiskLevel {
   AppGuardianRiskHigh
   AppGuardianRiskCritical
 } derive(@debug.Debug)
+pub fn AppGuardianRiskLevel::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppGuardianRiskLevel::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppGuardianRiskLevel
 
 pub(all) enum AppGuardianUserAuthorization {
@@ -817,12 +1041,16 @@ pub(all) enum AppGuardianUserAuthorization {
   AppGuardianUserAuthorizationMedium
   AppGuardianUserAuthorizationHigh
 } derive(@debug.Debug)
+pub fn AppGuardianUserAuthorization::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppGuardianUserAuthorization::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppGuardianUserAuthorization
 
 pub struct AppHookErrorInfo {
   path : String
   message : String
 } derive(@debug.Debug)
+pub fn AppHookErrorInfo::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookErrorInfo::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookErrorInfo
 
 pub enum AppHookEventName {
@@ -835,12 +1063,16 @@ pub enum AppHookEventName {
   AppHookUserPromptSubmit
   AppHookStop
 } derive(@debug.Debug)
+pub fn AppHookEventName::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookEventName::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookEventName
 
 pub(all) enum AppHookExecutionMode {
   AppHookSyncExecution
   AppHookAsyncExecution
 } derive(@debug.Debug)
+pub fn AppHookExecutionMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookExecutionMode::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookExecutionMode
 
 pub enum AppHookHandlerType {
@@ -848,6 +1080,8 @@ pub enum AppHookHandlerType {
   AppHookPromptHandler
   AppHookAgentHandler
 } derive(@debug.Debug)
+pub fn AppHookHandlerType::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookHandlerType::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookHandlerType
 
 pub struct AppHookMetadata {
@@ -868,12 +1102,16 @@ pub struct AppHookMetadata {
   trust_status : AppHookTrustStatus
   // private fields
 } derive(@debug.Debug)
+pub fn AppHookMetadata::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookMetadata::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookMetadata
 
 pub(all) struct AppHookOutputEntry {
   kind : AppHookOutputEntryKind
   text : String
 } derive(@debug.Debug)
+pub fn AppHookOutputEntry::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookOutputEntry::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookOutputEntry
 
 pub(all) enum AppHookOutputEntryKind {
@@ -883,12 +1121,16 @@ pub(all) enum AppHookOutputEntryKind {
   AppHookOutputContext
   AppHookOutputError
 } derive(@debug.Debug)
+pub fn AppHookOutputEntryKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookOutputEntryKind::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookOutputEntryKind
 
 pub struct AppHookPromptFragment {
   text : String
   hook_run_id : String
 } derive(@debug.Debug)
+pub fn AppHookPromptFragment::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookPromptFragment::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookPromptFragment
 
 pub(all) enum AppHookRunStatus {
@@ -898,6 +1140,8 @@ pub(all) enum AppHookRunStatus {
   AppHookBlocked
   AppHookStopped
 } derive(@debug.Debug)
+pub fn AppHookRunStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookRunStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookRunStatus
 
 pub(all) struct AppHookRunSummary {
@@ -916,12 +1160,16 @@ pub(all) struct AppHookRunSummary {
   duration_ms : Int64?
   entries : ArrayView[AppHookOutputEntry]
 } derive(@debug.Debug)
+pub fn AppHookRunSummary::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookRunSummary::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookRunSummary
 
 pub(all) enum AppHookScope {
   AppHookThreadScope
   AppHookTurnScope
 } derive(@debug.Debug)
+pub fn AppHookScope::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookScope::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookScope
 
 pub enum AppHookSource {
@@ -936,6 +1184,8 @@ pub enum AppHookSource {
   AppHookLegacyManagedConfigMdmSource
   AppHookUnknownSource
 } derive(@debug.Debug)
+pub fn AppHookSource::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookSource::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookSource
 
 pub enum AppHookTrustStatus {
@@ -944,6 +1194,8 @@ pub enum AppHookTrustStatus {
   AppHookTrusted
   AppHookModified
 } derive(@debug.Debug)
+pub fn AppHookTrustStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHookTrustStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHookTrustStatus
 
 pub struct AppHooksListEntry {
@@ -952,16 +1204,22 @@ pub struct AppHooksListEntry {
   warnings : ArrayView[String]
   errors : ArrayView[AppHookErrorInfo]
 } derive(@debug.Debug)
+pub fn AppHooksListEntry::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHooksListEntry::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHooksListEntry
 
 pub(all) struct AppHooksListParams {
   cwds : Array[String]?
 } derive(@debug.Debug)
+pub fn AppHooksListParams::to_json(Self) -> Json
+pub fn AppHooksListParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppHooksListParams
 
 pub struct AppHooksListResponse {
   data : ArrayView[AppHooksListEntry]
 } derive(@debug.Debug)
+pub fn AppHooksListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppHooksListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppHooksListResponse
 
 pub(all) enum AppImageDetail {
@@ -970,6 +1228,9 @@ pub(all) enum AppImageDetail {
   AppImageHigh
   AppImageOriginal
 } derive(@debug.Debug)
+pub fn AppImageDetail::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppImageDetail::to_json(Self) -> Json
+pub fn AppImageDetail::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppImageDetail
 pub impl @json.FromJson for AppImageDetail
 
@@ -982,6 +1243,8 @@ pub struct AppInfo {
   plugin_display_names : ArrayView[String]
   // private fields
 } derive(@debug.Debug)
+pub fn AppInfo::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppInfo::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppInfo
 
 pub(all) struct AppInitializeCapabilities {
@@ -992,12 +1255,16 @@ pub(all) struct AppInitializeCapabilities {
   extensions : Map[String, Json]?
 } derive(@debug.Debug)
 pub fn AppInitializeCapabilities::new(experimental_api? : Bool, request_attestation? : Bool, mcp_server_openai_form_elicitation? : Bool, opt_out_notification_methods? : Array[String], extensions? : Map[String, Json]) -> Self
+pub fn AppInitializeCapabilities::to_json(Self) -> Json
+pub fn AppInitializeCapabilities::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppInitializeCapabilities
 
 pub(all) struct AppInitializeParams {
   client_info : AppClientInfo
   capabilities : AppInitializeCapabilities?
 } derive(@debug.Debug)
+pub fn AppInitializeParams::to_json(Self) -> Json
+pub fn AppInitializeParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppInitializeParams
 
 pub struct AppInitializeResponse {
@@ -1006,12 +1273,16 @@ pub struct AppInitializeResponse {
   platform_family : String
   platform_os : String
 } derive(@debug.Debug)
+pub fn AppInitializeResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppInitializeResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppInitializeResponse
 
 pub(all) enum AppInputModality {
   AppTextModality
   AppImageModality
 } derive(@debug.Debug)
+pub fn AppInputModality::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppInputModality::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppInputModality
 
 pub struct AppListParams {
@@ -1021,12 +1292,16 @@ pub struct AppListParams {
   force_refetch : Bool?
 } derive(@debug.Debug)
 pub fn AppListParams::new(cursor? : String, limit? : UInt, thread_id? : String, force_refetch? : Bool) -> Self
+pub fn AppListParams::to_json(Self) -> Json
+pub fn AppListParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppListParams
 
 pub struct AppListResponse {
   data : ArrayView[AppInfo]
   next_cursor : String?
 } derive(@debug.Debug)
+pub fn AppListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppListResponse
 
 pub(all) enum AppLoginAccountParams {
@@ -1035,6 +1310,8 @@ pub(all) enum AppLoginAccountParams {
   AppLoginChatGPTDeviceCode
   AppLoginChatGPTAuthTokens(access_token~ : String, chatgpt_account_id~ : String, chatgpt_plan_type~ : String?)
 } derive(@debug.Debug)
+pub fn AppLoginAccountParams::to_json(Self) -> Json
+pub fn AppLoginAccountParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppLoginAccountParams
 
 pub(all) struct AppMarketplaceAddParams {
@@ -1042,6 +1319,8 @@ pub(all) struct AppMarketplaceAddParams {
   ref_name : String?
   sparse_paths : Array[String]?
 } derive(@debug.Debug)
+pub fn AppMarketplaceAddParams::to_json(Self) -> Json
+pub fn AppMarketplaceAddParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMarketplaceAddParams
 
 pub struct AppMarketplaceAddResponse {
@@ -1049,40 +1328,54 @@ pub struct AppMarketplaceAddResponse {
   installed_root : String
   already_added : Bool
 } derive(@debug.Debug)
+pub fn AppMarketplaceAddResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMarketplaceAddResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMarketplaceAddResponse
 
 pub struct AppMarketplaceInterface {
   display_name : String?
   // private fields
 } derive(@debug.Debug)
+pub fn AppMarketplaceInterface::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMarketplaceInterface::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMarketplaceInterface
 
 pub struct AppMarketplaceLoadErrorInfo {
   marketplace_path : String
   message : String
 } derive(@debug.Debug)
+pub fn AppMarketplaceLoadErrorInfo::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMarketplaceLoadErrorInfo::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMarketplaceLoadErrorInfo
 
 pub(all) struct AppMarketplaceRemoveParams {
   marketplace_name : String
 } derive(@debug.Debug)
+pub fn AppMarketplaceRemoveParams::to_json(Self) -> Json
+pub fn AppMarketplaceRemoveParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMarketplaceRemoveParams
 
 pub struct AppMarketplaceRemoveResponse {
   marketplace_name : String
   installed_root : String?
 } derive(@debug.Debug)
+pub fn AppMarketplaceRemoveResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMarketplaceRemoveResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMarketplaceRemoveResponse
 
 pub struct AppMarketplaceUpgradeErrorInfo {
   marketplace_name : String
   message : String
 } derive(@debug.Debug)
+pub fn AppMarketplaceUpgradeErrorInfo::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMarketplaceUpgradeErrorInfo::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMarketplaceUpgradeErrorInfo
 
 pub(all) struct AppMarketplaceUpgradeParams {
   marketplace_name : String?
 } derive(@debug.Debug)
+pub fn AppMarketplaceUpgradeParams::to_json(Self) -> Json
+pub fn AppMarketplaceUpgradeParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMarketplaceUpgradeParams
 
 pub struct AppMarketplaceUpgradeResponse {
@@ -1090,6 +1383,8 @@ pub struct AppMarketplaceUpgradeResponse {
   upgraded_roots : ArrayView[String]
   errors : ArrayView[AppMarketplaceUpgradeErrorInfo]
 } derive(@debug.Debug)
+pub fn AppMarketplaceUpgradeResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMarketplaceUpgradeResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMarketplaceUpgradeResponse
 
 pub enum AppMcpAuthStatus {
@@ -1098,6 +1393,8 @@ pub enum AppMcpAuthStatus {
   AppMcpBearerToken
   AppMcpOAuth
 } derive(@debug.Debug)
+pub fn AppMcpAuthStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpAuthStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpAuthStatus
 
 pub(all) struct AppMcpElicitationBooleanSchema {
@@ -1105,12 +1402,16 @@ pub(all) struct AppMcpElicitationBooleanSchema {
   description : String?
   default : Bool?
 } derive(@debug.Debug)
+pub fn AppMcpElicitationBooleanSchema::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationBooleanSchema::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationBooleanSchema
 
 pub(all) struct AppMcpElicitationConstOption {
   const_value : String
   title : String
 } derive(@debug.Debug)
+pub fn AppMcpElicitationConstOption::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationConstOption::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationConstOption
 
 pub(all) struct AppMcpElicitationNumberSchema {
@@ -1121,17 +1422,23 @@ pub(all) struct AppMcpElicitationNumberSchema {
   maximum : Double?
   default : Double?
 } derive(@debug.Debug)
+pub fn AppMcpElicitationNumberSchema::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationNumberSchema::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationNumberSchema
 
 pub(all) enum AppMcpElicitationNumberType {
   AppMcpElicitationNumberTypeNumber
   AppMcpElicitationNumberTypeInteger
 } derive(@debug.Debug)
+pub fn AppMcpElicitationNumberType::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationNumberType::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationNumberType
 
 pub(all) enum AppMcpElicitationObjectType {
   AppMcpElicitationObject
 } derive(@debug.Debug)
+pub fn AppMcpElicitationObjectType::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationObjectType::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationObjectType
 
 pub(all) enum AppMcpElicitationPrimitiveSchema {
@@ -1143,6 +1450,8 @@ pub(all) enum AppMcpElicitationPrimitiveSchema {
   AppMcpElicitationUntitledMultiSelect(AppMcpElicitationUntitledMultiSelectSchema)
   AppMcpElicitationTitledMultiSelect(AppMcpElicitationTitledMultiSelectSchema)
 } derive(@debug.Debug)
+pub fn AppMcpElicitationPrimitiveSchema::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationPrimitiveSchema::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationPrimitiveSchema
 
 pub(all) struct AppMcpElicitationSchema {
@@ -1151,6 +1460,8 @@ pub(all) struct AppMcpElicitationSchema {
   properties : Map[String, AppMcpElicitationPrimitiveSchema]
   required : ArrayView[String]?
 } derive(@debug.Debug)
+pub fn AppMcpElicitationSchema::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationSchema::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationSchema
 
 pub(all) struct AppMcpElicitationStringEnumSchema {
@@ -1160,6 +1471,8 @@ pub(all) struct AppMcpElicitationStringEnumSchema {
   enum_names : ArrayView[String]?
   default : String?
 } derive(@debug.Debug)
+pub fn AppMcpElicitationStringEnumSchema::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationStringEnumSchema::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationStringEnumSchema
 
 pub(all) enum AppMcpElicitationStringFormat {
@@ -1168,6 +1481,8 @@ pub(all) enum AppMcpElicitationStringFormat {
   AppMcpElicitationDateFormat
   AppMcpElicitationDateTimeFormat
 } derive(@debug.Debug)
+pub fn AppMcpElicitationStringFormat::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationStringFormat::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationStringFormat
 
 pub(all) struct AppMcpElicitationStringSchema {
@@ -1178,11 +1493,15 @@ pub(all) struct AppMcpElicitationStringSchema {
   format : AppMcpElicitationStringFormat?
   default : String?
 } derive(@debug.Debug)
+pub fn AppMcpElicitationStringSchema::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationStringSchema::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationStringSchema
 
 pub(all) struct AppMcpElicitationTitledEnumItems {
   any_of : ArrayView[AppMcpElicitationConstOption]
 } derive(@debug.Debug)
+pub fn AppMcpElicitationTitledEnumItems::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationTitledEnumItems::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationTitledEnumItems
 
 pub(all) struct AppMcpElicitationTitledMultiSelectSchema {
@@ -1193,6 +1512,8 @@ pub(all) struct AppMcpElicitationTitledMultiSelectSchema {
   items : AppMcpElicitationTitledEnumItems
   default : ArrayView[String]?
 } derive(@debug.Debug)
+pub fn AppMcpElicitationTitledMultiSelectSchema::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationTitledMultiSelectSchema::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationTitledMultiSelectSchema
 
 pub(all) struct AppMcpElicitationTitledStringEnumSchema {
@@ -1201,11 +1522,15 @@ pub(all) struct AppMcpElicitationTitledStringEnumSchema {
   one_of : ArrayView[AppMcpElicitationConstOption]
   default : String?
 } derive(@debug.Debug)
+pub fn AppMcpElicitationTitledStringEnumSchema::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationTitledStringEnumSchema::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationTitledStringEnumSchema
 
 pub(all) struct AppMcpElicitationUntitledEnumItems {
   enum_values : ArrayView[String]
 } derive(@debug.Debug)
+pub fn AppMcpElicitationUntitledEnumItems::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationUntitledEnumItems::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationUntitledEnumItems
 
 pub(all) struct AppMcpElicitationUntitledMultiSelectSchema {
@@ -1216,6 +1541,8 @@ pub(all) struct AppMcpElicitationUntitledMultiSelectSchema {
   items : AppMcpElicitationUntitledEnumItems
   default : ArrayView[String]?
 } derive(@debug.Debug)
+pub fn AppMcpElicitationUntitledMultiSelectSchema::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpElicitationUntitledMultiSelectSchema::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpElicitationUntitledMultiSelectSchema
 
 pub struct AppMcpResource {
@@ -1229,12 +1556,16 @@ pub struct AppMcpResource {
   icons : ArrayView[Json]?
   meta : Json?
 } derive(@debug.Debug)
+pub fn AppMcpResource::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpResource::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpResource
 
 pub enum AppMcpResourceContent {
   AppMcpTextResourceContent(uri~ : String, mime_type~ : String?, text~ : String, meta~ : Json?)
   AppMcpBlobResourceContent(uri~ : String, mime_type~ : String?, blob~ : String, meta~ : Json?)
 } derive(@debug.Debug)
+pub fn AppMcpResourceContent::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpResourceContent::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpResourceContent
 
 pub(all) struct AppMcpResourceReadParams {
@@ -1242,6 +1573,8 @@ pub(all) struct AppMcpResourceReadParams {
   server : String
   uri : String
 } derive(@debug.Debug)
+pub fn AppMcpResourceReadParams::to_json(Self) -> Json
+pub fn AppMcpResourceReadParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMcpResourceReadParams
 
 pub struct AppMcpResourceTemplate {
@@ -1252,6 +1585,8 @@ pub struct AppMcpResourceTemplate {
   description : String?
   mime_type : String?
 } derive(@debug.Debug)
+pub fn AppMcpResourceTemplate::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpResourceTemplate::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpResourceTemplate
 
 pub(all) enum AppMcpServerElicitationAction {
@@ -1259,6 +1594,8 @@ pub(all) enum AppMcpServerElicitationAction {
   AppMcpElicitationDecline
   AppMcpElicitationCancel
 } derive(@debug.Debug)
+pub fn AppMcpServerElicitationAction::to_json(Self) -> Json
+pub fn AppMcpServerElicitationAction::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMcpServerElicitationAction
 
 pub(all) enum AppMcpServerElicitationContent {
@@ -1266,6 +1603,8 @@ pub(all) enum AppMcpServerElicitationContent {
   AppMcpElicitationOpenAIForm(meta~ : Json?, message~ : String, requested_schema~ : Json)
   AppMcpElicitationUrl(meta~ : Json?, message~ : String, url~ : String, elicitation_id~ : String)
 } derive(@debug.Debug)
+pub fn AppMcpServerElicitationContent::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpServerElicitationContent::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpServerElicitationContent
 
 pub(all) struct AppMcpServerElicitationRequest {
@@ -1275,6 +1614,8 @@ pub(all) struct AppMcpServerElicitationRequest {
   elicitation : AppMcpServerElicitationContent
   // private fields
 } derive(@debug.Debug)
+pub fn AppMcpServerElicitationRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpServerElicitationRequest::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpServerElicitationRequest
 
 pub(all) struct AppMcpServerOauthLoginParams {
@@ -1282,16 +1623,22 @@ pub(all) struct AppMcpServerOauthLoginParams {
   scopes : Array[String]?
   timeout_secs : Int64?
 } derive(@debug.Debug)
+pub fn AppMcpServerOauthLoginParams::to_json(Self) -> Json
+pub fn AppMcpServerOauthLoginParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMcpServerOauthLoginParams
 
 pub struct AppMcpServerOauthLoginResponse {
   authorization_url : String
 } derive(@debug.Debug)
+pub fn AppMcpServerOauthLoginResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpServerOauthLoginResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpServerOauthLoginResponse
 
 pub struct AppMcpServerResourceReadResponse {
   contents : ArrayView[AppMcpResourceContent]
 } derive(@debug.Debug)
+pub fn AppMcpServerResourceReadResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpServerResourceReadResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpServerResourceReadResponse
 
 pub enum AppMcpServerStartupState {
@@ -1300,6 +1647,8 @@ pub enum AppMcpServerStartupState {
   AppMcpServerFailed
   AppMcpServerCancelled
 } derive(@debug.Debug)
+pub fn AppMcpServerStartupState::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpServerStartupState::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpServerStartupState
 
 pub struct AppMcpServerStatus {
@@ -1309,12 +1658,16 @@ pub struct AppMcpServerStatus {
   resource_templates : ArrayView[AppMcpResourceTemplate]
   auth_status : AppMcpAuthStatus
 } derive(@debug.Debug)
+pub fn AppMcpServerStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpServerStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpServerStatus
 
 pub(all) enum AppMcpServerStatusDetail {
   AppMcpServerStatusFull
   AppMcpServerStatusToolsAndAuthOnly
 } derive(@debug.Debug)
+pub fn AppMcpServerStatusDetail::to_json(Self) -> Json
+pub fn AppMcpServerStatusDetail::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMcpServerStatusDetail
 
 pub(all) struct AppMcpServerStatusListParams {
@@ -1322,12 +1675,16 @@ pub(all) struct AppMcpServerStatusListParams {
   limit : UInt?
   detail : AppMcpServerStatusDetail?
 } derive(@debug.Debug)
+pub fn AppMcpServerStatusListParams::to_json(Self) -> Json
+pub fn AppMcpServerStatusListParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMcpServerStatusListParams
 
 pub struct AppMcpServerStatusListResponse {
   data : ArrayView[AppMcpServerStatus]
   next_cursor : String?
 } derive(@debug.Debug)
+pub fn AppMcpServerStatusListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpServerStatusListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpServerStatusListResponse
 
 pub(all) struct AppMcpServerToolCallParams {
@@ -1337,6 +1694,8 @@ pub(all) struct AppMcpServerToolCallParams {
   arguments : Json?
   meta : Json?
 } derive(@debug.Debug)
+pub fn AppMcpServerToolCallParams::to_json(Self) -> Json
+pub fn AppMcpServerToolCallParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMcpServerToolCallParams
 
 pub struct AppMcpServerToolCallResponse {
@@ -1345,6 +1704,8 @@ pub struct AppMcpServerToolCallResponse {
   is_error : Bool?
   meta : Json?
 } derive(@debug.Debug)
+pub fn AppMcpServerToolCallResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpServerToolCallResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpServerToolCallResponse
 
 pub struct AppMcpTool {
@@ -1357,12 +1718,16 @@ pub struct AppMcpTool {
   icons : ArrayView[Json]?
   meta : Json?
 } derive(@debug.Debug)
+pub fn AppMcpTool::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMcpTool::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMcpTool
 
 pub struct AppMemoryCitation {
   entries : ArrayView[AppMemoryCitationEntry]
   thread_ids : ArrayView[String]
 } derive(@debug.Debug)
+pub fn AppMemoryCitation::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMemoryCitation::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMemoryCitation
 
 pub struct AppMemoryCitationEntry {
@@ -1371,18 +1736,24 @@ pub struct AppMemoryCitationEntry {
   line_end : UInt
   note : String
 } derive(@debug.Debug)
+pub fn AppMemoryCitationEntry::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMemoryCitationEntry::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMemoryCitationEntry
 
 pub(all) enum AppMergeStrategy {
   AppMergeReplace
   AppMergeUpsert
 } derive(@debug.Debug)
+pub fn AppMergeStrategy::to_json(Self) -> Json
+pub fn AppMergeStrategy::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMergeStrategy
 
 pub enum AppMessagePhase {
   AppMessageCommentary
   AppMessageFinalAnswer
 } derive(@debug.Debug)
+pub fn AppMessagePhase::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMessagePhase::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMessagePhase
 
 pub(all) struct AppMigrationDetails {
@@ -1393,17 +1764,24 @@ pub(all) struct AppMigrationDetails {
   subagents : ArrayView[AppNamedMigration]
   commands : ArrayView[AppNamedMigration]
 } derive(@debug.Debug)
+pub fn AppMigrationDetails::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMigrationDetails::to_json(Self) -> Json
+pub fn AppMigrationDetails::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMigrationDetails
 pub impl @json.FromJson for AppMigrationDetails
 
 pub(all) struct AppMockExperimentalMethodParams {
   value : String?
 } derive(@debug.Debug)
+pub fn AppMockExperimentalMethodParams::to_json(Self) -> Json
+pub fn AppMockExperimentalMethodParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppMockExperimentalMethodParams
 
 pub(all) struct AppMockExperimentalMethodResponse {
   echoed : String?
 } derive(@debug.Debug)
+pub fn AppMockExperimentalMethodResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMockExperimentalMethodResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMockExperimentalMethodResponse
 
 pub struct AppModel {
@@ -1427,11 +1805,15 @@ pub struct AppModel {
   is_default : Bool
   // private fields
 } derive(@debug.Debug)
+pub fn AppModel::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppModel::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppModel
 
 pub struct AppModelAvailabilityNux {
   message : String
 } derive(@debug.Debug)
+pub fn AppModelAvailabilityNux::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppModelAvailabilityNux::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppModelAvailabilityNux
 
 pub struct AppModelListParams {
@@ -1440,12 +1822,16 @@ pub struct AppModelListParams {
   include_hidden : Bool?
 } derive(@debug.Debug)
 pub fn AppModelListParams::new(cursor? : String, limit? : UInt, include_hidden? : Bool) -> Self
+pub fn AppModelListParams::to_json(Self) -> Json
+pub fn AppModelListParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppModelListParams
 
 pub struct AppModelListResponse {
   data : ArrayView[AppModel]
   next_cursor : String?
 } derive(@debug.Debug)
+pub fn AppModelListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppModelListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppModelListResponse
 
 pub struct AppModelProviderCapabilitiesReadResponse {
@@ -1453,11 +1839,15 @@ pub struct AppModelProviderCapabilitiesReadResponse {
   image_generation : Bool
   web_search : Bool
 } derive(@debug.Debug)
+pub fn AppModelProviderCapabilitiesReadResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppModelProviderCapabilitiesReadResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppModelProviderCapabilitiesReadResponse
 
 pub(all) enum AppModelRerouteReason {
   AppModelRerouteHighRiskCyberActivity
 } derive(@debug.Debug)
+pub fn AppModelRerouteReason::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppModelRerouteReason::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppModelRerouteReason
 
 pub struct AppModelServiceTier {
@@ -1465,6 +1855,8 @@ pub struct AppModelServiceTier {
   name : String
   description : String
 } derive(@debug.Debug)
+pub fn AppModelServiceTier::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppModelServiceTier::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppModelServiceTier
 
 pub struct AppModelUpgradeInfo {
@@ -1473,6 +1865,8 @@ pub struct AppModelUpgradeInfo {
   model_link : String?
   migration_markdown : String?
 } derive(@debug.Debug)
+pub fn AppModelUpgradeInfo::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppModelUpgradeInfo::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppModelUpgradeInfo
 
 pub enum AppModelVerbosity {
@@ -1480,11 +1874,15 @@ pub enum AppModelVerbosity {
   AppVerbosityMedium
   AppVerbosityHigh
 } derive(@debug.Debug)
+pub fn AppModelVerbosity::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppModelVerbosity::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppModelVerbosity
 
 pub(all) enum AppModelVerification {
   AppModelVerificationTrustedAccessForCyber
 } derive(@debug.Debug)
+pub fn AppModelVerification::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppModelVerification::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppModelVerification
 
 pub(all) enum AppMultiAgentVersion {
@@ -1493,11 +1891,16 @@ pub(all) enum AppMultiAgentVersion {
   AppMultiAgentV2
   AppMultiAgentCustom(String)
 } derive(@debug.Debug)
+pub fn AppMultiAgentVersion::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppMultiAgentVersion::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppMultiAgentVersion
 
 pub(all) struct AppNamedMigration {
   name : String
 } derive(@debug.Debug)
+pub fn AppNamedMigration::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppNamedMigration::to_json(Self) -> Json
+pub fn AppNamedMigration::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppNamedMigration
 pub impl @json.FromJson for AppNamedMigration
 
@@ -1505,6 +1908,9 @@ pub(all) enum AppNetworkAccess {
   AppNetworkRestricted
   AppNetworkEnabled
 } derive(@debug.Debug)
+pub fn AppNetworkAccess::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppNetworkAccess::to_json(Self) -> Json
+pub fn AppNetworkAccess::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppNetworkAccess
 pub impl @json.FromJson for AppNetworkAccess
 
@@ -1512,6 +1918,8 @@ pub struct AppNetworkApprovalContext {
   host : String
   protocol : AppNetworkApprovalProtocol
 } derive(@debug.Debug)
+pub fn AppNetworkApprovalContext::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppNetworkApprovalContext::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppNetworkApprovalContext
 
 pub enum AppNetworkApprovalProtocol {
@@ -1520,12 +1928,17 @@ pub enum AppNetworkApprovalProtocol {
   AppNetworkApprovalSocks5Tcp
   AppNetworkApprovalSocks5Udp
 } derive(@debug.Debug)
+pub fn AppNetworkApprovalProtocol::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppNetworkApprovalProtocol::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppNetworkApprovalProtocol
 
 pub(all) struct AppNetworkPolicyAmendment {
   host : String
   action : AppNetworkPolicyRuleAction
 } derive(@debug.Debug)
+pub fn AppNetworkPolicyAmendment::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppNetworkPolicyAmendment::to_json(Self) -> Json
+pub fn AppNetworkPolicyAmendment::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppNetworkPolicyAmendment
 pub impl @json.FromJson for AppNetworkPolicyAmendment
 
@@ -1533,6 +1946,9 @@ pub(all) enum AppNetworkPolicyRuleAction {
   AppNetworkPolicyAllow
   AppNetworkPolicyDeny
 } derive(@debug.Debug)
+pub fn AppNetworkPolicyRuleAction::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppNetworkPolicyRuleAction::to_json(Self) -> Json
+pub fn AppNetworkPolicyRuleAction::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppNetworkPolicyRuleAction
 pub impl @json.FromJson for AppNetworkPolicyRuleAction
 
@@ -1540,30 +1956,41 @@ pub enum AppNonSteerableTurnKind {
   AppNonSteerableReview
   AppNonSteerableCompact
 } derive(@debug.Debug)
+pub fn AppNonSteerableTurnKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppNonSteerableTurnKind::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppNonSteerableTurnKind
 
 pub(all) enum AppNullableInt64 {
   AppNullableInt64Null
   AppNullableInt64Value(Int64)
 } derive(@debug.Debug)
+pub fn AppNullableInt64::to_json(Self) -> Json
+pub fn AppNullableInt64::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppNullableInt64
 
 pub(all) enum AppNullableString {
   AppNullableStringNull
   AppNullableStringValue(String)
 } derive(@debug.Debug)
+pub fn AppNullableString::to_json(Self) -> Json
+pub fn AppNullableString::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppNullableString
 
 pub enum AppOutputStream {
   AppStdout
   AppStderr
 } derive(@debug.Debug)
+pub fn AppOutputStream::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppOutputStream::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppOutputStream
 
 pub(all) enum AppPermissionGrantScope {
   AppPermissionGrantTurn
   AppPermissionGrantSession
 } derive(@debug.Debug)
+pub fn AppPermissionGrantScope::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPermissionGrantScope::to_json(Self) -> Json
+pub fn AppPermissionGrantScope::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppPermissionGrantScope
 pub impl @json.FromJson for AppPermissionGrantScope
 
@@ -1578,6 +2005,8 @@ pub(all) struct AppPermissionsRequestApprovalRequest {
   permissions : AppRequestPermissionProfile
   // private fields
 } derive(@debug.Debug)
+pub fn AppPermissionsRequestApprovalRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPermissionsRequestApprovalRequest::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPermissionsRequestApprovalRequest
 
 pub(all) enum AppPersonality {
@@ -1585,6 +2014,8 @@ pub(all) enum AppPersonality {
   AppFriendlyPersonality
   AppPragmaticPersonality
 } derive(@debug.Debug)
+pub fn AppPersonality::to_json(Self) -> Json
+pub fn AppPersonality::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppPersonality
 
 pub enum AppPlanType {
@@ -1601,12 +2032,16 @@ pub enum AppPlanType {
   AppPlanEdu
   AppPlanUnknown
 } derive(@debug.Debug)
+pub fn AppPlanType::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPlanType::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPlanType
 
 pub enum AppPluginAuthPolicy {
   AppPluginAuthOnInstall
   AppPluginAuthOnUse
 } derive(@debug.Debug)
+pub fn AppPluginAuthPolicy::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginAuthPolicy::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPluginAuthPolicy
 
 pub struct AppPluginDetail {
@@ -1619,6 +2054,8 @@ pub struct AppPluginDetail {
   mcp_servers : ArrayView[String]
   // private fields
 } derive(@debug.Debug)
+pub fn AppPluginDetail::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginDetail::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPluginDetail
 
 pub(all) struct AppPluginInstallParams {
@@ -1626,6 +2063,8 @@ pub(all) struct AppPluginInstallParams {
   remote_marketplace_name : String?
   plugin_name : String
 } derive(@debug.Debug)
+pub fn AppPluginInstallParams::to_json(Self) -> Json
+pub fn AppPluginInstallParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppPluginInstallParams
 
 pub enum AppPluginInstallPolicy {
@@ -1633,12 +2072,16 @@ pub enum AppPluginInstallPolicy {
   AppPluginInstallAvailable
   AppPluginInstallInstalledByDefault
 } derive(@debug.Debug)
+pub fn AppPluginInstallPolicy::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginInstallPolicy::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPluginInstallPolicy
 
 pub struct AppPluginInstallResponse {
   auth_policy : AppPluginAuthPolicy
   apps_needing_auth : ArrayView[AppSummary]
 } derive(@debug.Debug)
+pub fn AppPluginInstallResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginInstallResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPluginInstallResponse
 
 pub struct AppPluginInterface {
@@ -1661,6 +2104,8 @@ pub struct AppPluginInterface {
   screenshot_urls : ArrayView[String]
   // private fields
 } derive(@debug.Debug)
+pub fn AppPluginInterface::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginInterface::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPluginInterface
 
 pub(all) enum AppPluginListMarketplaceKind {
@@ -1668,12 +2113,16 @@ pub(all) enum AppPluginListMarketplaceKind {
   AppPluginMarketplaceWorkspaceDirectory
   AppPluginMarketplaceSharedWithMe
 } derive(@debug.Debug)
+pub fn AppPluginListMarketplaceKind::to_json(Self) -> Json
+pub fn AppPluginListMarketplaceKind::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppPluginListMarketplaceKind
 
 pub(all) struct AppPluginListParams {
   cwds : Array[String]?
   marketplace_kinds : Array[AppPluginListMarketplaceKind]?
 } derive(@debug.Debug)
+pub fn AppPluginListParams::to_json(Self) -> Json
+pub fn AppPluginListParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppPluginListParams
 
 pub struct AppPluginListResponse {
@@ -1681,6 +2130,8 @@ pub struct AppPluginListResponse {
   marketplace_load_errors : ArrayView[AppMarketplaceLoadErrorInfo]
   featured_plugin_ids : ArrayView[String]
 } derive(@debug.Debug)
+pub fn AppPluginListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPluginListResponse
 
 pub struct AppPluginMarketplaceEntry {
@@ -1690,6 +2141,8 @@ pub struct AppPluginMarketplaceEntry {
   plugins : ArrayView[AppPluginSummary]
   // private fields
 } derive(@debug.Debug)
+pub fn AppPluginMarketplaceEntry::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginMarketplaceEntry::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPluginMarketplaceEntry
 
 pub(all) struct AppPluginReadParams {
@@ -1697,11 +2150,15 @@ pub(all) struct AppPluginReadParams {
   remote_marketplace_name : String?
   plugin_name : String
 } derive(@debug.Debug)
+pub fn AppPluginReadParams::to_json(Self) -> Json
+pub fn AppPluginReadParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppPluginReadParams
 
 pub struct AppPluginReadResponse {
   plugin : AppPluginDetail
 } derive(@debug.Debug)
+pub fn AppPluginReadResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginReadResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPluginReadResponse
 
 pub enum AppPluginSource {
@@ -1709,6 +2166,8 @@ pub enum AppPluginSource {
   AppPluginSourceGit(url~ : String, path~ : String?, ref_name~ : String?, sha~ : String?)
   AppPluginSourceRemote
 } derive(@debug.Debug)
+pub fn AppPluginSource::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginSource::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPluginSource
 
 pub struct AppPluginSummary {
@@ -1722,17 +2181,24 @@ pub struct AppPluginSummary {
   interface : AppPluginInterface?
   // private fields
 } derive(@debug.Debug)
+pub fn AppPluginSummary::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginSummary::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppPluginSummary
 
 pub(all) struct AppPluginUninstallParams {
   plugin_id : String
 } derive(@debug.Debug)
+pub fn AppPluginUninstallParams::to_json(Self) -> Json
+pub fn AppPluginUninstallParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppPluginUninstallParams
 
 pub(all) struct AppPluginsMigration {
   marketplace_name : String
   plugin_names : ArrayView[String]
 } derive(@debug.Debug)
+pub fn AppPluginsMigration::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppPluginsMigration::to_json(Self) -> Json
+pub fn AppPluginsMigration::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppPluginsMigration
 pub impl @json.FromJson for AppPluginsMigration
 
@@ -1751,6 +2217,8 @@ pub struct AppProfileV2 {
   additional : Map[String, Json]
   // private fields
 } derive(@debug.Debug)
+pub fn AppProfileV2::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppProfileV2::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppProfileV2
 
 pub enum AppRateLimitReachedType {
@@ -1760,6 +2228,8 @@ pub enum AppRateLimitReachedType {
   AppWorkspaceOwnerUsageLimitReached
   AppWorkspaceMemberUsageLimitReached
 } derive(@debug.Debug)
+pub fn AppRateLimitReachedType::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppRateLimitReachedType::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppRateLimitReachedType
 
 pub struct AppRateLimitSnapshot {
@@ -1772,6 +2242,8 @@ pub struct AppRateLimitSnapshot {
   rate_limit_reached_type : AppRateLimitReachedType?
   // private fields
 } derive(@debug.Debug)
+pub fn AppRateLimitSnapshot::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppRateLimitSnapshot::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppRateLimitSnapshot
 
 pub struct AppRateLimitWindow {
@@ -1779,18 +2251,24 @@ pub struct AppRateLimitWindow {
   window_duration_mins : Int64?
   resets_at : Int64?
 } derive(@debug.Debug)
+pub fn AppRateLimitWindow::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppRateLimitWindow::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppRateLimitWindow
 
 pub(all) enum AppRealtimeConversationVersion {
   AppRealtimeConversationV1
   AppRealtimeConversationV2
 } derive(@debug.Debug)
+pub fn AppRealtimeConversationVersion::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppRealtimeConversationVersion::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppRealtimeConversationVersion
 
 pub(all) enum AppRealtimeOutputModality {
   AppRealtimeText
   AppRealtimeAudio
 } derive(@debug.Debug)
+pub fn AppRealtimeOutputModality::to_json(Self) -> Json
+pub fn AppRealtimeOutputModality::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppRealtimeOutputModality
 
 pub(all) enum AppRealtimeVoice {
@@ -1814,6 +2292,9 @@ pub(all) enum AppRealtimeVoice {
   AppRealtimeVoiceVale
   AppRealtimeVoiceVerse
 } derive(@debug.Debug)
+pub fn AppRealtimeVoice::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppRealtimeVoice::to_json(Self) -> Json
+pub fn AppRealtimeVoice::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppRealtimeVoice
 pub impl @json.FromJson for AppRealtimeVoice
 
@@ -1823,6 +2304,8 @@ pub(all) struct AppRealtimeVoicesList {
   default_v1 : AppRealtimeVoice
   default_v2 : AppRealtimeVoice
 } derive(@debug.Debug)
+pub fn AppRealtimeVoicesList::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppRealtimeVoicesList::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppRealtimeVoicesList
 
 pub(all) enum AppReasoningEffort {
@@ -1836,6 +2319,9 @@ pub(all) enum AppReasoningEffort {
   AppEffortUltra
   AppEffortCustom(String)
 } derive(@debug.Debug)
+pub fn AppReasoningEffort::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppReasoningEffort::to_json(Self) -> Json
+pub fn AppReasoningEffort::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppReasoningEffort
 pub impl @json.FromJson for AppReasoningEffort
 
@@ -1843,6 +2329,8 @@ pub struct AppReasoningEffortOption {
   reasoning_effort : AppReasoningEffort
   description : String
 } derive(@debug.Debug)
+pub fn AppReasoningEffortOption::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppReasoningEffortOption::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppReasoningEffortOption
 
 pub(all) enum AppReasoningSummary {
@@ -1851,6 +2339,9 @@ pub(all) enum AppReasoningSummary {
   AppSummaryDetailed
   AppSummaryNone
 } derive(@debug.Debug)
+pub fn AppReasoningSummary::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppReasoningSummary::to_json(Self) -> Json
+pub fn AppReasoningSummary::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppReasoningSummary
 pub impl @json.FromJson for AppReasoningSummary
 
@@ -1860,12 +2351,19 @@ pub(all) enum AppRemoteControlConnectionStatus {
   AppRemoteControlConnected
   AppRemoteControlErrored
 } derive(@debug.Debug)
+pub fn AppRemoteControlConnectionStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppRemoteControlConnectionStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppRemoteControlConnectionStatus
 
 pub enum AppRequestId {
   StringId(String)
   IntId(Int64)
 } derive(Eq, @debug.Debug)
+pub fn AppRequestId::equal(Self, Self) -> Bool
+pub fn AppRequestId::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppRequestId::not_equal(Self, Self) -> Bool
+pub fn AppRequestId::to_json(Self) -> Json
+pub fn AppRequestId::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppRequestId
 pub impl @json.FromJson for AppRequestId
 
@@ -1873,11 +2371,15 @@ pub(all) struct AppRequestPermissionProfile {
   network : AppAdditionalNetworkPermissions?
   file_system : AppAdditionalFileSystemPermissions?
 } derive(@debug.Debug)
+pub fn AppRequestPermissionProfile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppRequestPermissionProfile::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppRequestPermissionProfile
 
 pub enum AppResidencyRequirement {
   AppResidencyUs
 } derive(@debug.Debug)
+pub fn AppResidencyRequirement::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResidencyRequirement::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResidencyRequirement
 
 pub(all) enum AppResponseContentItem {
@@ -1885,18 +2387,24 @@ pub(all) enum AppResponseContentItem {
   AppResponseInputImage(image_url~ : String, detail~ : AppResponseImageDetail?)
   AppResponseOutputText(text~ : String)
 } derive(@debug.Debug)
+pub fn AppResponseContentItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseContentItem::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseContentItem
 
 pub(all) enum AppResponseFunctionCallOutputBody {
   AppResponseFunctionOutputText(String)
   AppResponseFunctionOutputContentItems(ArrayView[AppResponseFunctionCallOutputContentItem])
 } derive(@debug.Debug)
+pub fn AppResponseFunctionCallOutputBody::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseFunctionCallOutputBody::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseFunctionCallOutputBody
 
 pub(all) enum AppResponseFunctionCallOutputContentItem {
   AppResponseFunctionOutputInputText(text~ : String)
   AppResponseFunctionOutputInputImage(image_url~ : String, detail~ : AppResponseImageDetail?)
 } derive(@debug.Debug)
+pub fn AppResponseFunctionCallOutputContentItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseFunctionCallOutputContentItem::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseFunctionCallOutputContentItem
 
 pub(all) enum AppResponseImageDetail {
@@ -1905,6 +2413,8 @@ pub(all) enum AppResponseImageDetail {
   AppResponseImageHigh
   AppResponseImageOriginal
 } derive(@debug.Debug)
+pub fn AppResponseImageDetail::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseImageDetail::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseImageDetail
 
 pub(all) enum AppResponseItem {
@@ -1923,6 +2433,8 @@ pub(all) enum AppResponseItem {
   AppResponseContextCompaction(encrypted_content~ : String?)
   AppResponseOther
 } derive(@debug.Debug)
+pub fn AppResponseItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseItem::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseItem
 
 pub(all) struct AppResponseLocalShellAction {
@@ -1932,6 +2444,8 @@ pub(all) struct AppResponseLocalShellAction {
   env : Map[String, String]?
   user : String?
 } derive(@debug.Debug)
+pub fn AppResponseLocalShellAction::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseLocalShellAction::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseLocalShellAction
 
 pub(all) enum AppResponseLocalShellStatus {
@@ -1939,23 +2453,31 @@ pub(all) enum AppResponseLocalShellStatus {
   AppResponseLocalShellInProgress
   AppResponseLocalShellIncomplete
 } derive(@debug.Debug)
+pub fn AppResponseLocalShellStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseLocalShellStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseLocalShellStatus
 
 pub(all) enum AppResponseMessagePhase {
   AppResponseCommentary
   AppResponseFinalAnswer
 } derive(@debug.Debug)
+pub fn AppResponseMessagePhase::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseMessagePhase::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseMessagePhase
 
 pub(all) enum AppResponseReasoningContent {
   AppResponseReasoningText(text~ : String)
   AppResponseReasoningPlainText(text~ : String)
 } derive(@debug.Debug)
+pub fn AppResponseReasoningContent::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseReasoningContent::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseReasoningContent
 
 pub(all) struct AppResponseReasoningSummary {
   text : String
 } derive(@debug.Debug)
+pub fn AppResponseReasoningSummary::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseReasoningSummary::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseReasoningSummary
 
 pub(all) enum AppResponseWebSearchAction {
@@ -1964,12 +2486,16 @@ pub(all) enum AppResponseWebSearchAction {
   AppResponseWebSearchFindInPage(url~ : String?, pattern~ : String?)
   AppResponseWebSearchOther
 } derive(@debug.Debug)
+pub fn AppResponseWebSearchAction::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppResponseWebSearchAction::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppResponseWebSearchAction
 
 pub(all) enum AppReviewDelivery {
   AppReviewInline
   AppReviewDetached
 } derive(@debug.Debug)
+pub fn AppReviewDelivery::to_json(Self) -> Json
+pub fn AppReviewDelivery::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppReviewDelivery
 
 pub(all) struct AppReviewStartParams {
@@ -1977,12 +2503,16 @@ pub(all) struct AppReviewStartParams {
   target : AppReviewTarget
   delivery : AppReviewDelivery?
 } derive(@debug.Debug)
+pub fn AppReviewStartParams::to_json(Self) -> Json
+pub fn AppReviewStartParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppReviewStartParams
 
 pub struct AppReviewStartResponse {
   turn : AppTurn
   review_thread_id : String
 } derive(@debug.Debug)
+pub fn AppReviewStartResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppReviewStartResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppReviewStartResponse
 
 pub(all) enum AppReviewTarget {
@@ -1991,6 +2521,8 @@ pub(all) enum AppReviewTarget {
   AppReviewCommit(sha~ : String, title~ : String?)
   AppReviewCustom(instructions~ : String)
 } derive(@debug.Debug)
+pub fn AppReviewTarget::to_json(Self) -> Json
+pub fn AppReviewTarget::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppReviewTarget
 
 pub(all) enum AppSandboxPolicy {
@@ -1999,6 +2531,9 @@ pub(all) enum AppSandboxPolicy {
   AppExternalSandbox(network_access~ : AppNetworkAccess)
   AppWorkspaceWrite(writable_roots~ : Array[String], network_access~ : Bool, exclude_tmpdir_env_var~ : Bool, exclude_slash_tmp~ : Bool)
 } derive(@debug.Debug)
+pub fn AppSandboxPolicy::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSandboxPolicy::to_json(Self) -> Json
+pub fn AppSandboxPolicy::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppSandboxPolicy
 pub impl @json.FromJson for AppSandboxPolicy
 
@@ -2008,11 +2543,15 @@ pub struct AppSandboxWorkspaceWrite {
   exclude_tmpdir_env_var : Bool
   exclude_slash_tmp : Bool
 } derive(@debug.Debug)
+pub fn AppSandboxWorkspaceWrite::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSandboxWorkspaceWrite::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSandboxWorkspaceWrite
 
 pub(all) struct AppSendAddCreditsNudgeEmailParams {
   kind : AppAddCreditsNudgeKind
 } derive(@debug.Debug)
+pub fn AppSendAddCreditsNudgeEmailParams::to_json(Self) -> Json
+pub fn AppSendAddCreditsNudgeEmailParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppSendAddCreditsNudgeEmailParams
 
 pub enum AppServerEvent {
@@ -2080,7 +2619,9 @@ pub enum AppServerEvent {
   AppThreadRealtimeError(thread_id~ : String, message~ : String)
   AppThreadRealtimeClosed(thread_id~ : String, reason~ : String?)
 } derive(@debug.Debug)
+pub fn AppServerEvent::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn AppServerEvent::thread_event(Self) -> Event?
+pub fn AppServerEvent::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppServerEvent
 
 pub struct AppServerOptions {
@@ -2088,12 +2629,14 @@ pub struct AppServerOptions {
   client_info : AppClientInfo?
   capabilities : AppInitializeCapabilities?
 } derive(Default)
+pub fn AppServerOptions::default() -> Self
 pub fn AppServerOptions::new(executable_path_override? : String, client_info? : AppClientInfo, capabilities? : AppInitializeCapabilities) -> Self
 
 pub struct AppServerRequest {
   details : AppServerRequestDetails
   // private fields
 } derive(@debug.Debug)
+pub fn AppServerRequest::to_repr(Self) -> @debug.Repr
 
 pub enum AppServerRequestDetails {
   AppCommandExecutionApprovalRequest(AppCommandExecutionApprovalRequest)
@@ -2106,6 +2649,7 @@ pub enum AppServerRequestDetails {
   AppMcpServerElicitationRequest(AppMcpServerElicitationRequest)
   AppRawServerRequest(rpc_method~ : String, params~ : Json?)
 } derive(@debug.Debug)
+pub fn AppServerRequestDetails::to_repr(Self) -> @debug.Repr
 
 pub(all) enum AppServerResponse {
   AppCommandExecutionApprovalResponse(decision~ : AppCommandExecutionApprovalDecision)
@@ -2119,6 +2663,8 @@ pub(all) enum AppServerResponse {
   AppRawServerResponse(Json)
   AppRawServerError(code~ : Int64, message~ : String, data~ : Json?)
 } derive(@debug.Debug)
+pub fn AppServerResponse::to_json(Self) -> Json
+pub fn AppServerResponse::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppServerResponse
 
 pub(all) struct AppSessionMigration {
@@ -2126,6 +2672,9 @@ pub(all) struct AppSessionMigration {
   cwd : String
   title : String?
 } derive(@debug.Debug)
+pub fn AppSessionMigration::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSessionMigration::to_json(Self) -> Json
+pub fn AppSessionMigration::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppSessionMigration
 pub impl @json.FromJson for AppSessionMigration
 
@@ -2138,17 +2687,23 @@ pub enum AppSessionSource {
   AppSessionSubAgent(AppSubAgentSource)
   AppSessionUnknown
 } derive(@debug.Debug)
+pub fn AppSessionSource::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSessionSource::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSessionSource
 
 pub struct AppSkillDependencies {
   tools : ArrayView[AppSkillToolDependency]
 } derive(@debug.Debug)
+pub fn AppSkillDependencies::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSkillDependencies::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSkillDependencies
 
 pub struct AppSkillErrorInfo {
   path : String
   message : String
 } derive(@debug.Debug)
+pub fn AppSkillErrorInfo::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSkillErrorInfo::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSkillErrorInfo
 
 pub struct AppSkillInterface {
@@ -2159,6 +2714,8 @@ pub struct AppSkillInterface {
   brand_color : String?
   default_prompt : String?
 } derive(@debug.Debug)
+pub fn AppSkillInterface::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSkillInterface::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSkillInterface
 
 pub struct AppSkillMetadata {
@@ -2171,6 +2728,8 @@ pub struct AppSkillMetadata {
   scope : AppSkillScope
   enabled : Bool
 } derive(@debug.Debug)
+pub fn AppSkillMetadata::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSkillMetadata::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSkillMetadata
 
 pub enum AppSkillScope {
@@ -2179,6 +2738,8 @@ pub enum AppSkillScope {
   AppSkillScopeSystem
   AppSkillScopeAdmin
 } derive(@debug.Debug)
+pub fn AppSkillScope::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSkillScope::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSkillScope
 
 pub struct AppSkillSummary {
@@ -2189,6 +2750,8 @@ pub struct AppSkillSummary {
   path : String?
   enabled : Bool
 } derive(@debug.Debug)
+pub fn AppSkillSummary::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSkillSummary::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSkillSummary
 
 pub struct AppSkillToolDependency {
@@ -2199,6 +2762,8 @@ pub struct AppSkillToolDependency {
   command : String?
   url : String?
 } derive(@debug.Debug)
+pub fn AppSkillToolDependency::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSkillToolDependency::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSkillToolDependency
 
 pub(all) struct AppSkillsConfigWriteParams {
@@ -2206,11 +2771,15 @@ pub(all) struct AppSkillsConfigWriteParams {
   name : String?
   enabled : Bool
 } derive(@debug.Debug)
+pub fn AppSkillsConfigWriteParams::to_json(Self) -> Json
+pub fn AppSkillsConfigWriteParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppSkillsConfigWriteParams
 
 pub struct AppSkillsConfigWriteResponse {
   effective_enabled : Bool
 } derive(@debug.Debug)
+pub fn AppSkillsConfigWriteResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSkillsConfigWriteResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSkillsConfigWriteResponse
 
 pub struct AppSkillsListEntry {
@@ -2218,6 +2787,8 @@ pub struct AppSkillsListEntry {
   skills : ArrayView[AppSkillMetadata]
   errors : ArrayView[AppSkillErrorInfo]
 } derive(@debug.Debug)
+pub fn AppSkillsListEntry::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSkillsListEntry::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSkillsListEntry
 
 pub struct AppSkillsListParams {
@@ -2225,17 +2796,23 @@ pub struct AppSkillsListParams {
   force_reload : Bool?
 } derive(@debug.Debug)
 pub fn AppSkillsListParams::new(cwds? : Array[String], force_reload? : Bool) -> Self
+pub fn AppSkillsListParams::to_json(Self) -> Json
+pub fn AppSkillsListParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppSkillsListParams
 
 pub struct AppSkillsListResponse {
   data : ArrayView[AppSkillsListEntry]
 } derive(@debug.Debug)
+pub fn AppSkillsListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSkillsListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSkillsListResponse
 
 pub(all) enum AppSortDirection {
   SortAsc
   SortDesc
 } derive(@debug.Debug)
+pub fn AppSortDirection::to_json(Self) -> Json
+pub fn AppSortDirection::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppSortDirection
 
 pub enum AppSubAgentSource {
@@ -2245,6 +2822,8 @@ pub enum AppSubAgentSource {
   AppSubAgentMemoryConsolidation
   AppSubAgentOther(String)
 } derive(@debug.Debug)
+pub fn AppSubAgentSource::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSubAgentSource::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSubAgentSource
 
 pub struct AppSummary {
@@ -2254,12 +2833,17 @@ pub struct AppSummary {
   install_url : String?
   needs_auth : Bool
 } derive(@debug.Debug)
+pub fn AppSummary::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppSummary::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppSummary
 
 pub(all) struct AppTextElement {
   byte_range : AppByteRange
   placeholder : String?
 } derive(@debug.Debug)
+pub fn AppTextElement::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTextElement::to_json(Self) -> Json
+pub fn AppTextElement::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppTextElement
 pub impl @json.FromJson for AppTextElement
 
@@ -2267,12 +2851,16 @@ pub(all) struct AppTextPosition {
   line : UInt64
   column : UInt64
 } derive(@debug.Debug)
+pub fn AppTextPosition::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTextPosition::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppTextPosition
 
 pub(all) struct AppTextRange {
   start : AppTextPosition
   end : AppTextPosition
 } derive(@debug.Debug)
+pub fn AppTextRange::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTextRange::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppTextRange
 
 pub struct AppThread {
@@ -2302,24 +2890,32 @@ pub struct AppThread {
   turns : ArrayView[AppTurn]
   // private fields
 } derive(@debug.Debug)
+pub fn AppThread::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThread::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThread
 
 pub enum AppThreadActiveFlag {
   AppThreadWaitingOnApproval
   AppThreadWaitingOnUserInput
 } derive(@debug.Debug)
+pub fn AppThreadActiveFlag::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadActiveFlag::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadActiveFlag
 
 pub(all) struct AppThreadApproveGuardianDeniedActionParams {
   thread_id : String
   event : Json
 } derive(@debug.Debug)
+pub fn AppThreadApproveGuardianDeniedActionParams::to_json(Self) -> Json
+pub fn AppThreadApproveGuardianDeniedActionParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadApproveGuardianDeniedActionParams
 
 pub struct AppThreadCollabAgentState {
   status : AppThreadCollabAgentStatus
   message : String?
 } derive(@debug.Debug)
+pub fn AppThreadCollabAgentState::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadCollabAgentState::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadCollabAgentState
 
 pub enum AppThreadCollabAgentStatus {
@@ -2331,6 +2927,8 @@ pub enum AppThreadCollabAgentStatus {
   AppThreadCollabAgentShutdown
   AppThreadCollabAgentNotFound
 } derive(@debug.Debug)
+pub fn AppThreadCollabAgentStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadCollabAgentStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadCollabAgentStatus
 
 pub enum AppThreadCollabAgentTool {
@@ -2340,6 +2938,8 @@ pub enum AppThreadCollabAgentTool {
   AppThreadCollabWait
   AppThreadCollabCloseAgent
 } derive(@debug.Debug)
+pub fn AppThreadCollabAgentTool::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadCollabAgentTool::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadCollabAgentTool
 
 pub enum AppThreadCollabAgentToolCallStatus {
@@ -2347,6 +2947,8 @@ pub enum AppThreadCollabAgentToolCallStatus {
   AppThreadCollabCompleted
   AppThreadCollabFailed
 } derive(@debug.Debug)
+pub fn AppThreadCollabAgentToolCallStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadCollabAgentToolCallStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadCollabAgentToolCallStatus
 
 pub enum AppThreadCommandExecutionSource {
@@ -2355,6 +2957,8 @@ pub enum AppThreadCommandExecutionSource {
   AppThreadCommandSourceUnifiedExecStartup
   AppThreadCommandSourceUnifiedExecInteraction
 } derive(@debug.Debug)
+pub fn AppThreadCommandExecutionSource::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadCommandExecutionSource::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadCommandExecutionSource
 
 pub enum AppThreadCommandExecutionStatus {
@@ -2363,6 +2967,8 @@ pub enum AppThreadCommandExecutionStatus {
   AppThreadCommandFailed
   AppThreadCommandDeclined
 } derive(@debug.Debug)
+pub fn AppThreadCommandExecutionStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadCommandExecutionStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadCommandExecutionStatus
 
 pub enum AppThreadDynamicToolCallStatus {
@@ -2370,17 +2976,23 @@ pub enum AppThreadDynamicToolCallStatus {
   AppThreadDynamicCompleted
   AppThreadDynamicFailed
 } derive(@debug.Debug)
+pub fn AppThreadDynamicToolCallStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadDynamicToolCallStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadDynamicToolCallStatus
 
 pub(all) struct AppThreadElicitationCounterParams {
   thread_id : String
 } derive(@debug.Debug)
+pub fn AppThreadElicitationCounterParams::to_json(Self) -> Json
+pub fn AppThreadElicitationCounterParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadElicitationCounterParams
 
 pub(all) struct AppThreadElicitationCounterResponse {
   count : UInt64
   paused : Bool
 } derive(@debug.Debug)
+pub fn AppThreadElicitationCounterResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadElicitationCounterResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadElicitationCounterResponse
 
 pub struct AppThreadFileUpdateChange {
@@ -2388,6 +3000,8 @@ pub struct AppThreadFileUpdateChange {
   kind : AppThreadPatchChangeKind
   diff : String
 } derive(@debug.Debug)
+pub fn AppThreadFileUpdateChange::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadFileUpdateChange::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadFileUpdateChange
 
 pub(all) struct AppThreadForkParams {
@@ -2406,6 +3020,8 @@ pub(all) struct AppThreadForkParams {
   ephemeral : Bool?
   thread_source : String?
 } derive(@debug.Debug)
+pub fn AppThreadForkParams::to_json(Self) -> Json
+pub fn AppThreadForkParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadForkParams
 
 pub struct AppThreadForkResponse {
@@ -2420,6 +3036,8 @@ pub struct AppThreadForkResponse {
   sandbox : AppSandboxPolicy
   reasoning_effort : AppReasoningEffort?
 } derive(@debug.Debug)
+pub fn AppThreadForkResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadForkResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadForkResponse
 
 pub(all) struct AppThreadGoal {
@@ -2432,16 +3050,22 @@ pub(all) struct AppThreadGoal {
   created_at : Int64
   updated_at : Int64
 } derive(@debug.Debug)
+pub fn AppThreadGoal::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadGoal::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadGoal
 
 pub(all) struct AppThreadGoalClearResponse {
   cleared : Bool
 } derive(@debug.Debug)
+pub fn AppThreadGoalClearResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadGoalClearResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadGoalClearResponse
 
 pub(all) struct AppThreadGoalGetResponse {
   goal : AppThreadGoal?
 } derive(@debug.Debug)
+pub fn AppThreadGoalGetResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadGoalGetResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadGoalGetResponse
 
 pub(all) struct AppThreadGoalSetParams {
@@ -2450,11 +3074,15 @@ pub(all) struct AppThreadGoalSetParams {
   status : AppThreadGoalStatus?
   token_budget : AppNullableInt64?
 } derive(@debug.Debug)
+pub fn AppThreadGoalSetParams::to_json(Self) -> Json
+pub fn AppThreadGoalSetParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadGoalSetParams
 
 pub(all) struct AppThreadGoalSetResponse {
   goal : AppThreadGoal
 } derive(@debug.Debug)
+pub fn AppThreadGoalSetResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadGoalSetResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadGoalSetResponse
 
 pub(all) enum AppThreadGoalStatus {
@@ -2463,6 +3091,9 @@ pub(all) enum AppThreadGoalStatus {
   AppThreadGoalBudgetLimited
   AppThreadGoalComplete
 } derive(@debug.Debug)
+pub fn AppThreadGoalStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadGoalStatus::to_json(Self) -> Json
+pub fn AppThreadGoalStatus::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadGoalStatus
 pub impl @json.FromJson for AppThreadGoalStatus
 
@@ -2470,12 +3101,16 @@ pub struct AppThreadIdParams {
   thread_id : String
 } derive(@debug.Debug)
 pub fn AppThreadIdParams::new(String) -> Self
+pub fn AppThreadIdParams::to_json(Self) -> Json
+pub fn AppThreadIdParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadIdParams
 
 pub(all) struct AppThreadInjectItemsParams {
   thread_id : String
   items : Array[Json]
 } derive(@debug.Debug)
+pub fn AppThreadInjectItemsParams::to_json(Self) -> Json
+pub fn AppThreadInjectItemsParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadInjectItemsParams
 
 pub enum AppThreadItem {
@@ -2496,6 +3131,8 @@ pub enum AppThreadItem {
   AppThreadExitedReviewModeItem(id~ : String, review~ : String)
   AppThreadContextCompactionItem(id~ : String)
 } derive(@debug.Debug)
+pub fn AppThreadItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadItem::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadItem
 
 pub struct AppThreadItemEvent {
@@ -2506,12 +3143,16 @@ pub struct AppThreadItemEvent {
   raw_item : Json
   timestamp_ms : Int64
 } derive(@debug.Debug)
+pub fn AppThreadItemEvent::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadItemEvent::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadItemEvent
 
 pub(all) enum AppThreadListCwd {
   OneCwd(String)
   ManyCwds(Array[String])
 } derive(@debug.Debug)
+pub fn AppThreadListCwd::to_json(Self) -> Json
+pub fn AppThreadListCwd::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadListCwd
 
 pub struct AppThreadListParams {
@@ -2527,6 +3168,8 @@ pub struct AppThreadListParams {
   search_term : String?
 } derive(@debug.Debug)
 pub fn AppThreadListParams::new(cursor? : String, limit? : UInt, sort_key? : AppThreadSortKey, sort_direction? : AppSortDirection, model_providers? : Array[String], source_kinds? : Array[AppThreadSourceKind], archived? : Bool, cwd? : AppThreadListCwd, use_state_db_only? : Bool, search_term? : String) -> Self
+pub fn AppThreadListParams::to_json(Self) -> Json
+pub fn AppThreadListParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadListParams
 
 pub struct AppThreadListResponse {
@@ -2534,6 +3177,8 @@ pub struct AppThreadListResponse {
   next_cursor : String?
   backwards_cursor : String?
 } derive(@debug.Debug)
+pub fn AppThreadListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadListResponse
 
 pub struct AppThreadLoadedListParams {
@@ -2541,17 +3186,23 @@ pub struct AppThreadLoadedListParams {
   limit : UInt?
 } derive(@debug.Debug)
 pub fn AppThreadLoadedListParams::new(cursor? : String, limit? : UInt) -> Self
+pub fn AppThreadLoadedListParams::to_json(Self) -> Json
+pub fn AppThreadLoadedListParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadLoadedListParams
 
 pub struct AppThreadLoadedListResponse {
   data : ArrayView[String]
   next_cursor : String?
 } derive(@debug.Debug)
+pub fn AppThreadLoadedListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadLoadedListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadLoadedListResponse
 
 pub struct AppThreadMcpToolCallError {
   message : String
 } derive(@debug.Debug)
+pub fn AppThreadMcpToolCallError::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadMcpToolCallError::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadMcpToolCallError
 
 pub struct AppThreadMcpToolCallResult {
@@ -2559,6 +3210,8 @@ pub struct AppThreadMcpToolCallResult {
   structured_content : Json?
   meta : Json?
 } derive(@debug.Debug)
+pub fn AppThreadMcpToolCallResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadMcpToolCallResult::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadMcpToolCallResult
 
 pub enum AppThreadMcpToolCallStatus {
@@ -2566,18 +3219,24 @@ pub enum AppThreadMcpToolCallStatus {
   AppThreadMcpCompleted
   AppThreadMcpFailed
 } derive(@debug.Debug)
+pub fn AppThreadMcpToolCallStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadMcpToolCallStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadMcpToolCallStatus
 
 pub(all) enum AppThreadMemoryMode {
   AppThreadMemoryEnabled
   AppThreadMemoryDisabled
 } derive(@debug.Debug)
+pub fn AppThreadMemoryMode::to_json(Self) -> Json
+pub fn AppThreadMemoryMode::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadMemoryMode
 
 pub(all) struct AppThreadMemoryModeSetParams {
   thread_id : String
   mode : AppThreadMemoryMode
 } derive(@debug.Debug)
+pub fn AppThreadMemoryModeSetParams::to_json(Self) -> Json
+pub fn AppThreadMemoryModeSetParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadMemoryModeSetParams
 
 pub(all) struct AppThreadMetadataGitInfoUpdateParams {
@@ -2585,17 +3244,23 @@ pub(all) struct AppThreadMetadataGitInfoUpdateParams {
   branch : AppNullableString?
   origin_url : AppNullableString?
 } derive(@debug.Debug)
+pub fn AppThreadMetadataGitInfoUpdateParams::to_json(Self) -> Json
+pub fn AppThreadMetadataGitInfoUpdateParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadMetadataGitInfoUpdateParams
 
 pub(all) struct AppThreadMetadataUpdateParams {
   thread_id : String
   git_info : AppThreadMetadataGitInfoUpdateParams?
 } derive(@debug.Debug)
+pub fn AppThreadMetadataUpdateParams::to_json(Self) -> Json
+pub fn AppThreadMetadataUpdateParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadMetadataUpdateParams
 
 pub struct AppThreadMetadataUpdateResponse {
   thread : AppThread
 } derive(@debug.Debug)
+pub fn AppThreadMetadataUpdateResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadMetadataUpdateResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadMetadataUpdateResponse
 
 pub enum AppThreadPatchApplyStatus {
@@ -2604,6 +3269,8 @@ pub enum AppThreadPatchApplyStatus {
   AppThreadPatchFailed
   AppThreadPatchDeclined
 } derive(@debug.Debug)
+pub fn AppThreadPatchApplyStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadPatchApplyStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadPatchApplyStatus
 
 pub enum AppThreadPatchChangeKind {
@@ -2611,6 +3278,8 @@ pub enum AppThreadPatchChangeKind {
   AppThreadPatchDelete
   AppThreadPatchUpdate(move_path~ : String?)
 } derive(@debug.Debug)
+pub fn AppThreadPatchChangeKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadPatchChangeKind::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadPatchChangeKind
 
 pub struct AppThreadReadParams {
@@ -2618,23 +3287,31 @@ pub struct AppThreadReadParams {
   include_turns : Bool
 } derive(@debug.Debug)
 pub fn AppThreadReadParams::new(String, Bool) -> Self
+pub fn AppThreadReadParams::to_json(Self) -> Json
+pub fn AppThreadReadParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadReadParams
 
 pub struct AppThreadReadResponse {
   thread : AppThread
 } derive(@debug.Debug)
+pub fn AppThreadReadResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadReadResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadReadResponse
 
 pub(all) struct AppThreadRealtimeAppendAudioParams {
   thread_id : String
   audio : AppThreadRealtimeAudioChunk
 } derive(@debug.Debug)
+pub fn AppThreadRealtimeAppendAudioParams::to_json(Self) -> Json
+pub fn AppThreadRealtimeAppendAudioParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadRealtimeAppendAudioParams
 
 pub(all) struct AppThreadRealtimeAppendTextParams {
   thread_id : String
   text : String
 } derive(@debug.Debug)
+pub fn AppThreadRealtimeAppendTextParams::to_json(Self) -> Json
+pub fn AppThreadRealtimeAppendTextParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadRealtimeAppendTextParams
 
 pub(all) struct AppThreadRealtimeAudioChunk {
@@ -2644,12 +3321,17 @@ pub(all) struct AppThreadRealtimeAudioChunk {
   samples_per_channel : UInt?
   item_id : String?
 } derive(@debug.Debug)
+pub fn AppThreadRealtimeAudioChunk::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadRealtimeAudioChunk::to_json(Self) -> Json
+pub fn AppThreadRealtimeAudioChunk::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadRealtimeAudioChunk
 pub impl @json.FromJson for AppThreadRealtimeAudioChunk
 
 pub(all) struct AppThreadRealtimeListVoicesResponse {
   voices : AppRealtimeVoicesList
 } derive(@debug.Debug)
+pub fn AppThreadRealtimeListVoicesResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadRealtimeListVoicesResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadRealtimeListVoicesResponse
 
 pub(all) struct AppThreadRealtimeStartParams {
@@ -2660,12 +3342,16 @@ pub(all) struct AppThreadRealtimeStartParams {
   transport : AppThreadRealtimeStartTransport?
   voice : AppRealtimeVoice?
 } derive(@debug.Debug)
+pub fn AppThreadRealtimeStartParams::to_json(Self) -> Json
+pub fn AppThreadRealtimeStartParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadRealtimeStartParams
 
 pub(all) enum AppThreadRealtimeStartTransport {
   AppThreadRealtimeWebsocket
   AppThreadRealtimeWebrtc(sdp~ : String)
 } derive(@debug.Debug)
+pub fn AppThreadRealtimeStartTransport::to_json(Self) -> Json
+pub fn AppThreadRealtimeStartTransport::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadRealtimeStartTransport
 
 pub struct AppThreadResumeParams {
@@ -2683,6 +3369,8 @@ pub struct AppThreadResumeParams {
   personality : AppPersonality?
 } derive(@debug.Debug)
 pub fn AppThreadResumeParams::new(String, model? : String, model_provider? : String, service_tier? : AppNullableString, cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox? : SandboxMode, config? : Map[String, Json], base_instructions? : String, developer_instructions? : String, personality? : AppPersonality) -> Self
+pub fn AppThreadResumeParams::to_json(Self) -> Json
+pub fn AppThreadResumeParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadResumeParams
 
 pub struct AppThreadResumeResponse {
@@ -2697,17 +3385,23 @@ pub struct AppThreadResumeResponse {
   sandbox : AppSandboxPolicy
   reasoning_effort : AppReasoningEffort?
 } derive(@debug.Debug)
+pub fn AppThreadResumeResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadResumeResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadResumeResponse
 
 pub(all) struct AppThreadRollbackParams {
   thread_id : String
   num_turns : UInt
 } derive(@debug.Debug)
+pub fn AppThreadRollbackParams::to_json(Self) -> Json
+pub fn AppThreadRollbackParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadRollbackParams
 
 pub struct AppThreadRollbackResponse {
   thread : AppThread
 } derive(@debug.Debug)
+pub fn AppThreadRollbackResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadRollbackResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadRollbackResponse
 
 pub(all) struct AppThreadSection {
@@ -2715,12 +3409,17 @@ pub(all) struct AppThreadSection {
   name : String
   appearance : AppThreadSectionAppearance?
 } derive(@debug.Debug)
+pub fn AppThreadSection::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadSection::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadSection
 
 pub(all) struct AppThreadSectionAppearance {
   icon : String?
   color : String?
 } derive(@debug.Debug)
+pub fn AppThreadSectionAppearance::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadSectionAppearance::to_json(Self) -> Json
+pub fn AppThreadSectionAppearance::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadSectionAppearance
 pub impl @json.FromJson for AppThreadSectionAppearance
 
@@ -2728,6 +3427,8 @@ pub(all) enum AppThreadSectionAppearanceUpdate {
   AppClearThreadSectionAppearance
   AppSetThreadSectionAppearance(AppThreadSectionAppearance)
 } derive(@debug.Debug)
+pub fn AppThreadSectionAppearanceUpdate::to_json(Self) -> Json
+pub fn AppThreadSectionAppearanceUpdate::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadSectionAppearanceUpdate
 
 pub(all) struct AppThreadSectionCreateParams {
@@ -2735,24 +3436,33 @@ pub(all) struct AppThreadSectionCreateParams {
   appearance : AppThreadSectionAppearanceUpdate?
 } derive(@debug.Debug)
 pub fn AppThreadSectionCreateParams::new(String, appearance? : AppThreadSectionAppearanceUpdate) -> Self
+pub fn AppThreadSectionCreateParams::to_json(Self) -> Json
+pub fn AppThreadSectionCreateParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadSectionCreateParams
 
 pub(all) struct AppThreadSectionDeleteParams {
   section_id : String
 } derive(@debug.Debug)
+pub fn AppThreadSectionDeleteParams::to_json(Self) -> Json
+pub fn AppThreadSectionDeleteParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadSectionDeleteParams
 
 pub(all) struct AppThreadSectionListParams {
   cursor : String?
   limit : UInt?
 } derive(Default, @debug.Debug)
+pub fn AppThreadSectionListParams::default() -> Self
 pub fn AppThreadSectionListParams::new(cursor? : String, limit? : UInt) -> Self
+pub fn AppThreadSectionListParams::to_json(Self) -> Json
+pub fn AppThreadSectionListParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadSectionListParams
 
 pub struct AppThreadSectionListResponse {
   data : ArrayView[AppThreadSection]
   next_cursor : String?
 } derive(@debug.Debug)
+pub fn AppThreadSectionListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadSectionListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadSectionListResponse
 
 pub(all) struct AppThreadSectionMoveParams {
@@ -2760,11 +3470,15 @@ pub(all) struct AppThreadSectionMoveParams {
   section_id : AppNullableString
   before_thread_id : AppNullableString?
 } derive(@debug.Debug)
+pub fn AppThreadSectionMoveParams::to_json(Self) -> Json
+pub fn AppThreadSectionMoveParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadSectionMoveParams
 
 pub(all) struct AppThreadSectionResponse {
   section : AppThreadSection
 } derive(@debug.Debug)
+pub fn AppThreadSectionResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadSectionResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadSectionResponse
 
 pub(all) struct AppThreadSectionUpdateParams {
@@ -2772,6 +3486,8 @@ pub(all) struct AppThreadSectionUpdateParams {
   name : String
   appearance : AppThreadSectionAppearanceUpdate?
 } derive(@debug.Debug)
+pub fn AppThreadSectionUpdateParams::to_json(Self) -> Json
+pub fn AppThreadSectionUpdateParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadSectionUpdateParams
 
 pub struct AppThreadSetNameParams {
@@ -2779,18 +3495,24 @@ pub struct AppThreadSetNameParams {
   name : String
 } derive(@debug.Debug)
 pub fn AppThreadSetNameParams::new(String, String) -> Self
+pub fn AppThreadSetNameParams::to_json(Self) -> Json
+pub fn AppThreadSetNameParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadSetNameParams
 
 pub(all) struct AppThreadShellCommandParams {
   thread_id : String
   command : String
 } derive(@debug.Debug)
+pub fn AppThreadShellCommandParams::to_json(Self) -> Json
+pub fn AppThreadShellCommandParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadShellCommandParams
 
 pub(all) enum AppThreadSortKey {
   ThreadCreatedAt
   ThreadUpdatedAt
 } derive(@debug.Debug)
+pub fn AppThreadSortKey::to_json(Self) -> Json
+pub fn AppThreadSortKey::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadSortKey
 
 pub(all) enum AppThreadSourceKind {
@@ -2805,6 +3527,8 @@ pub(all) enum AppThreadSourceKind {
   SourceSubAgentOther
   SourceUnknown
 } derive(@debug.Debug)
+pub fn AppThreadSourceKind::to_json(Self) -> Json
+pub fn AppThreadSourceKind::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadSourceKind
 
 pub struct AppThreadStartParams {
@@ -2825,6 +3549,8 @@ pub struct AppThreadStartParams {
   thread_source : String?
 } derive(@debug.Debug)
 pub fn AppThreadStartParams::new(model? : String, model_provider? : String, service_tier? : AppNullableString, cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox? : SandboxMode, config? : Map[String, Json], service_name? : String, base_instructions? : String, developer_instructions? : String, personality? : AppPersonality, ephemeral? : Bool, session_start_source? : AppThreadStartSource, thread_source? : String) -> Self
+pub fn AppThreadStartParams::to_json(Self) -> Json
+pub fn AppThreadStartParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadStartParams
 
 pub struct AppThreadStartResponse {
@@ -2839,12 +3565,16 @@ pub struct AppThreadStartResponse {
   sandbox : AppSandboxPolicy
   reasoning_effort : AppReasoningEffort?
 } derive(@debug.Debug)
+pub fn AppThreadStartResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadStartResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadStartResponse
 
 pub(all) enum AppThreadStartSource {
   AppThreadStartup
   AppThreadClear
 } derive(@debug.Debug)
+pub fn AppThreadStartSource::to_json(Self) -> Json
+pub fn AppThreadStartSource::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadStartSource
 
 pub enum AppThreadStatus {
@@ -2853,6 +3583,8 @@ pub enum AppThreadStatus {
   ThreadSystemError
   ThreadActive(active_flags~ : ArrayView[AppThreadActiveFlag])
 } derive(@debug.Debug)
+pub fn AppThreadStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadStatus
 
 pub struct AppThreadTokenUsage {
@@ -2860,6 +3592,8 @@ pub struct AppThreadTokenUsage {
   last : AppTokenUsageBreakdown
   model_context_window : Int64?
 } derive(@debug.Debug)
+pub fn AppThreadTokenUsage::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadTokenUsage::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadTokenUsage
 
 pub(all) struct AppThreadTurnsListParams {
@@ -2868,6 +3602,8 @@ pub(all) struct AppThreadTurnsListParams {
   limit : UInt?
   sort_direction : AppSortDirection?
 } derive(@debug.Debug)
+pub fn AppThreadTurnsListParams::to_json(Self) -> Json
+pub fn AppThreadTurnsListParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppThreadTurnsListParams
 
 pub(all) struct AppThreadTurnsListResponse {
@@ -2875,11 +3611,15 @@ pub(all) struct AppThreadTurnsListResponse {
   next_cursor : String?
   backwards_cursor : String?
 } derive(@debug.Debug)
+pub fn AppThreadTurnsListResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadTurnsListResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadTurnsListResponse
 
 pub struct AppThreadUnsubscribeResponse {
   status : AppThreadUnsubscribeStatus
 } derive(@debug.Debug)
+pub fn AppThreadUnsubscribeResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadUnsubscribeResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadUnsubscribeResponse
 
 pub(all) enum AppThreadUnsubscribeStatus {
@@ -2887,6 +3627,8 @@ pub(all) enum AppThreadUnsubscribeStatus {
   AppThreadNotSubscribed
   AppThreadUnsubscribed
 } derive(@debug.Debug)
+pub fn AppThreadUnsubscribeStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadUnsubscribeStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadUnsubscribeStatus
 
 pub enum AppThreadUserInput {
@@ -2898,6 +3640,8 @@ pub enum AppThreadUserInput {
   AppThreadInputSkill(name~ : String, path~ : String)
   AppThreadInputMention(name~ : String, path~ : String)
 } derive(@debug.Debug)
+pub fn AppThreadUserInput::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppThreadUserInput::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppThreadUserInput
 
 pub struct AppTokenUsageBreakdown {
@@ -2907,6 +3651,8 @@ pub struct AppTokenUsageBreakdown {
   output_tokens : Int64
   reasoning_output_tokens : Int64
 } derive(@debug.Debug)
+pub fn AppTokenUsageBreakdown::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTokenUsageBreakdown::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppTokenUsageBreakdown
 
 pub enum AppToolApproval {
@@ -2914,22 +3660,30 @@ pub enum AppToolApproval {
   AppToolApprovalPrompt
   AppToolApprovalApprove
 } derive(@debug.Debug)
+pub fn AppToolApproval::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppToolApproval::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppToolApproval
 
 pub struct AppToolConfig {
   enabled : Bool?
   approval_mode : AppToolApproval?
 } derive(@debug.Debug)
+pub fn AppToolConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppToolConfig::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppToolConfig
 
 pub(all) struct AppToolRequestUserInputAnswer {
   answers : ArrayView[String]
 } derive(ToJson, @debug.Debug)
+pub fn AppToolRequestUserInputAnswer::to_json(Self) -> Json
+pub fn AppToolRequestUserInputAnswer::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AppToolRequestUserInputOption {
   label : String
   description : String
 } derive(@debug.Debug, @json.FromJson)
+pub fn AppToolRequestUserInputOption::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppToolRequestUserInputOption::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AppToolRequestUserInputQuestion {
   id : String
@@ -2939,6 +3693,8 @@ pub(all) struct AppToolRequestUserInputQuestion {
   is_secret : Bool
   options : ArrayView[AppToolRequestUserInputOption]?
 } derive(@debug.Debug)
+pub fn AppToolRequestUserInputQuestion::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppToolRequestUserInputQuestion::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppToolRequestUserInputQuestion
 
 pub(all) struct AppToolRequestUserInputRequest {
@@ -2950,11 +3706,15 @@ pub(all) struct AppToolRequestUserInputRequest {
   auto_resolution_ms : Int64?
   // private fields
 } derive(@debug.Debug)
+pub fn AppToolRequestUserInputRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppToolRequestUserInputRequest::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppToolRequestUserInputRequest
 
 pub struct AppToolsConfig {
   tools : Map[String, AppToolConfig]
 } derive(@debug.Debug)
+pub fn AppToolsConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppToolsConfig::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppToolsConfig
 
 pub struct AppTurn {
@@ -2967,6 +3727,8 @@ pub struct AppTurn {
   duration_ms : Int64?
   // private fields
 } derive(@debug.Debug)
+pub fn AppTurn::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTurn::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppTurn
 
 pub struct AppTurnError {
@@ -2975,6 +3737,8 @@ pub struct AppTurnError {
   additional_details : String?
   // private fields
 } derive(@debug.Debug)
+pub fn AppTurnError::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTurnError::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppTurnError
 
 pub struct AppTurnInterruptParams {
@@ -2982,12 +3746,16 @@ pub struct AppTurnInterruptParams {
   turn_id : String
 } derive(@debug.Debug)
 pub fn AppTurnInterruptParams::new(String, String) -> Self
+pub fn AppTurnInterruptParams::to_json(Self) -> Json
+pub fn AppTurnInterruptParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppTurnInterruptParams
 
 pub(all) struct AppTurnPlanStep {
   step : String
   status : AppTurnPlanStepStatus
 } derive(@debug.Debug)
+pub fn AppTurnPlanStep::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTurnPlanStep::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppTurnPlanStep
 
 pub(all) enum AppTurnPlanStepStatus {
@@ -2995,6 +3763,8 @@ pub(all) enum AppTurnPlanStepStatus {
   AppTurnPlanInProgress
   AppTurnPlanCompleted
 } derive(@debug.Debug)
+pub fn AppTurnPlanStepStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTurnPlanStepStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppTurnPlanStepStatus
 
 pub struct AppTurnStartOptions {
@@ -3010,7 +3780,9 @@ pub struct AppTurnStartOptions {
   personality : AppPersonality?
   output_schema : Json?
 } derive(Default, @debug.Debug)
+pub fn AppTurnStartOptions::default() -> Self
 pub fn AppTurnStartOptions::new(client_user_message_id? : String, cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox_policy? : AppSandboxPolicy, model? : String, service_tier? : AppNullableString, effort? : AppReasoningEffort, summary? : AppReasoningSummary, personality? : AppPersonality, output_schema? : Json) -> Self
+pub fn AppTurnStartOptions::to_repr(Self) -> @debug.Repr
 
 pub struct AppTurnStartParams {
   thread_id : String
@@ -3028,11 +3800,15 @@ pub struct AppTurnStartParams {
   output_schema : Json?
 } derive(@debug.Debug)
 pub fn AppTurnStartParams::new(String, Array[AppUserInput], client_user_message_id? : String, cwd? : String, approval_policy? : AppApprovalPolicy, approvals_reviewer? : AppApprovalsReviewer, sandbox_policy? : AppSandboxPolicy, model? : String, service_tier? : AppNullableString, effort? : AppReasoningEffort, summary? : AppReasoningSummary, personality? : AppPersonality, output_schema? : Json) -> Self
+pub fn AppTurnStartParams::to_json(Self) -> Json
+pub fn AppTurnStartParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppTurnStartParams
 
 pub struct AppTurnStartResponse {
   turn : AppTurn
 } derive(@debug.Debug)
+pub fn AppTurnStartResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTurnStartResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppTurnStartResponse
 
 pub enum AppTurnStatus {
@@ -3041,6 +3817,10 @@ pub enum AppTurnStatus {
   AppTurnFailedStatus
   AppTurnInProgressStatus
 } derive(Eq, @debug.Debug)
+pub fn AppTurnStatus::equal(Self, Self) -> Bool
+pub fn AppTurnStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTurnStatus::not_equal(Self, Self) -> Bool
+pub fn AppTurnStatus::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppTurnStatus
 
 pub struct AppTurnSteerParams {
@@ -3050,11 +3830,15 @@ pub struct AppTurnSteerParams {
   expected_turn_id : String
 } derive(@debug.Debug)
 pub fn AppTurnSteerParams::new(String, Array[AppUserInput], String, client_user_message_id? : String) -> Self
+pub fn AppTurnSteerParams::to_json(Self) -> Json
+pub fn AppTurnSteerParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppTurnSteerParams
 
 pub struct AppTurnSteerResponse {
   turn_id : String
 } derive(@debug.Debug)
+pub fn AppTurnSteerResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppTurnSteerResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppTurnSteerResponse
 
 pub struct AppTurnStream {
@@ -3078,6 +3862,8 @@ pub(all) enum AppUserInput {
   AppInputSkill(name~ : String, path~ : String)
   AppInputMention(name~ : String, path~ : String)
 } derive(@debug.Debug)
+pub fn AppUserInput::to_json(Self) -> Json
+pub fn AppUserInput::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppUserInput
 
 pub enum AppWebSearchAction {
@@ -3086,6 +3872,8 @@ pub enum AppWebSearchAction {
   AppWebSearchActionFindInPage(url~ : String?, pattern~ : String?)
   AppWebSearchActionOther
 } derive(@debug.Debug)
+pub fn AppWebSearchAction::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppWebSearchAction::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppWebSearchAction
 
 pub enum AppWebSearchContextSize {
@@ -3093,6 +3881,8 @@ pub enum AppWebSearchContextSize {
   AppWebSearchContextMedium
   AppWebSearchContextHigh
 } derive(@debug.Debug)
+pub fn AppWebSearchContextSize::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppWebSearchContextSize::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppWebSearchContextSize
 
 pub struct AppWebSearchLocation {
@@ -3101,6 +3891,8 @@ pub struct AppWebSearchLocation {
   city : String?
   timezone : String?
 } derive(@debug.Debug)
+pub fn AppWebSearchLocation::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppWebSearchLocation::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppWebSearchLocation
 
 pub enum AppWebSearchMode {
@@ -3108,6 +3900,8 @@ pub enum AppWebSearchMode {
   AppWebSearchCached
   AppWebSearchLive
 } derive(@debug.Debug)
+pub fn AppWebSearchMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppWebSearchMode::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppWebSearchMode
 
 pub struct AppWebSearchToolConfig {
@@ -3115,12 +3909,17 @@ pub struct AppWebSearchToolConfig {
   allowed_domains : ArrayView[String]?
   location : AppWebSearchLocation?
 } derive(@debug.Debug)
+pub fn AppWebSearchToolConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppWebSearchToolConfig::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppWebSearchToolConfig
 
 pub(all) enum AppWindowsSandboxSetupMode {
   AppWindowsSandboxElevated
   AppWindowsSandboxUnelevated
 } derive(@debug.Debug)
+pub fn AppWindowsSandboxSetupMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppWindowsSandboxSetupMode::to_json(Self) -> Json
+pub fn AppWindowsSandboxSetupMode::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppWindowsSandboxSetupMode
 pub impl @json.FromJson for AppWindowsSandboxSetupMode
 
@@ -3128,11 +3927,15 @@ pub(all) struct AppWindowsSandboxSetupStartParams {
   mode : AppWindowsSandboxSetupMode
   cwd : String?
 } derive(@debug.Debug)
+pub fn AppWindowsSandboxSetupStartParams::to_json(Self) -> Json
+pub fn AppWindowsSandboxSetupStartParams::to_repr(Self) -> @debug.Repr
 pub impl ToJson for AppWindowsSandboxSetupStartParams
 
 pub struct AppWindowsSandboxSetupStartResponse {
   started : Bool
 } derive(@debug.Debug)
+pub fn AppWindowsSandboxSetupStartResponse::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppWindowsSandboxSetupStartResponse::to_repr(Self) -> @debug.Repr
 pub impl @json.FromJson for AppWindowsSandboxSetupStartResponse
 
 pub(all) enum ApprovalMode {
@@ -3141,6 +3944,8 @@ pub(all) enum ApprovalMode {
   OnFailure
   Untrusted
 }
+pub fn ApprovalMode::output(Self, &Logger) -> Unit
+pub fn ApprovalMode::to_string(Self) -> String
 pub impl Show for ApprovalMode
 
 type Codex
@@ -3370,12 +4175,16 @@ pub fn CodexAppThread::set_request_handler(Self, request_handler? : async (AppSe
 pub async fn CodexAppThread::start_turn(Self, Array[AppUserInput], options? : AppTurnStartOptions) -> AppTurnStartResponse
 
 type CodexOptions derive(Default)
+pub fn CodexOptions::default() -> Self
 pub fn CodexOptions::new(codex_path_override? : String, base_url? : String, api_key? : String, config? : Map[String, Json], config_overrides? : Array[String], env? : Map[String, String]) -> Self
 
 pub struct CollabAgentState {
   status : CollabAgentStatus
   message : String?
 } derive(@debug.Debug)
+pub fn CollabAgentState::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CollabAgentState::to_json(Self) -> Json
+pub fn CollabAgentState::to_repr(Self) -> @debug.Repr
 pub impl ToJson for CollabAgentState
 pub impl @json.FromJson for CollabAgentState
 
@@ -3388,6 +4197,11 @@ pub enum CollabAgentStatus {
   Shutdown
   NotFound
 } derive(@debug.Debug)
+pub fn CollabAgentStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CollabAgentStatus::output(Self, &Logger) -> Unit
+pub fn CollabAgentStatus::to_json(Self) -> Json
+pub fn CollabAgentStatus::to_repr(Self) -> @debug.Repr
+pub fn CollabAgentStatus::to_string(Self) -> String
 pub impl Show for CollabAgentStatus
 pub impl ToJson for CollabAgentStatus
 pub impl @json.FromJson for CollabAgentStatus
@@ -3399,6 +4213,11 @@ pub enum CollabTool {
   Wait
   CloseAgent
 } derive(@debug.Debug)
+pub fn CollabTool::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CollabTool::output(Self, &Logger) -> Unit
+pub fn CollabTool::to_json(Self) -> Json
+pub fn CollabTool::to_repr(Self) -> @debug.Repr
+pub fn CollabTool::to_string(Self) -> String
 pub impl Show for CollabTool
 pub impl ToJson for CollabTool
 pub impl @json.FromJson for CollabTool
@@ -3408,6 +4227,11 @@ pub enum CollabToolCallStatus {
   Completed
   Failed
 } derive(@debug.Debug)
+pub fn CollabToolCallStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CollabToolCallStatus::output(Self, &Logger) -> Unit
+pub fn CollabToolCallStatus::to_json(Self) -> Json
+pub fn CollabToolCallStatus::to_repr(Self) -> @debug.Repr
+pub fn CollabToolCallStatus::to_string(Self) -> String
 pub impl Show for CollabToolCallStatus
 pub impl ToJson for CollabToolCallStatus
 pub impl @json.FromJson for CollabToolCallStatus
@@ -3418,6 +4242,11 @@ pub enum CommandExecutionStatus {
   Failed
   Declined
 } derive(@debug.Debug)
+pub fn CommandExecutionStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CommandExecutionStatus::output(Self, &Logger) -> Unit
+pub fn CommandExecutionStatus::to_json(Self) -> Json
+pub fn CommandExecutionStatus::to_repr(Self) -> @debug.Repr
+pub fn CommandExecutionStatus::to_string(Self) -> String
 pub impl Show for CommandExecutionStatus
 pub impl ToJson for CommandExecutionStatus
 pub impl @json.FromJson for CommandExecutionStatus
@@ -3432,6 +4261,8 @@ pub enum Event {
   ItemCompleted(ThreadItem)
   ThreadErrorEvent(String)
 }
+pub fn Event::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Event::to_json(Self) -> Json
 pub impl ToJson for Event
 pub impl @json.FromJson for Event
 
@@ -3439,6 +4270,11 @@ pub struct FileUpdateChange {
   path : String
   kind : PatchChangeKind
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn FileUpdateChange::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn FileUpdateChange::output(Self, &Logger) -> Unit
+pub fn FileUpdateChange::to_json(Self) -> Json
+pub fn FileUpdateChange::to_repr(Self) -> @debug.Repr
+pub fn FileUpdateChange::to_string(Self) -> String
 pub impl Show for FileUpdateChange
 
 pub struct McpToolCallResult {
@@ -3446,6 +4282,9 @@ pub struct McpToolCallResult {
   meta : Json?
   structured_content : Json
 } derive(@debug.Debug)
+pub fn McpToolCallResult::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn McpToolCallResult::to_json(Self) -> Json
+pub fn McpToolCallResult::to_repr(Self) -> @debug.Repr
 pub impl ToJson for McpToolCallResult
 pub impl @json.FromJson for McpToolCallResult
 
@@ -3454,6 +4293,11 @@ pub enum McpToolCallStatus {
   Completed
   Failed
 } derive(@debug.Debug)
+pub fn McpToolCallStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn McpToolCallStatus::output(Self, &Logger) -> Unit
+pub fn McpToolCallStatus::to_json(Self) -> Json
+pub fn McpToolCallStatus::to_repr(Self) -> @debug.Repr
+pub fn McpToolCallStatus::to_string(Self) -> String
 pub impl Show for McpToolCallStatus
 pub impl ToJson for McpToolCallStatus
 pub impl @json.FromJson for McpToolCallStatus
@@ -3467,6 +4311,8 @@ pub(all) enum ModelReasoningEffort {
   Max
   Ultra
 }
+pub fn ModelReasoningEffort::output(Self, &Logger) -> Unit
+pub fn ModelReasoningEffort::to_string(Self) -> String
 pub impl Show for ModelReasoningEffort
 
 pub enum PatchApplyStatus {
@@ -3474,6 +4320,11 @@ pub enum PatchApplyStatus {
   Completed
   Failed
 } derive(@debug.Debug)
+pub fn PatchApplyStatus::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PatchApplyStatus::output(Self, &Logger) -> Unit
+pub fn PatchApplyStatus::to_json(Self) -> Json
+pub fn PatchApplyStatus::to_repr(Self) -> @debug.Repr
+pub fn PatchApplyStatus::to_string(Self) -> String
 pub impl Show for PatchApplyStatus
 pub impl ToJson for PatchApplyStatus
 pub impl @json.FromJson for PatchApplyStatus
@@ -3483,6 +4334,11 @@ pub enum PatchChangeKind {
   Delete
   Update
 } derive(@debug.Debug)
+pub fn PatchChangeKind::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PatchChangeKind::output(Self, &Logger) -> Unit
+pub fn PatchChangeKind::to_json(Self) -> Json
+pub fn PatchChangeKind::to_repr(Self) -> @debug.Repr
+pub fn PatchChangeKind::to_string(Self) -> String
 pub impl Show for PatchChangeKind
 pub impl ToJson for PatchChangeKind
 pub impl @json.FromJson for PatchChangeKind
@@ -3492,6 +4348,11 @@ pub(all) enum SandboxMode {
   WorkspaceWrite
   DangerFullAccess
 } derive(@debug.Debug)
+pub fn SandboxMode::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SandboxMode::output(Self, &Logger) -> Unit
+pub fn SandboxMode::to_json(Self) -> Json
+pub fn SandboxMode::to_repr(Self) -> @debug.Repr
+pub fn SandboxMode::to_string(Self) -> String
 pub impl Show for SandboxMode
 pub impl ToJson for SandboxMode
 pub impl @json.FromJson for SandboxMode
@@ -3509,6 +4370,8 @@ pub async fn[G] Thread::run_streamed(Self, String, extra_input? : Array[UserInpu
 pub struct ThreadError {
   message : String
 } derive(ToJson, @json.FromJson)
+pub fn ThreadError::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ThreadError::to_json(Self) -> Json
 
 pub enum ThreadItem {
   AgentMessageItem(id~ : String, text~ : String)
@@ -3521,16 +4384,25 @@ pub enum ThreadItem {
   TodoListItem(id~ : String, items~ : Array[TodoItem])
   ErrorItem(id~ : String, message~ : String)
 } derive(@debug.Debug)
+pub fn ThreadItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ThreadItem::to_json(Self) -> Json
+pub fn ThreadItem::to_repr(Self) -> @debug.Repr
 pub impl ToJson for ThreadItem
 pub impl @json.FromJson for ThreadItem
 
 type ThreadOptions derive(Default)
+pub fn ThreadOptions::default() -> Self
 pub fn ThreadOptions::new(model? : String, thread_source? : String, sandbox_mode? : SandboxMode, working_directory? : String, skip_git_repo_check? : Bool, model_reasoning_effort? : ModelReasoningEffort, network_access_enabled? : Bool, web_search_enabled? : Bool, web_search_mode? : WebSearchMode, approval_policy? : ApprovalMode, additional_directories? : Array[String]) -> Self
 
 pub struct TodoItem {
   text : String
   completed : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn TodoItem::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn TodoItem::output(Self, &Logger) -> Unit
+pub fn TodoItem::to_json(Self) -> Json
+pub fn TodoItem::to_repr(Self) -> @debug.Repr
+pub fn TodoItem::to_string(Self) -> String
 pub impl Show for TodoItem
 
 #alias(RunResult)
@@ -3541,6 +4413,7 @@ pub struct Turn {
 }
 
 type TurnOptions derive(Default)
+pub fn TurnOptions::default() -> Self
 pub fn TurnOptions::new(output_schema? : Json) -> Self
 
 pub struct Usage {
@@ -3550,6 +4423,9 @@ pub struct Usage {
   output_tokens : Int
   reasoning_output_tokens : Int
 } derive(@debug.Debug)
+pub fn Usage::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Usage::to_json(Self) -> Json
+pub fn Usage::to_repr(Self) -> @debug.Repr
 pub impl ToJson for Usage
 pub impl @json.FromJson for Usage
 
@@ -3563,6 +4439,8 @@ pub(all) enum WebSearchMode {
   Cached
   Live
 }
+pub fn WebSearchMode::output(Self, &Logger) -> Unit
+pub fn WebSearchMode::to_string(Self) -> String
 pub impl Show for WebSearchMode
 
 // Type aliases

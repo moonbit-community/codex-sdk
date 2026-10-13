@@ -18,15 +18,24 @@ pub(all) struct AppThreadElicitationCounterParams {
 } derive(Debug)
 
 ///|
+pub extend AppThreadElicitationCounterParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadElicitationCounterParams with fn to_json(params) {
   { "threadId": params.thread_id }
 }
+
+///|
+pub extend AppThreadElicitationCounterParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppThreadElicitationCounterResponse {
   count : UInt64
   paused : Bool
 } derive(Debug)
+
+///|
+pub extend AppThreadElicitationCounterResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadElicitationCounterResponse with fn from_json(
@@ -45,10 +54,16 @@ pub impl FromJson for AppThreadElicitationCounterResponse with fn from_json(
 }
 
 ///|
+pub extend AppThreadElicitationCounterResponse with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppNullableInt64 {
   AppNullableInt64Null
   AppNullableInt64Value(Int64)
 } derive(Debug)
+
+///|
+pub extend AppNullableInt64 with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppNullableInt64 with fn to_json(value) {
@@ -59,14 +74,20 @@ pub impl ToJson for AppNullableInt64 with fn to_json(value) {
 }
 
 ///|
+pub extend AppNullableInt64 with ToJson::{to_json}
+
+///|
 pub impl ToJson for AppThreadGoalStatus with fn to_json(status) {
   match status {
-    AppThreadGoalActive => "active".to_json()
-    AppThreadGoalPaused => "paused".to_json()
-    AppThreadGoalBudgetLimited => "budgetLimited".to_json()
-    AppThreadGoalComplete => "complete".to_json()
+    AppThreadGoalActive => Json("active")
+    AppThreadGoalPaused => Json("paused")
+    AppThreadGoalBudgetLimited => Json("budgetLimited")
+    AppThreadGoalComplete => Json("complete")
   }
 }
+
+///|
+pub extend AppThreadGoalStatus with ToJson::{to_json}
 
 ///|
 pub(all) struct AppThreadGoalSetParams {
@@ -77,11 +98,14 @@ pub(all) struct AppThreadGoalSetParams {
 } derive(Debug)
 
 ///|
+pub extend AppThreadGoalSetParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadGoalSetParams with fn to_json(params) {
   let obj : Map[String, Json] = {
     "threadId": params.thread_id,
     "objective": match params.objective {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
     "status": match params.status {
@@ -96,9 +120,15 @@ pub impl ToJson for AppThreadGoalSetParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadGoalSetParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadGoalSetResponse {
   goal : AppThreadGoal
 } derive(Debug)
+
+///|
+pub extend AppThreadGoalSetResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadGoalSetResponse with fn from_json(value, path) {
@@ -109,9 +139,15 @@ pub impl FromJson for AppThreadGoalSetResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadGoalSetResponse with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppThreadGoalGetResponse {
   goal : AppThreadGoal?
 } derive(Debug)
+
+///|
+pub extend AppThreadGoalGetResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadGoalGetResponse with fn from_json(value, path) {
@@ -127,9 +163,15 @@ pub impl FromJson for AppThreadGoalGetResponse with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppThreadGoalGetResponse with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppThreadGoalClearResponse {
   cleared : Bool
 } derive(Debug)
+
+///|
+pub extend AppThreadGoalClearResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadGoalClearResponse with fn from_json(value, path) {
@@ -140,18 +182,27 @@ pub impl FromJson for AppThreadGoalClearResponse with fn from_json(value, path) 
 }
 
 ///|
+pub extend AppThreadGoalClearResponse with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppThreadMemoryMode {
   AppThreadMemoryEnabled
   AppThreadMemoryDisabled
 } derive(Debug)
 
 ///|
+pub extend AppThreadMemoryMode with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadMemoryMode with fn to_json(mode) {
   match mode {
-    AppThreadMemoryEnabled => "enabled".to_json()
-    AppThreadMemoryDisabled => "disabled".to_json()
+    AppThreadMemoryEnabled => Json("enabled")
+    AppThreadMemoryDisabled => Json("disabled")
   }
 }
+
+///|
+pub extend AppThreadMemoryMode with ToJson::{to_json}
 
 ///|
 pub(all) struct AppThreadMemoryModeSetParams {
@@ -160,28 +211,37 @@ pub(all) struct AppThreadMemoryModeSetParams {
 } derive(Debug)
 
 ///|
+pub extend AppThreadMemoryModeSetParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadMemoryModeSetParams with fn to_json(params) {
   { "threadId": params.thread_id, "mode": params.mode }
 }
 
 ///|
+pub extend AppThreadMemoryModeSetParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadTurnsListParams {
   thread_id : String
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   sort_direction : AppSortDirection?
 } derive(Debug)
+
+///|
+pub extend AppThreadTurnsListParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadTurnsListParams with fn to_json(params) {
   {
     "threadId": params.thread_id,
     "cursor": match params.cursor {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
     "limit": match params.limit {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
     "sortDirection": match params.sort_direction {
@@ -192,11 +252,17 @@ pub impl ToJson for AppThreadTurnsListParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadTurnsListParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadTurnsListResponse {
   data : ArrayView[AppTurn]
   next_cursor : String?
   backwards_cursor : String?
 } derive(Debug)
+
+///|
+pub extend AppThreadTurnsListResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadTurnsListResponse with fn from_json(value, path) {
@@ -218,6 +284,9 @@ pub impl FromJson for AppThreadTurnsListResponse with fn from_json(value, path) 
     ),
   }
 }
+
+///|
+pub extend AppThreadTurnsListResponse with @json.FromJson::{from_json}
 
 ///|
 pub async fn CodexAppConnection::thread_increment_elicitation(

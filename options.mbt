@@ -34,6 +34,9 @@ struct CodexOptions {
 } derive(Default)
 
 ///|
+pub extend CodexOptions with Default::{default}
+
+///|
 pub fn CodexOptions::new(
   codex_path_override? : String,
   base_url? : String,
@@ -73,6 +76,9 @@ pub impl Show for ApprovalMode with fn output(self, logger) {
 }
 
 ///|
+pub extend ApprovalMode with Show::{to_string, output}
+
+///|
 /// Sandbox mode that controls the level of access the agent has.
 pub(all) enum SandboxMode {
   /// Read-only access
@@ -84,6 +90,9 @@ pub(all) enum SandboxMode {
 } derive(Debug)
 
 ///|
+pub extend SandboxMode with Debug::{to_repr}
+
+///|
 /// Convert SandboxMode to its string representation for CLI arguments.
 pub impl Show for SandboxMode with fn output(self : SandboxMode, logger) {
   match self {
@@ -92,6 +101,9 @@ pub impl Show for SandboxMode with fn output(self : SandboxMode, logger) {
     DangerFullAccess => logger.write_string("danger-full-access")
   }
 }
+
+///|
+pub extend SandboxMode with Show::{to_string, output}
 
 ///|
 pub(all) enum ModelReasoningEffort {
@@ -118,6 +130,9 @@ pub impl Show for ModelReasoningEffort with fn output(self, logger) {
 }
 
 ///|
+pub extend ModelReasoningEffort with Show::{to_string, output}
+
+///|
 /// Web search behavior for Codex turns.
 pub(all) enum WebSearchMode {
   Disabled
@@ -133,6 +148,9 @@ pub impl Show for WebSearchMode with fn output(self, logger) {
     Live => logger.write_string("live")
   }
 }
+
+///|
+pub extend WebSearchMode with Show::{to_string, output}
 
 ///|
 /// Options for configuring a thread.
@@ -160,6 +178,9 @@ struct ThreadOptions {
   /// Additional directories to mount into the agent's sandbox
   additional_directories : Array[String]?
 } derive(Default)
+
+///|
+pub extend ThreadOptions with Default::{default}
 
 ///|
 pub fn ThreadOptions::new(
@@ -202,6 +223,9 @@ struct TurnOptions {
   /// JSON schema describing the expected agent output
   output_schema : Json?
 } derive(Default)
+
+///|
+pub extend TurnOptions with Default::{default}
 
 ///|
 /// Params:

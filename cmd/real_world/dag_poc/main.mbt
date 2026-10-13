@@ -46,7 +46,11 @@ async fn run_sample(
 }
 
 ///|
-fn read_env_int(env : Map[String, String], key : String, fallback : Int) -> Int {
+fn read_env_int(
+  env : Map[String, String],
+  key : String,
+  fallback : Int32,
+) -> Int32 {
   match env.get(key) {
     Some(value) => @strconv.parse_int(value) catch { _ => fallback }
     None => fallback

@@ -36,7 +36,7 @@ pub struct ValidationResult {
   passed : Bool
   stdout : String
   stderr : String
-  exit_code : Int
+  exit_code : Int32
 }
 
 ///|
@@ -45,9 +45,9 @@ pub struct Diagnostic {
   /// File path where the issue occurred
   file : String
   /// Line number (1-indexed)
-  line : Int
+  line : Int32
   /// Column number (1-indexed, optional)
-  column : Int?
+  column : Int32?
   /// Diagnostic level: "error", "warning", "info"
   level : String
   /// The diagnostic message
@@ -122,7 +122,7 @@ pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
     }
     let file = parts[0]
     let line_num = @string.parse_int(parts[1]) catch { _ => continue }
-    let column : Int? = if parts.length() >= 3 {
+    let column : Int32? = if parts.length() >= 3 {
       Some(@string.parse_int(parts[2])) catch {
         _ => None
       }
@@ -202,9 +202,7 @@ pub async fn MoonProject::discover(path : String) -> MoonProject? {
     let content = @fs.read_file("\{path}/moon.mod.json").text()
     let schema = @json.parse(content)
     guard schema is Object({ "name": String(name), .. }) else {
-      fail(
-        "Invalid moon.mod.json at \{path} with content \{@debug.to_repr(schema)}",
-      )
+      fail("Invalid moon.mod.json at \{path} with content \{Repr(schema)}")
     }
     Some({ root: path, name, })
   } else {
@@ -284,7 +282,7 @@ async fn run_moon_command(
   root : String,
   args : Array[String],
 ) -> ValidationResult {
-  let full_args = Array::new(capacity=args.length() + 2)
+  let full_args = Array(capacity=args.length() + 2)
   for arg in args {
     full_args.push(arg)
   }

@@ -198,7 +198,7 @@ async fn get_current_user() -> String? {
 
 ///|
 /// Choose a fork name, adding a numeric suffix on collisions.
-fn fork_candidate_name(repo : String, attempt : Int) -> String {
+fn fork_candidate_name(repo : String, attempt : Int32) -> String {
   if attempt == 0 {
     repo
   } else {

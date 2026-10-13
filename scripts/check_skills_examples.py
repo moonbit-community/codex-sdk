@@ -10,9 +10,9 @@ SKIP_DIRS = {".mooncakes", "target", "_build"}
 
 
 def find_moon_projects(root: Path) -> list[Path]:
-    """Find directories containing moon.mod.json, skipping excluded dirs."""
+    """Find directories containing moon.mod, skipping excluded dirs."""
     projects = []
-    for path in root.rglob("moon.mod.json"):
+    for path in root.rglob("moon.mod"):
         if any(skip in path.parts for skip in SKIP_DIRS):
             continue
         projects.append(path.parent)

@@ -7,7 +7,7 @@ pub suberror AppErrors {
 pub struct Job {
   project_root : String
   packages : Array[String]
-  parallelism : Int
+  parallelism : Int32
 }
 
 ///|
@@ -21,10 +21,10 @@ pub enum TaskStatus {
 pub struct TaskHandle {
   pkg_path : String
   config : Job
-  idx : Int
+  idx : Int32
   mut status : TaskStatus
   mut worktree : WorktreeInfo?
-  mut attempt : Int
+  mut attempt : Int32
 }
 
 ///|
@@ -49,7 +49,7 @@ pub async fn initialize() -> Job {
 }
 
 ///|
-pub async fn Job::task_start(config : Job, idx : Int) -> TaskHandle {
+pub async fn Job::task_start(config : Job, idx : Int32) -> TaskHandle {
   let pkg_path = config.packages[idx]
   let total = config.packages.length()
   @stdio.stdout.write(
@@ -90,7 +90,7 @@ pub async fn TaskHandle::setup(self : TaskHandle) -> TaskEnv {
   @stdio.stdout.write(
     "info [\{pkg_path}] - Created git worktree at \{worktree.tmp_path}\n",
   )
-  TaskEnv::{ worktree_path: worktree.tmp_path }
+  TaskEnv::{ worktree_path: worktree.tmp_path, }
 }
 
 ///|
@@ -127,7 +127,7 @@ pub struct TaskResult {
 }
 
 ///|
-pub impl Show for TaskResult with output(self, logger) {
+pub impl Show for TaskResult with fn output(self, logger) {
   if self.success {
     logger.write_string("TaskResult::Success(\{self.pkg_path})")
   } else {
@@ -164,7 +164,7 @@ pub async fn TaskHandle::finish(
   self.cleanup(force=false)
   self.status = TaskStatus::Completed
   @stdio.stdout.write("info [\{pkg_path}] - Task finished normally\n")
-  TaskResult::{ pkg_path, success: true, error: "" }
+  TaskResult::{ pkg_path, success: true, error: "", }
 }
 
 ///|

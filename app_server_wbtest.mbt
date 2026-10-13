@@ -6,7 +6,7 @@ test "serialize app-server client request" {
     params=Some({ "limit": 20 }),
   )
   debug_inspect(
-    message.to_json(),
+    ToJson::to_json(message),
     content=(
       #|Object(
       #|  {
@@ -45,7 +45,7 @@ test "serialize app-server initialize capabilities" {
         "requestAttestation": True,
         "mcpServerOpenaiFormElicitation": True,
         "optOutNotificationMethods": Array([String("thread/name/updated")]),
-        "extensions": Object({ "openai/form": Object({ }) }),
+        "extensions": Object({ "openai/form": Object({ .. }), .. }),
         ..
       },
       ..
@@ -65,7 +65,7 @@ test "serialize v0.150 app-server user inputs" {
     AppUserInput::AppInputLocalAudio(path="/tmp/audio.wav"),
   ]
   debug_inspect(
-    inputs.to_json(),
+    Json(inputs),
     content=(
       #|Array(
       #|  [

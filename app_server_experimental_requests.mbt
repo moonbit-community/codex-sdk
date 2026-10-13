@@ -19,12 +19,18 @@ pub(all) enum AppRealtimeOutputModality {
 } derive(Debug)
 
 ///|
+pub extend AppRealtimeOutputModality with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppRealtimeOutputModality with fn to_json(modality) {
   match modality {
-    AppRealtimeText => "text".to_json()
-    AppRealtimeAudio => "audio".to_json()
+    AppRealtimeText => Json("text")
+    AppRealtimeAudio => Json("audio")
   }
 }
+
+///|
+pub extend AppRealtimeOutputModality with ToJson::{to_json}
 
 ///|
 pub(all) enum AppRealtimeVoice {
@@ -50,29 +56,35 @@ pub(all) enum AppRealtimeVoice {
 } derive(Debug)
 
 ///|
+pub extend AppRealtimeVoice with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppRealtimeVoice with fn to_json(voice) {
   match voice {
-    AppRealtimeVoiceAlloy => "alloy".to_json()
-    AppRealtimeVoiceArbor => "arbor".to_json()
-    AppRealtimeVoiceAsh => "ash".to_json()
-    AppRealtimeVoiceBallad => "ballad".to_json()
-    AppRealtimeVoiceBreeze => "breeze".to_json()
-    AppRealtimeVoiceCedar => "cedar".to_json()
-    AppRealtimeVoiceCoral => "coral".to_json()
-    AppRealtimeVoiceCove => "cove".to_json()
-    AppRealtimeVoiceEcho => "echo".to_json()
-    AppRealtimeVoiceEmber => "ember".to_json()
-    AppRealtimeVoiceJuniper => "juniper".to_json()
-    AppRealtimeVoiceMaple => "maple".to_json()
-    AppRealtimeVoiceMarin => "marin".to_json()
-    AppRealtimeVoiceSage => "sage".to_json()
-    AppRealtimeVoiceShimmer => "shimmer".to_json()
-    AppRealtimeVoiceSol => "sol".to_json()
-    AppRealtimeVoiceSpruce => "spruce".to_json()
-    AppRealtimeVoiceVale => "vale".to_json()
-    AppRealtimeVoiceVerse => "verse".to_json()
+    AppRealtimeVoiceAlloy => Json("alloy")
+    AppRealtimeVoiceArbor => Json("arbor")
+    AppRealtimeVoiceAsh => Json("ash")
+    AppRealtimeVoiceBallad => Json("ballad")
+    AppRealtimeVoiceBreeze => Json("breeze")
+    AppRealtimeVoiceCedar => Json("cedar")
+    AppRealtimeVoiceCoral => Json("coral")
+    AppRealtimeVoiceCove => Json("cove")
+    AppRealtimeVoiceEcho => Json("echo")
+    AppRealtimeVoiceEmber => Json("ember")
+    AppRealtimeVoiceJuniper => Json("juniper")
+    AppRealtimeVoiceMaple => Json("maple")
+    AppRealtimeVoiceMarin => Json("marin")
+    AppRealtimeVoiceSage => Json("sage")
+    AppRealtimeVoiceShimmer => Json("shimmer")
+    AppRealtimeVoiceSol => Json("sol")
+    AppRealtimeVoiceSpruce => Json("spruce")
+    AppRealtimeVoiceVale => Json("vale")
+    AppRealtimeVoiceVerse => Json("verse")
   }
 }
+
+///|
+pub extend AppRealtimeVoice with ToJson::{to_json}
 
 ///|
 pub impl FromJson for AppRealtimeVoice with fn from_json(value, path) {
@@ -101,12 +113,18 @@ pub impl FromJson for AppRealtimeVoice with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppRealtimeVoice with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppRealtimeVoicesList {
   v1 : ArrayView[AppRealtimeVoice]
   v2 : ArrayView[AppRealtimeVoice]
   default_v1 : AppRealtimeVoice
   default_v2 : AppRealtimeVoice
 } derive(Debug)
+
+///|
+pub extend AppRealtimeVoicesList with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppRealtimeVoicesList with fn from_json(value, path) {
@@ -129,10 +147,16 @@ pub impl FromJson for AppRealtimeVoicesList with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppRealtimeVoicesList with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppThreadRealtimeStartTransport {
   AppThreadRealtimeWebsocket
   AppThreadRealtimeWebrtc(sdp~ : String)
 } derive(Debug)
+
+///|
+pub extend AppThreadRealtimeStartTransport with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppThreadRealtimeStartTransport with fn to_json(transport) {
@@ -141,6 +165,9 @@ pub impl ToJson for AppThreadRealtimeStartTransport with fn to_json(transport) {
     AppThreadRealtimeWebrtc(sdp~) => { "type": "webrtc", "sdp": sdp }
   }
 }
+
+///|
+pub extend AppThreadRealtimeStartTransport with ToJson::{to_json}
 
 ///|
 pub(all) struct AppThreadRealtimeStartParams {
@@ -153,12 +180,15 @@ pub(all) struct AppThreadRealtimeStartParams {
 } derive(Debug)
 
 ///|
+pub extend AppThreadRealtimeStartParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadRealtimeStartParams with fn to_json(params) {
   let obj : Map[String, Json] = {
     "threadId": params.thread_id,
     "outputModality": params.output_modality,
     "realtimeSessionId": match params.realtime_session_id {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
     "transport": match params.transport {
@@ -175,22 +205,28 @@ pub impl ToJson for AppThreadRealtimeStartParams with fn to_json(params) {
 }
 
 ///|
+pub extend AppThreadRealtimeStartParams with ToJson::{to_json}
+
+///|
 pub impl ToJson for AppThreadRealtimeAudioChunk with fn to_json(audio) {
   let obj : Map[String, Json] = {
     "data": audio.data,
     "sampleRate": audio.sample_rate,
     "numChannels": audio.num_channels,
     "samplesPerChannel": match audio.samples_per_channel {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
     "itemId": match audio.item_id {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
   }
   Json::object(obj)
 }
+
+///|
+pub extend AppThreadRealtimeAudioChunk with ToJson::{to_json}
 
 ///|
 pub(all) struct AppThreadRealtimeAppendAudioParams {
@@ -199,9 +235,15 @@ pub(all) struct AppThreadRealtimeAppendAudioParams {
 } derive(Debug)
 
 ///|
+pub extend AppThreadRealtimeAppendAudioParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadRealtimeAppendAudioParams with fn to_json(params) {
   { "threadId": params.thread_id, "audio": params.audio }
 }
+
+///|
+pub extend AppThreadRealtimeAppendAudioParams with ToJson::{to_json}
 
 ///|
 pub(all) struct AppThreadRealtimeAppendTextParams {
@@ -210,14 +252,23 @@ pub(all) struct AppThreadRealtimeAppendTextParams {
 } derive(Debug)
 
 ///|
+pub extend AppThreadRealtimeAppendTextParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppThreadRealtimeAppendTextParams with fn to_json(params) {
   { "threadId": params.thread_id, "text": params.text }
 }
 
 ///|
+pub extend AppThreadRealtimeAppendTextParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppThreadRealtimeListVoicesResponse {
   voices : AppRealtimeVoicesList
 } derive(Debug)
+
+///|
+pub extend AppThreadRealtimeListVoicesResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppThreadRealtimeListVoicesResponse with fn from_json(
@@ -233,10 +284,16 @@ pub impl FromJson for AppThreadRealtimeListVoicesResponse with fn from_json(
 }
 
 ///|
+pub extend AppThreadRealtimeListVoicesResponse with @json.FromJson::{from_json}
+
+///|
 pub(all) enum AppCollaborationModeKind {
   AppCollaborationPlan
   AppCollaborationDefault
 } derive(Debug)
+
+///|
+pub extend AppCollaborationModeKind with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppCollaborationModeKind with fn from_json(value, path) {
@@ -248,12 +305,18 @@ pub impl FromJson for AppCollaborationModeKind with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppCollaborationModeKind with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppCollaborationModeMask {
   name : String
   mode : AppCollaborationModeKind?
   model : String?
   reasoning_effort : AppReasoningEffort?
 } derive(Debug)
+
+///|
+pub extend AppCollaborationModeMask with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppCollaborationModeMask with fn from_json(value, path) {
@@ -283,9 +346,15 @@ pub impl FromJson for AppCollaborationModeMask with fn from_json(value, path) {
 }
 
 ///|
+pub extend AppCollaborationModeMask with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppCollaborationModeListResponse {
   data : ArrayView[AppCollaborationModeMask]
 } derive(Debug)
+
+///|
+pub extend AppCollaborationModeListResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppCollaborationModeListResponse with fn from_json(
@@ -299,24 +368,36 @@ pub impl FromJson for AppCollaborationModeListResponse with fn from_json(
 }
 
 ///|
+pub extend AppCollaborationModeListResponse with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppMockExperimentalMethodParams {
   value : String?
 } derive(Debug)
 
 ///|
+pub extend AppMockExperimentalMethodParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppMockExperimentalMethodParams with fn to_json(params) {
   {
     "value": match params.value {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
   }
 }
 
 ///|
+pub extend AppMockExperimentalMethodParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppMockExperimentalMethodResponse {
   echoed : String?
 } derive(Debug)
+
+///|
+pub extend AppMockExperimentalMethodResponse with Debug::{to_repr}
 
 ///|
 pub impl FromJson for AppMockExperimentalMethodResponse with fn from_json(
@@ -330,10 +411,16 @@ pub impl FromJson for AppMockExperimentalMethodResponse with fn from_json(
 }
 
 ///|
+pub extend AppMockExperimentalMethodResponse with @json.FromJson::{from_json}
+
+///|
 pub(all) struct AppFuzzyFileSearchSessionStartParams {
   session_id : String
   roots : Array[String]
 } derive(Debug)
+
+///|
+pub extend AppFuzzyFileSearchSessionStartParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFuzzyFileSearchSessionStartParams with fn to_json(params) {
@@ -341,10 +428,16 @@ pub impl ToJson for AppFuzzyFileSearchSessionStartParams with fn to_json(params)
 }
 
 ///|
+pub extend AppFuzzyFileSearchSessionStartParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppFuzzyFileSearchSessionUpdateParams {
   session_id : String
   query : String
 } derive(Debug)
+
+///|
+pub extend AppFuzzyFileSearchSessionUpdateParams with Debug::{to_repr}
 
 ///|
 pub impl ToJson for AppFuzzyFileSearchSessionUpdateParams with fn to_json(
@@ -354,14 +447,23 @@ pub impl ToJson for AppFuzzyFileSearchSessionUpdateParams with fn to_json(
 }
 
 ///|
+pub extend AppFuzzyFileSearchSessionUpdateParams with ToJson::{to_json}
+
+///|
 pub(all) struct AppFuzzyFileSearchSessionStopParams {
   session_id : String
 } derive(Debug)
 
 ///|
+pub extend AppFuzzyFileSearchSessionStopParams with Debug::{to_repr}
+
+///|
 pub impl ToJson for AppFuzzyFileSearchSessionStopParams with fn to_json(params) {
   { "sessionId": params.session_id }
 }
+
+///|
+pub extend AppFuzzyFileSearchSessionStopParams with ToJson::{to_json}
 
 ///|
 pub async fn CodexAppConnection::thread_realtime_start(

@@ -2,8 +2,8 @@
 /// Runs tasks in parallel with bounded concurrency and preserves input order.
 pub async fn[A, B] for_all_tasks(
   tasks : Array[A],
-  fn_handle : async (Int, A) -> B,
-  parallelism? : Int = 4,
+  fn_handle : async (Int32, A) -> B,
+  parallelism~ : Int32 = 4,
 ) -> Array[B] {
   let output : Array[B?] = Array::make(tasks.length(), None)
   @async.with_task_group(fn(task_group) {

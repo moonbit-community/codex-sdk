@@ -46,7 +46,7 @@ priv struct CodexExec {
 ///
 /// # Arguments
 /// * `executable_path` - Optional path to the codex executable. Default to "codex".
-fn CodexExec::new(executable_path? : String = "codex") -> CodexExec {
+fn CodexExec::new(executable_path~ : String = "codex") -> CodexExec {
   // For simplicity, we assume "codex" is in PATH if not provided.
   { executable_path, }
 }
@@ -85,7 +85,7 @@ async fn[T] CodexExec::run(
   if args.codex_options.base_url is Some(base_url) {
     command_args.push("--config")
     command_args.push(
-      "openai_base_url=\{codex_config_toml_value(base_url.to_json(), "openai_base_url")}",
+      "openai_base_url=\{codex_config_toml_value(Json(base_url), "openai_base_url")}",
     )
   }
 
@@ -125,7 +125,7 @@ async fn[T] CodexExec::run(
   if args.thread_options.model_reasoning_effort is Some(effort) {
     command_args.push("--config")
     command_args.push(
-      "model_reasoning_effort=\{effort.to_string().to_json().stringify()}",
+      "model_reasoning_effort=\{Json(effort.to_string()).stringify()}",
     )
   }
   if args.thread_options.network_access_enabled is Some(option) {
@@ -134,7 +134,7 @@ async fn[T] CodexExec::run(
   }
   if args.thread_options.web_search_mode is Some(mode) {
     command_args.push("--config")
-    command_args.push("web_search=\{mode.to_string().to_json().stringify()}")
+    command_args.push("web_search=\{Json(mode.to_string()).stringify()}")
   } else if args.thread_options.web_search_enabled is Some(true) {
     command_args.push("--config")
     command_args.push("web_search=\"live\"")
@@ -145,7 +145,7 @@ async fn[T] CodexExec::run(
   if args.thread_options.approval_policy is Some(approval_policy) {
     command_args.push("--config")
     command_args.push(
-      "approval_policy=\{approval_policy.to_string().to_json().stringify()}",
+      "approval_policy=\{Json(approval_policy.to_string()).stringify()}",
     )
   }
   if args.thread_id is Some(thread_id) {
@@ -158,7 +158,7 @@ async fn[T] CodexExec::run(
   }
 
   // Add env
-  let env = @sys.get_env_vars()
+  let env = @env.get_env_vars()
   let extra_env = args.codex_options.env.unwrap_or({})
   if env.get(INTERNAL_ORIGINATOR_ENV) is None {
     extra_env.set(INTERNAL_ORIGINATOR_ENV, MOONBIT_SDK_ORIGINATOR)
@@ -264,7 +264,7 @@ fn codex_config_toml_value(value : Json, path : String) -> String raise Error {
           @error.fail("Codex config override keys must be non-empty strings")
         }
         rendered.push(
-          "\{key.to_json().stringify()} = \{codex_config_toml_value(child, "\{path}.\{key}")}",
+          "\{Json(key).stringify()} = \{codex_config_toml_value(child, "\{path}.\{key}")}",
         )
       }
       "{\{rendered.join(", ")}}"

@@ -109,12 +109,12 @@ pub async fn run_non_run(command : ParsedCommand, codex : @codex.Codex) -> Unit 
 pub struct RunContext {
   work_dir : String
   data_dir : String
-  parallelism : Int
+  parallelism : Int32
   branch_prefix : String
   dry_run : Bool
   force : Bool
   db : @sqlite.Database
-  total : Int
+  total : Int32
   incomplete_repos : Array[RepositoryRecord]
 }
 
@@ -572,8 +572,8 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
 /// Fetch PR cache data (head sha and comment count).
 async fn get_pr_cache_snapshot(
   clone_path : String,
-  pr_number : Int,
-) -> (String, Int)? {
+  pr_number : Int32,
+) -> (String, Int32)? {
   let (status, stdout, _stderr) = @process.collect_output(
     "gh",
     [
