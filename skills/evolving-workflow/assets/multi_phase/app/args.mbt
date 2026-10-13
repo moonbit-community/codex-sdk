@@ -4,7 +4,7 @@
 ///|
 priv struct Arguments {
   mut path : String
-  mut parallelism : Int
+  mut parallelism : Int32
   mut verbose : Bool
   mut output : String
 } derive(Default)

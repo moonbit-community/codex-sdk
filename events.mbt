@@ -127,16 +127,16 @@ pub extend Event with @json.FromJson::{from_json}
 /// Describes the usage of tokens during a turn.
 pub struct Usage {
   /// The number of input tokens used during the turn
-  input_tokens : Int
+  input_tokens : Int32
   /// The number of cached input tokens used during the turn
-  cached_input_tokens : Int
+  cached_input_tokens : Int32
   /// The number of input tokens written to the prompt cache during the turn.
   /// Older Codex versions omit this field; omitted values decode as zero.
-  cache_write_input_tokens : Int
+  cache_write_input_tokens : Int32
   /// The number of output tokens used during the turn
-  output_tokens : Int
+  output_tokens : Int32
   /// The number of reasoning output tokens used during the turn
-  reasoning_output_tokens : Int
+  reasoning_output_tokens : Int32
 } derive(Debug)
 
 ///|

@@ -65,7 +65,7 @@ test "serialize v0.150 app-server user inputs" {
     AppUserInput::AppInputLocalAudio(path="/tmp/audio.wav"),
   ]
   debug_inspect(
-    inputs.to_json(),
+    Json(inputs),
     content=(
       #|Array(
       #|  [

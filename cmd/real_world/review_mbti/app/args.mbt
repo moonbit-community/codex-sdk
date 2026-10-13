@@ -1,7 +1,7 @@
 ///|
 /// CLI arguments structure and parsing
 priv struct Arguments {
-  mut concurrency : Int
+  mut concurrency : Int32
   mut verbose : Bool
   mut path : String
   mut output : String
@@ -45,7 +45,13 @@ fn parse_cli_args(cli_args : ArrayView[String]) -> Arguments? raise {
     cli_args,
     flags=["verbose", "help"],
     options=["concurrency", "output", "prompt"],
-    aliases={ "h": "help", "v": "verbose", "o": "output", "c": "concurrency", "p": "prompt" },
+    aliases={
+      "h": "help",
+      "v": "verbose",
+      "o": "output",
+      "c": "concurrency",
+      "p": "prompt",
+    },
   )
   if args.flags.get("help") is Some(true) {
     return None

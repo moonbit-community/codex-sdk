@@ -7,7 +7,7 @@ pub suberror AppErrors {
 pub struct Job {
   project_root : String
   output_dir : String
-  concurrency : Int
+  concurrency : Int32
   verbose : Bool
   files : Array[String] // mbti file paths
   custom_prompt : String // optional custom focus for review
@@ -40,14 +40,14 @@ pub struct SummarizeHandle {
   file_path : String
   pkg_path : String
   config : Job
-  idx : Int
-  mut attempt : Int
+  idx : Int32
+  mut attempt : Int32
   content : String // cached file content
   mut last_error : String
 }
 
 ///|
-pub async fn Job::summarize_start(config : Job, idx : Int) -> SummarizeHandle {
+pub async fn Job::summarize_start(config : Job, idx : Int32) -> SummarizeHandle {
   let file_path = config.files[idx]
   let pkg_path = extract_pkg_path(file_path, config.project_root)
   if config.verbose {
@@ -58,7 +58,15 @@ pub async fn Job::summarize_start(config : Job, idx : Int) -> SummarizeHandle {
   }
   // Read file content once at setup
   let content = @fs.read_file(file_path).text() catch { _ => "" }
-  SummarizeHandle::{ file_path, pkg_path, config, idx, attempt: 0, content, last_error: "" }
+  SummarizeHandle::{
+    file_path,
+    pkg_path,
+    config,
+    idx,
+    attempt: 0,
+    content,
+    last_error: "",
+  }
 }
 
 ///|
@@ -139,7 +147,7 @@ pub async fn SummarizeHandle::error(
 pub struct PlanHandle {
   summaries : Array[PackageSummary]
   config : Job
-  mut attempt : Int
+  mut attempt : Int32
   mut last_error : String
 }
 
@@ -161,7 +169,12 @@ pub async fn Job::plan_start(
   @stdio.stdout.write(
     "\nPlanning: grouping \{valid_summaries.length()} packages for review...\n",
   )
-  PlanHandle::{ summaries: valid_summaries, config, attempt: 0, last_error: "" }
+  PlanHandle::{
+    summaries: valid_summaries,
+    config,
+    attempt: 0,
+    last_error: "",
+  }
 }
 
 ///|
@@ -290,8 +303,8 @@ pub async fn PlanHandle::error(
 pub struct ReviewHandle {
   group : PackageGroup
   config : Job
-  idx : Int
-  mut attempt : Int
+  idx : Int32
+  mut attempt : Int32
   content_sections : String // cached file contents
   mut last_error : String
 }
@@ -299,7 +312,7 @@ pub struct ReviewHandle {
 ///|
 pub async fn Job::review_start(
   config : Job,
-  idx : Int,
+  idx : Int32,
   group : PackageGroup,
 ) -> ReviewHandle {
   @stdio.stdout.write("info [\{idx + 1}] - Reviewing group: \{group.name}\n")
@@ -319,7 +332,14 @@ pub async fn Job::review_start(
       $|
     content_sections = content_sections + section
   }
-  ReviewHandle::{ group, config, idx, attempt: 0, content_sections, last_error: "" }
+  ReviewHandle::{
+    group,
+    config,
+    idx,
+    attempt: 0,
+    content_sections,
+    last_error: "",
+  }
 }
 
 ///|
@@ -391,7 +411,10 @@ pub async fn ReviewHandle::finish(
   }
   // Save to file
   save_group_review(result, self.config.output_dir) catch {
-    e => @stdio.stderr.write("warning: Failed to save review for \{self.group.name}: \{e}\n")
+    e =>
+      @stdio.stderr.write(
+        "warning: Failed to save review for \{self.group.name}: \{e}\n",
+      )
   }
   result
 }
@@ -489,8 +512,8 @@ fn extract_json_array(response : String) -> String {
   }
   // Fallback: find first [ and last ]
   let chars = response.to_array()
-  let mut start : Int? = None
-  let mut end : Int? = None
+  let mut start : Int32? = None
+  let mut end : Int32? = None
   for i, c in chars {
     if c == '[' && start is None {
       start = Some(i)
@@ -524,7 +547,7 @@ fn parse_package_groups(json : Json) -> Array[PackageGroup] raise {
       guard p is String(s) else { continue }
       packages.push(s)
     }
-    groups.push(PackageGroup::{ name, packages, rationale })
+    groups.push(PackageGroup::{ name, packages, rationale, })
   }
   groups
 }

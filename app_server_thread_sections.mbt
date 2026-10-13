@@ -25,10 +25,10 @@ pub extend AppThreadSectionAppearance with Debug::{to_repr}
 pub impl ToJson for AppThreadSectionAppearance with fn to_json(appearance) {
   let obj : Map[String, Json] = { "icon": Json::null(), "color": Json::null() }
   if appearance.icon is Some(icon) {
-    obj.set("icon", icon.to_json())
+    obj.set("icon", Json(icon))
   }
   if appearance.color is Some(color) {
-    obj.set("color", color.to_json())
+    obj.set("color", Json(color))
   }
   Json::object(obj)
 }
@@ -108,7 +108,7 @@ pub extend AppThreadSectionAppearanceUpdate with ToJson::{to_json}
 ///|
 pub(all) struct AppThreadSectionListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
 } derive(Debug, Default)
 
 ///|
@@ -120,7 +120,7 @@ pub extend AppThreadSectionListParams with Default::{default}
 ///|
 pub fn AppThreadSectionListParams::new(
   cursor? : String,
-  limit? : UInt,
+  limit? : UInt32,
 ) -> AppThreadSectionListParams {
   { cursor, limit, }
 }
@@ -130,7 +130,7 @@ pub impl ToJson for AppThreadSectionListParams with fn to_json(params) {
   let obj : Map[String, Json] = Map([])
   app_put_string(obj, "cursor", params.cursor)
   if params.limit is Some(limit) {
-    obj.set("limit", limit.to_json())
+    obj.set("limit", Json(limit))
   }
   Json::object(obj)
 }

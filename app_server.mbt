@@ -60,7 +60,7 @@ fn AppServerOptions::initialize_params(
 /// handshake, then closes the send side when the callback returns or raises.
 pub async fn[R] Codex::with_app_server(
   self : Codex,
-  options? : AppServerOptions = AppServerOptions::default(),
+  options~ : AppServerOptions = AppServerOptions::default(),
   request_handler? : async (AppServerRequest) -> AppServerResponse,
   body : async (CodexAppConnection) -> R,
 ) -> R {
@@ -80,7 +80,7 @@ pub async fn[R] Codex::with_app_server(
 fn[G] Codex::spawn_app_server(
   self : Codex,
   taskgroup : @async.TaskGroup[G],
-  options? : AppServerOptions = AppServerOptions::default(),
+  options~ : AppServerOptions = AppServerOptions::default(),
 ) -> CodexAppConnection raise Error {
   let executable_path = match options.executable_path_override {
     Some(path) => path
@@ -169,7 +169,7 @@ struct CodexAppConnection {
   events : @async.Queue[AppQueuedServerEvent]
   requests : @async.Queue[AppServerRequest]
   mut pending : Array[AppPendingRequest]
-  mut next_request_id : Int
+  mut next_request_id : Int32
   mut events_closed : Bool
 }
 
@@ -242,7 +242,7 @@ async fn CodexAppConnection::call(
 }
 
 ///|
-fn app_server_overload_retry_delay(attempt : Int) -> Int {
+fn app_server_overload_retry_delay(attempt : Int32) -> Int32 {
   match attempt {
     0 => 50
     1 => 100
@@ -780,14 +780,14 @@ pub fn AppThreadResumeParams::new(
 pub impl ToJson for AppThreadResumeParams with fn to_json(params) {
   let obj : Map[String, Json] = { "threadId": params.thread_id }
   if params.model is Some(model) {
-    obj.set("model", model.to_json())
+    obj.set("model", Json(model))
   }
   if params.model_provider is Some(model_provider) {
-    obj.set("modelProvider", model_provider.to_json())
+    obj.set("modelProvider", Json(model_provider))
   }
   app_put_nullable_string(obj, "serviceTier", params.service_tier)
   if params.cwd is Some(cwd) {
-    obj.set("cwd", cwd.to_json())
+    obj.set("cwd", Json(cwd))
   }
   if params.approval_policy is Some(approval_policy) {
     obj.set("approvalPolicy", approval_policy.to_json())
@@ -799,13 +799,13 @@ pub impl ToJson for AppThreadResumeParams with fn to_json(params) {
     obj.set("sandbox", sandbox.to_json())
   }
   if params.config is Some(config) {
-    obj.set("config", config.to_json())
+    obj.set("config", Json(config))
   }
   if params.base_instructions is Some(base_instructions) {
-    obj.set("baseInstructions", base_instructions.to_json())
+    obj.set("baseInstructions", Json(base_instructions))
   }
   if params.developer_instructions is Some(developer_instructions) {
-    obj.set("developerInstructions", developer_instructions.to_json())
+    obj.set("developerInstructions", Json(developer_instructions))
   }
   if params.personality is Some(personality) {
     obj.set("personality", personality.to_json())
@@ -819,7 +819,7 @@ pub extend AppThreadResumeParams with ToJson::{to_json}
 ///|
 pub struct AppThreadLoadedListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
 } derive(Debug)
 
 ///|
@@ -828,7 +828,7 @@ pub extend AppThreadLoadedListParams with Debug::{to_repr}
 ///|
 pub fn AppThreadLoadedListParams::new(
   cursor? : String,
-  limit? : UInt,
+  limit? : UInt32,
 ) -> AppThreadLoadedListParams {
   { cursor, limit, }
 }
@@ -837,10 +837,10 @@ pub fn AppThreadLoadedListParams::new(
 pub impl ToJson for AppThreadLoadedListParams with fn to_json(params) {
   let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
-    obj.set("cursor", cursor.to_json())
+    obj.set("cursor", Json(cursor))
   }
   if params.limit is Some(limit) {
-    obj.set("limit", limit.to_json())
+    obj.set("limit", Json(limit))
   }
   Json::object(obj)
 }
@@ -991,7 +991,7 @@ pub fn AppSkillsListParams::new(
 pub impl ToJson for AppSkillsListParams with fn to_json(params) {
   let obj : Map[String, Json] = Map([])
   if params.cwds is Some(cwds) {
-    obj.set("cwds", cwds.to_json())
+    obj.set("cwds", Json(cwds))
   }
   app_put_true(obj, "forceReload", params.force_reload)
   Json::object(obj)
@@ -1208,7 +1208,7 @@ pub extend AppSkillsListResponse with @json.FromJson::{from_json}
 ///|
 pub struct AppListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   thread_id : String?
   force_refetch : Bool?
 } derive(Debug)
@@ -1219,7 +1219,7 @@ pub extend AppListParams with Debug::{to_repr}
 ///|
 pub fn AppListParams::new(
   cursor? : String,
-  limit? : UInt,
+  limit? : UInt32,
   thread_id? : String,
   force_refetch? : Bool,
 ) -> AppListParams {
@@ -1230,13 +1230,13 @@ pub fn AppListParams::new(
 pub impl ToJson for AppListParams with fn to_json(params) {
   let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
-    obj.set("cursor", cursor.to_json())
+    obj.set("cursor", Json(cursor))
   }
   if params.limit is Some(limit) {
-    obj.set("limit", limit.to_json())
+    obj.set("limit", Json(limit))
   }
   if params.thread_id is Some(thread_id) {
-    obj.set("threadId", thread_id.to_json())
+    obj.set("threadId", Json(thread_id))
   }
   app_put_true(obj, "forceRefetch", params.force_refetch)
   Json::object(obj)
@@ -1345,7 +1345,7 @@ pub fn AppConfigReadParams::new(
 pub impl ToJson for AppConfigReadParams with fn to_json(params) {
   let obj : Map[String, Json] = { "includeLayers": params.include_layers }
   if params.cwd is Some(cwd) {
-    obj.set("cwd", cwd.to_json())
+    obj.set("cwd", Json(cwd))
   }
   Json::object(obj)
 }
@@ -2263,7 +2263,7 @@ pub extend AppModelProviderCapabilitiesReadResponse with @json.FromJson::{
 /// Parameters for the app-server `thread/list` request.
 pub struct AppThreadListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   sort_key : AppThreadSortKey?
   sort_direction : AppSortDirection?
   model_providers : Array[String]?
@@ -2280,7 +2280,7 @@ pub extend AppThreadListParams with Debug::{to_repr}
 ///|
 pub fn AppThreadListParams::new(
   cursor? : String,
-  limit? : UInt,
+  limit? : UInt32,
   sort_key? : AppThreadSortKey,
   sort_direction? : AppSortDirection,
   model_providers? : Array[String],
@@ -2308,10 +2308,10 @@ pub fn AppThreadListParams::new(
 pub impl ToJson for AppThreadListParams with fn to_json(params) {
   let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
-    obj.set("cursor", cursor.to_json())
+    obj.set("cursor", Json(cursor))
   }
   if params.limit is Some(limit) {
-    obj.set("limit", limit.to_json())
+    obj.set("limit", Json(limit))
   }
   if params.sort_key is Some(sort_key) {
     obj.set("sortKey", sort_key.to_json())
@@ -2320,20 +2320,20 @@ pub impl ToJson for AppThreadListParams with fn to_json(params) {
     obj.set("sortDirection", sort_direction.to_json())
   }
   if params.model_providers is Some(model_providers) {
-    obj.set("modelProviders", model_providers.to_json())
+    obj.set("modelProviders", Json(model_providers))
   }
   if params.source_kinds is Some(source_kinds) {
-    obj.set("sourceKinds", source_kinds.to_json())
+    obj.set("sourceKinds", Json(source_kinds))
   }
   if params.archived is Some(archived) {
-    obj.set("archived", archived.to_json())
+    obj.set("archived", Json(archived))
   }
   if params.cwd is Some(cwd) {
     obj.set("cwd", cwd.to_json())
   }
   app_put_true(obj, "useStateDbOnly", params.use_state_db_only)
   if params.search_term is Some(search_term) {
-    obj.set("searchTerm", search_term.to_json())
+    obj.set("searchTerm", Json(search_term))
   }
   Json::object(obj)
 }
@@ -2353,8 +2353,8 @@ pub extend AppThreadListCwd with Debug::{to_repr}
 ///|
 pub impl ToJson for AppThreadListCwd with fn to_json(cwd) {
   match cwd {
-    OneCwd(value) => value.to_json()
-    ManyCwds(values) => values.to_json()
+    OneCwd(value) => Json(value)
+    ManyCwds(values) => Json(values)
   }
 }
 
@@ -2373,8 +2373,8 @@ pub extend AppThreadSortKey with Debug::{to_repr}
 ///|
 pub impl ToJson for AppThreadSortKey with fn to_json(key) {
   match key {
-    ThreadCreatedAt => "created_at".to_json()
-    ThreadUpdatedAt => "updated_at".to_json()
+    ThreadCreatedAt => Json("created_at")
+    ThreadUpdatedAt => Json("updated_at")
   }
 }
 
@@ -2393,8 +2393,8 @@ pub extend AppSortDirection with Debug::{to_repr}
 ///|
 pub impl ToJson for AppSortDirection with fn to_json(direction) {
   match direction {
-    SortAsc => "asc".to_json()
-    SortDesc => "desc".to_json()
+    SortAsc => Json("asc")
+    SortDesc => Json("desc")
   }
 }
 
@@ -2421,16 +2421,16 @@ pub extend AppThreadSourceKind with Debug::{to_repr}
 ///|
 pub impl ToJson for AppThreadSourceKind with fn to_json(kind) {
   match kind {
-    SourceCli => "cli".to_json()
-    SourceVscode => "vscode".to_json()
-    SourceExec => "exec".to_json()
-    SourceAppServer => "appServer".to_json()
-    SourceSubAgent => "subAgent".to_json()
-    SourceSubAgentReview => "subAgentReview".to_json()
-    SourceSubAgentCompact => "subAgentCompact".to_json()
-    SourceSubAgentThreadSpawn => "subAgentThreadSpawn".to_json()
-    SourceSubAgentOther => "subAgentOther".to_json()
-    SourceUnknown => "unknown".to_json()
+    SourceCli => Json("cli")
+    SourceVscode => Json("vscode")
+    SourceExec => Json("exec")
+    SourceAppServer => Json("appServer")
+    SourceSubAgent => Json("subAgent")
+    SourceSubAgentReview => Json("subAgentReview")
+    SourceSubAgentCompact => Json("subAgentCompact")
+    SourceSubAgentThreadSpawn => Json("subAgentThreadSpawn")
+    SourceSubAgentOther => Json("subAgentOther")
+    SourceUnknown => Json("unknown")
   }
 }
 
@@ -2502,14 +2502,14 @@ pub fn AppThreadStartParams::new(
 pub impl ToJson for AppThreadStartParams with fn to_json(params) {
   let obj : Map[String, Json] = Map([])
   if params.model is Some(model) {
-    obj.set("model", model.to_json())
+    obj.set("model", Json(model))
   }
   if params.model_provider is Some(model_provider) {
-    obj.set("modelProvider", model_provider.to_json())
+    obj.set("modelProvider", Json(model_provider))
   }
   app_put_nullable_string(obj, "serviceTier", params.service_tier)
   if params.cwd is Some(cwd) {
-    obj.set("cwd", cwd.to_json())
+    obj.set("cwd", Json(cwd))
   }
   if params.approval_policy is Some(approval_policy) {
     obj.set("approvalPolicy", approval_policy.to_json())
@@ -2521,22 +2521,22 @@ pub impl ToJson for AppThreadStartParams with fn to_json(params) {
     obj.set("sandbox", sandbox.to_json())
   }
   if params.config is Some(config) {
-    obj.set("config", config.to_json())
+    obj.set("config", Json(config))
   }
   if params.service_name is Some(service_name) {
-    obj.set("serviceName", service_name.to_json())
+    obj.set("serviceName", Json(service_name))
   }
   if params.base_instructions is Some(base_instructions) {
-    obj.set("baseInstructions", base_instructions.to_json())
+    obj.set("baseInstructions", Json(base_instructions))
   }
   if params.developer_instructions is Some(developer_instructions) {
-    obj.set("developerInstructions", developer_instructions.to_json())
+    obj.set("developerInstructions", Json(developer_instructions))
   }
   if params.personality is Some(personality) {
     obj.set("personality", personality.to_json())
   }
   if params.ephemeral is Some(ephemeral) {
-    obj.set("ephemeral", ephemeral.to_json())
+    obj.set("ephemeral", Json(ephemeral))
   }
   if params.session_start_source is Some(session_start_source) {
     obj.set("sessionStartSource", session_start_source.to_json())
@@ -2569,10 +2569,10 @@ pub extend AppApprovalPolicy with Debug::{to_repr}
 ///|
 pub impl ToJson for AppApprovalPolicy with fn to_json(policy) {
   match policy {
-    AppApprovalUntrusted => "untrusted".to_json()
-    AppApprovalOnFailure => "on-failure".to_json()
-    AppApprovalOnRequest => "on-request".to_json()
-    AppApprovalNever => "never".to_json()
+    AppApprovalUntrusted => Json("untrusted")
+    AppApprovalOnFailure => Json("on-failure")
+    AppApprovalOnRequest => Json("on-request")
+    AppApprovalNever => Json("never")
     AppApprovalGranular(
       sandbox_approval~,
       rules~,
@@ -2652,9 +2652,9 @@ pub extend AppApprovalsReviewer with Debug::{to_repr}
 ///|
 pub impl ToJson for AppApprovalsReviewer with fn to_json(reviewer) {
   match reviewer {
-    AppReviewerUser => "user".to_json()
-    AppReviewerAutoReview => "auto_review".to_json()
-    AppReviewerGuardianSubagent => "guardian_subagent".to_json()
+    AppReviewerUser => Json("user")
+    AppReviewerAutoReview => Json("auto_review")
+    AppReviewerGuardianSubagent => Json("guardian_subagent")
   }
 }
 
@@ -2687,9 +2687,9 @@ pub extend AppPersonality with Debug::{to_repr}
 ///|
 pub impl ToJson for AppPersonality with fn to_json(personality) {
   match personality {
-    AppNoPersonality => "none".to_json()
-    AppFriendlyPersonality => "friendly".to_json()
-    AppPragmaticPersonality => "pragmatic".to_json()
+    AppNoPersonality => Json("none")
+    AppFriendlyPersonality => Json("friendly")
+    AppPragmaticPersonality => Json("pragmatic")
   }
 }
 
@@ -2708,8 +2708,8 @@ pub extend AppThreadStartSource with Debug::{to_repr}
 ///|
 pub impl ToJson for AppThreadStartSource with fn to_json(source) {
   match source {
-    AppThreadStartup => "startup".to_json()
-    AppThreadClear => "clear".to_json()
+    AppThreadStartup => Json("startup")
+    AppThreadClear => Json("clear")
   }
 }
 
@@ -2719,9 +2719,9 @@ pub extend AppThreadStartSource with ToJson::{to_json}
 ///|
 pub impl ToJson for SandboxMode with fn to_json(mode) {
   match mode {
-    ReadOnly => "read-only".to_json()
-    WorkspaceWrite => "workspace-write".to_json()
-    DangerFullAccess => "danger-full-access".to_json()
+    ReadOnly => Json("read-only")
+    WorkspaceWrite => Json("workspace-write")
+    DangerFullAccess => Json("danger-full-access")
   }
 }
 
@@ -2829,7 +2829,7 @@ pub impl ToJson for AppTurnStartParams with fn to_json(params) {
   }
   app_put_string(obj, "clientUserMessageId", params.client_user_message_id)
   if params.cwd is Some(cwd) {
-    obj.set("cwd", cwd.to_json())
+    obj.set("cwd", Json(cwd))
   }
   if params.approval_policy is Some(approval_policy) {
     obj.set("approvalPolicy", approval_policy.to_json())
@@ -2841,7 +2841,7 @@ pub impl ToJson for AppTurnStartParams with fn to_json(params) {
     obj.set("sandboxPolicy", sandbox_policy.to_json())
   }
   if params.model is Some(model) {
-    obj.set("model", model.to_json())
+    obj.set("model", Json(model))
   }
   app_put_nullable_string(obj, "serviceTier", params.service_tier)
   if params.effort is Some(effort) {
@@ -2921,10 +2921,10 @@ pub extend AppImageDetail with Debug::{to_repr}
 ///|
 pub impl ToJson for AppImageDetail with fn to_json(detail) {
   match detail {
-    AppImageAuto => "auto".to_json()
-    AppImageLow => "low".to_json()
-    AppImageHigh => "high".to_json()
-    AppImageOriginal => "original".to_json()
+    AppImageAuto => Json("auto")
+    AppImageLow => Json("low")
+    AppImageHigh => Json("high")
+    AppImageOriginal => Json("original")
   }
 }
 
@@ -2957,8 +2957,8 @@ pub extend AppNetworkAccess with Debug::{to_repr}
 ///|
 pub impl ToJson for AppNetworkAccess with fn to_json(access) {
   match access {
-    AppNetworkRestricted => "restricted".to_json()
-    AppNetworkEnabled => "enabled".to_json()
+    AppNetworkRestricted => Json("restricted")
+    AppNetworkEnabled => Json("enabled")
   }
 }
 
@@ -3085,15 +3085,15 @@ pub extend AppReasoningEffort with Debug::{to_repr}
 ///|
 pub impl ToJson for AppReasoningEffort with fn to_json(effort) {
   match effort {
-    AppEffortNone => "none".to_json()
-    AppEffortMinimal => "minimal".to_json()
-    AppEffortLow => "low".to_json()
-    AppEffortMedium => "medium".to_json()
-    AppEffortHigh => "high".to_json()
-    AppEffortXhigh => "xhigh".to_json()
-    AppEffortMax => "max".to_json()
-    AppEffortUltra => "ultra".to_json()
-    AppEffortCustom(value) => value.to_json()
+    AppEffortNone => Json("none")
+    AppEffortMinimal => Json("minimal")
+    AppEffortLow => Json("low")
+    AppEffortMedium => Json("medium")
+    AppEffortHigh => Json("high")
+    AppEffortXhigh => Json("xhigh")
+    AppEffortMax => Json("max")
+    AppEffortUltra => Json("ultra")
+    AppEffortCustom(value) => Json(value)
   }
 }
 
@@ -3133,10 +3133,10 @@ pub extend AppReasoningSummary with Debug::{to_repr}
 ///|
 pub impl ToJson for AppReasoningSummary with fn to_json(summary) {
   match summary {
-    AppSummaryAuto => "auto".to_json()
-    AppSummaryConcise => "concise".to_json()
-    AppSummaryDetailed => "detailed".to_json()
-    AppSummaryNone => "none".to_json()
+    AppSummaryAuto => Json("auto")
+    AppSummaryConcise => Json("concise")
+    AppSummaryDetailed => Json("detailed")
+    AppSummaryNone => Json("none")
   }
 }
 
@@ -3511,7 +3511,7 @@ pub struct AppModelListParams {
   /// Opaque pagination cursor returned by a previous call.
   cursor : String?
   /// Optional page size; defaults to a server-side value.
-  limit : UInt?
+  limit : UInt32?
   /// Include models hidden from the default picker list.
   include_hidden : Bool?
 } derive(Debug)
@@ -3522,7 +3522,7 @@ pub extend AppModelListParams with Debug::{to_repr}
 ///|
 pub fn AppModelListParams::new(
   cursor? : String,
-  limit? : UInt,
+  limit? : UInt32,
   include_hidden? : Bool,
 ) -> AppModelListParams {
   { cursor, limit, include_hidden, }
@@ -3532,13 +3532,13 @@ pub fn AppModelListParams::new(
 pub impl ToJson for AppModelListParams with fn to_json(params) {
   let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
-    obj.set("cursor", cursor.to_json())
+    obj.set("cursor", Json(cursor))
   }
   if params.limit is Some(limit) {
-    obj.set("limit", limit.to_json())
+    obj.set("limit", Json(limit))
   }
   if params.include_hidden is Some(include_hidden) {
-    obj.set("includeHidden", include_hidden.to_json())
+    obj.set("includeHidden", Json(include_hidden))
   }
   Json::object(obj)
 }
@@ -3708,7 +3708,7 @@ pub impl ToJson for AppServerResponse with fn to_json(response) {
         "accessToken": access_token,
         "chatgptAccountId": chatgpt_account_id,
         "chatgptPlanType": match chatgpt_plan_type {
-          Some(value) => value.to_json()
+          Some(value) => Json(value)
           None => Json::null()
         },
       }
@@ -3988,8 +3988,8 @@ pub extend AppNetworkPolicyRuleAction with Debug::{to_repr}
 ///|
 pub impl ToJson for AppNetworkPolicyRuleAction with fn to_json(action) {
   match action {
-    AppNetworkPolicyAllow => "allow".to_json()
-    AppNetworkPolicyDeny => "deny".to_json()
+    AppNetworkPolicyAllow => Json("allow")
+    AppNetworkPolicyDeny => Json("deny")
   }
 }
 
@@ -4041,10 +4041,10 @@ pub impl ToJson for AppCommandExecutionApprovalDecision with fn to_json(
   decision,
 ) {
   match decision {
-    AppCommandAccept => "accept".to_json()
-    AppCommandAcceptForSession => "acceptForSession".to_json()
-    AppCommandDecline => "decline".to_json()
-    AppCommandCancel => "cancel".to_json()
+    AppCommandAccept => Json("accept")
+    AppCommandAcceptForSession => Json("acceptForSession")
+    AppCommandDecline => Json("decline")
+    AppCommandCancel => Json("cancel")
     AppCommandAcceptWithExecpolicyAmendment(amendment) =>
       { "acceptWithExecpolicyAmendment": { "execpolicy_amendment": amendment } }
     AppCommandApplyNetworkPolicyAmendment(amendment) =>
@@ -4116,10 +4116,10 @@ pub extend AppFileChangeApprovalDecision with Debug::{to_repr}
 ///|
 pub impl ToJson for AppFileChangeApprovalDecision with fn to_json(decision) {
   match decision {
-    AppFileChangeAccept => "accept".to_json()
-    AppFileChangeAcceptForSession => "acceptForSession".to_json()
-    AppFileChangeDecline => "decline".to_json()
-    AppFileChangeCancel => "cancel".to_json()
+    AppFileChangeAccept => Json("accept")
+    AppFileChangeAcceptForSession => Json("acceptForSession")
+    AppFileChangeDecline => Json("decline")
+    AppFileChangeCancel => Json("cancel")
   }
 }
 
@@ -4375,7 +4375,7 @@ pub extend AppRequestId with Eq::{not_equal, equal}
 ///|
 pub impl ToJson for AppRequestId with fn to_json(id) {
   match id {
-    StringId(value) => value.to_json()
+    StringId(value) => Json(value)
     IntId(value) => Json::number(value.to_double())
   }
 }
@@ -4449,7 +4449,7 @@ fn app_put_string(
   value : String?,
 ) -> Unit {
   if value is Some(value) {
-    obj.set(key, value.to_json())
+    obj.set(key, Json(value))
   }
 }
 
@@ -4466,7 +4466,7 @@ pub extend AppNullableString with Debug::{to_repr}
 pub impl ToJson for AppNullableString with fn to_json(value) {
   match value {
     AppNullableStringNull => Json::null()
-    AppNullableStringValue(value) => value.to_json()
+    AppNullableStringValue(value) => Json(value)
   }
 }
 
@@ -4489,7 +4489,7 @@ fn app_env_to_json(env : Map[String, String?]) -> Json {
   let obj : Map[String, Json] = Map([])
   for key, value in env {
     match value {
-      Some(value) => obj.set(key, value.to_json())
+      Some(value) => obj.set(key, Json(value))
       None => obj.set(key, Json::null())
     }
   }
@@ -4499,21 +4499,21 @@ fn app_env_to_json(env : Map[String, String?]) -> Json {
 ///|
 fn app_put_bool(obj : Map[String, Json], key : String, value : Bool?) -> Unit {
   if value is Some(value) {
-    obj.set(key, value.to_json())
+    obj.set(key, Json(value))
   }
 }
 
 ///|
 fn app_put_true(obj : Map[String, Json], key : String, value : Bool?) -> Unit {
   if value is Some(true) {
-    obj.set(key, true.to_json())
+    obj.set(key, Json(true))
   }
 }
 
 ///|
-fn app_put_uint(obj : Map[String, Json], key : String, value : UInt?) -> Unit {
+fn app_put_uint(obj : Map[String, Json], key : String, value : UInt32?) -> Unit {
   if value is Some(value) {
-    obj.set(key, value.to_json())
+    obj.set(key, Json(value))
   }
 }
 
@@ -4549,7 +4549,7 @@ fn app_put_strings(
   value : Array[String]?,
 ) -> Unit {
   if value is Some(value) {
-    obj.set(key, value.to_json())
+    obj.set(key, Json(value))
   }
 }
 
@@ -4590,8 +4590,8 @@ pub extend AppInitializeCapabilities with Debug::{to_repr}
 
 ///|
 pub fn AppInitializeCapabilities::new(
-  experimental_api? : Bool = false,
-  request_attestation? : Bool = false,
+  experimental_api~ : Bool = false,
+  request_attestation~ : Bool = false,
   mcp_server_openai_form_elicitation? : Bool,
   opt_out_notification_methods? : Array[String],
   extensions? : Map[String, Json],
@@ -4622,7 +4622,7 @@ pub impl ToJson for AppInitializeCapabilities with fn to_json(capabilities) {
     capabilities.opt_out_notification_methods,
   )
   if capabilities.extensions is Some(extensions) {
-    obj.set("extensions", extensions.to_json())
+    obj.set("extensions", Json(extensions))
   }
   Json::object(obj)
 }
@@ -4692,7 +4692,7 @@ pub impl ToJson for AppThreadForkParams with fn to_json(params) {
     obj.set("sandbox", value.to_json())
   }
   if params.config is Some(value) {
-    obj.set("config", value.to_json())
+    obj.set("config", Json(value))
   }
   app_put_string(obj, "baseInstructions", params.base_instructions)
   app_put_string(obj, "developerInstructions", params.developer_instructions)
@@ -4786,7 +4786,7 @@ pub extend AppThreadApproveGuardianDeniedActionParams with ToJson::{to_json}
 ///|
 pub(all) struct AppThreadRollbackParams {
   thread_id : String
-  num_turns : UInt
+  num_turns : UInt32
 } derive(Debug)
 
 ///|
@@ -4903,9 +4903,9 @@ pub extend AppPluginListMarketplaceKind with Debug::{to_repr}
 ///|
 pub impl ToJson for AppPluginListMarketplaceKind with fn to_json(kind) {
   match kind {
-    AppPluginMarketplaceLocal => "local".to_json()
-    AppPluginMarketplaceWorkspaceDirectory => "workspace-directory".to_json()
-    AppPluginMarketplaceSharedWithMe => "shared-with-me".to_json()
+    AppPluginMarketplaceLocal => Json("local")
+    AppPluginMarketplaceWorkspaceDirectory => Json("workspace-directory")
+    AppPluginMarketplaceSharedWithMe => Json("shared-with-me")
   }
 }
 
@@ -4926,7 +4926,7 @@ pub impl ToJson for AppPluginListParams with fn to_json(params) {
   let obj : Map[String, Json] = Map([])
   app_put_strings(obj, "cwds", params.cwds)
   if params.marketplace_kinds is Some(value) {
-    obj.set("marketplaceKinds", value.to_json())
+    obj.set("marketplaceKinds", Json(value))
   }
   Json::object(obj)
 }
@@ -5161,7 +5161,7 @@ pub impl ToJson for AppReviewTarget with fn to_json(target) {
     AppReviewCommit(sha~, title~) => {
       let obj : Map[String, Json] = { "type": "commit", "sha": sha }
       match title {
-        Some(title) => obj.set("title", title.to_json())
+        Some(title) => obj.set("title", Json(title))
         None => obj.set("title", Json::null())
       }
       Json::object(obj)
@@ -5186,8 +5186,8 @@ pub extend AppReviewDelivery with Debug::{to_repr}
 ///|
 pub impl ToJson for AppReviewDelivery with fn to_json(delivery) {
   match delivery {
-    AppReviewInline => "inline".to_json()
-    AppReviewDetached => "detached".to_json()
+    AppReviewInline => Json("inline")
+    AppReviewDetached => Json("detached")
   }
 }
 
@@ -5222,7 +5222,7 @@ pub extend AppReviewStartParams with ToJson::{to_json}
 ///|
 pub(all) struct AppCursorLimitParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
 } derive(Debug)
 
 ///|
@@ -5290,8 +5290,8 @@ pub extend AppMcpServerStatusDetail with Debug::{to_repr}
 ///|
 pub impl ToJson for AppMcpServerStatusDetail with fn to_json(detail) {
   match detail {
-    AppMcpServerStatusFull => "full".to_json()
-    AppMcpServerStatusToolsAndAuthOnly => "toolsAndAuthOnly".to_json()
+    AppMcpServerStatusFull => Json("full")
+    AppMcpServerStatusToolsAndAuthOnly => Json("toolsAndAuthOnly")
   }
 }
 
@@ -5301,7 +5301,7 @@ pub extend AppMcpServerStatusDetail with ToJson::{to_json}
 ///|
 pub(all) struct AppMcpServerStatusListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   detail : AppMcpServerStatusDetail?
 } derive(Debug)
 
@@ -5381,8 +5381,8 @@ pub extend AppWindowsSandboxSetupMode with Debug::{to_repr}
 ///|
 pub impl ToJson for AppWindowsSandboxSetupMode with fn to_json(mode) {
   match mode {
-    AppWindowsSandboxElevated => "elevated".to_json()
-    AppWindowsSandboxUnelevated => "unelevated".to_json()
+    AppWindowsSandboxElevated => Json("elevated")
+    AppWindowsSandboxUnelevated => Json("unelevated")
   }
 }
 
@@ -5492,8 +5492,8 @@ pub extend AppAddCreditsNudgeKind with Debug::{to_repr}
 ///|
 pub impl ToJson for AppAddCreditsNudgeKind with fn to_json(kind) {
   match kind {
-    AppNudgeCredits => "credits".to_json()
-    AppNudgeUsageLimit => "usage_limit".to_json()
+    AppNudgeCredits => Json("credits")
+    AppNudgeUsageLimit => Json("usage_limit")
   }
 }
 
@@ -5539,7 +5539,7 @@ pub impl ToJson for AppFeedbackUploadParams with fn to_json(params) {
   app_put_string(obj, "threadId", params.thread_id)
   app_put_strings(obj, "extraLogFiles", params.extra_log_files)
   if params.tags is Some(value) {
-    obj.set("tags", value.to_json())
+    obj.set("tags", Json(value))
   }
   Json::object(obj)
 }
@@ -5717,15 +5717,15 @@ pub impl ToJson for AppExternalAgentConfigMigrationItemType with fn to_json(
   item_type,
 ) {
   match item_type {
-    AppMigrationAgentsMd => "AGENTS_MD".to_json()
-    AppMigrationConfig => "CONFIG".to_json()
-    AppMigrationSkills => "SKILLS".to_json()
-    AppMigrationPlugins => "PLUGINS".to_json()
-    AppMigrationMcpServerConfig => "MCP_SERVER_CONFIG".to_json()
-    AppMigrationSubagents => "SUBAGENTS".to_json()
-    AppMigrationHooks => "HOOKS".to_json()
-    AppMigrationCommands => "COMMANDS".to_json()
-    AppMigrationSessions => "SESSIONS".to_json()
+    AppMigrationAgentsMd => Json("AGENTS_MD")
+    AppMigrationConfig => Json("CONFIG")
+    AppMigrationSkills => Json("SKILLS")
+    AppMigrationPlugins => Json("PLUGINS")
+    AppMigrationMcpServerConfig => Json("MCP_SERVER_CONFIG")
+    AppMigrationSubagents => Json("SUBAGENTS")
+    AppMigrationHooks => Json("HOOKS")
+    AppMigrationCommands => Json("COMMANDS")
+    AppMigrationSessions => Json("SESSIONS")
   }
 }
 
@@ -5888,7 +5888,7 @@ pub extend AppSessionMigration with Debug::{to_repr}
 pub impl ToJson for AppSessionMigration with fn to_json(migration) {
   let obj : Map[String, Json] = { "path": migration.path, "cwd": migration.cwd }
   match migration.title {
-    Some(title) => obj.set("title", title.to_json())
+    Some(title) => obj.set("title", Json(title))
     None => obj.set("title", Json::null())
   }
   Json::object(obj)
@@ -5990,8 +5990,8 @@ pub extend AppMergeStrategy with Debug::{to_repr}
 ///|
 pub impl ToJson for AppMergeStrategy with fn to_json(strategy) {
   match strategy {
-    AppMergeReplace => "replace".to_json()
-    AppMergeUpsert => "upsert".to_json()
+    AppMergeReplace => Json("replace")
+    AppMergeUpsert => Json("upsert")
   }
 }
 
@@ -6100,7 +6100,7 @@ pub extend AppFuzzyFileSearchParams with Debug::{to_repr}
 pub impl ToJson for AppFuzzyFileSearchParams with fn to_json(params) {
   let obj : Map[String, Json] = { "query": params.query, "roots": params.roots }
   match params.cancellation_token {
-    Some(value) => obj.set("cancellationToken", value.to_json())
+    Some(value) => obj.set("cancellationToken", Json(value))
     None => obj.set("cancellationToken", Json::null())
   }
   Json::object(obj)
@@ -8058,7 +8058,7 @@ pub extend AppRateLimitSnapshot with Debug::{to_repr}
 
 ///|
 pub struct AppRateLimitWindow {
-  used_percent : Int
+  used_percent : Int32
   window_duration_mins : Int64?
   resets_at : Int64?
 } derive(Debug)
@@ -8347,7 +8347,7 @@ pub extend AppFeedbackUploadResponse with @json.FromJson::{from_json}
 
 ///|
 pub struct AppCommandExecResponse {
-  exit_code : Int
+  exit_code : Int32
   stdout : String
   stderr : String
 } derive(Debug)
@@ -8871,8 +8871,8 @@ pub struct AppFuzzyFileSearchResult {
   path : String
   match_type : AppFuzzyFileSearchMatchType
   file_name : String
-  score : UInt
-  indices : ArrayView[UInt]?
+  score : UInt32
+  indices : ArrayView[UInt32]?
 } derive(Debug)
 
 ///|
@@ -11095,7 +11095,7 @@ pub enum AppSubAgentSource {
   AppSubAgentCompact
   AppSubAgentThreadSpawn(
     parent_thread_id~ : String,
-    depth~ : Int,
+    depth~ : Int32,
     agent_path~ : String?,
     agent_nickname~ : String?,
     agent_role~ : String?
@@ -11445,8 +11445,8 @@ pub extend AppMessagePhase with @json.FromJson::{from_json}
 ///|
 pub struct AppMemoryCitationEntry {
   path : String
-  line_start : UInt
-  line_end : UInt
+  line_start : UInt32
+  line_end : UInt32
   note : String
 } derive(Debug)
 
@@ -11961,7 +11961,7 @@ pub enum AppThreadItem {
     status~ : AppThreadCommandExecutionStatus,
     command_actions~ : ArrayView[AppCommandAction],
     aggregated_output~ : String?,
-    exit_code~ : Int?,
+    exit_code~ : Int32?,
     duration_ms~ : Int64?
   )
   AppThreadFileChangeItem(
@@ -12404,15 +12404,15 @@ pub enum AppCodexErrorInfo {
   AppUsageLimitExceeded
   AppServerOverloaded
   AppCyberPolicy
-  AppHttpConnectionFailed(http_status_code~ : Int?)
-  AppResponseStreamConnectionFailed(http_status_code~ : Int?)
+  AppHttpConnectionFailed(http_status_code~ : Int32?)
+  AppResponseStreamConnectionFailed(http_status_code~ : Int32?)
   AppInternalServerError
   AppUnauthorized
   AppBadRequest
   AppThreadRollbackFailed
   AppSandboxError
-  AppResponseStreamDisconnected(http_status_code~ : Int?)
-  AppResponseTooManyFailedAttempts(http_status_code~ : Int?)
+  AppResponseStreamDisconnected(http_status_code~ : Int32?)
+  AppResponseTooManyFailedAttempts(http_status_code~ : Int32?)
   AppActiveTurnNotSteerable(turn_kind~ : AppNonSteerableTurnKind)
   AppCodexOtherError
 } derive(Debug)
@@ -12946,7 +12946,7 @@ fn app_collab_tool(
 fn app_codex_error_http_status_code(
   value : Json,
   path : @json.JsonPath,
-) -> Int? raise @json.JsonDecodeError {
+) -> Int32? raise @json.JsonDecodeError {
   guard value is { "httpStatusCode"? : http_status_code, .. } else {
     raise @json.JsonDecodeError((path, "expected codex error info payload"))
   }
@@ -12981,7 +12981,7 @@ fn app_optional_string(
 fn app_optional_int(
   value : Json?,
   path : @json.JsonPath,
-) -> Int? raise @json.JsonDecodeError {
+) -> Int32? raise @json.JsonDecodeError {
   match value {
     Some(Number(value, ..)) => Some(value.to_int())
     Some(Null) | None => None
@@ -13005,7 +13005,7 @@ fn app_optional_int64(
 fn app_optional_uint(
   value : Json?,
   path : @json.JsonPath,
-) -> UInt? raise @json.JsonDecodeError {
+) -> UInt32? raise @json.JsonDecodeError {
   match value {
     Some(Number(value, ..)) => Some(value.to_uint())
     Some(Null) | None => None

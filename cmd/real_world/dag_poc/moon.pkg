@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbitlang/x/sys",
+  "moonbit-community/codex",
+  "moonbit-community/codex-example/real_world/dag_poc/app",
+}
+
+pkgtype(kind: "executable")

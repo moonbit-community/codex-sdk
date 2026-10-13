@@ -3,7 +3,7 @@ priv struct Arguments {
   /// Path to the root directory containing packages
   path : String
   /// Number of parallel tasks
-  parallelism : Int
+  parallelism : Int32
 }
 
 ///|
@@ -72,7 +72,7 @@ pub struct WorktreeInfo {
 } derive(Show)
 
 ///|
-extern "C" fn random() -> UInt = "arc4random"
+extern "C" fn random() -> UInt32 = "arc4random"
 
 ///|
 fn worktree_path() -> String {
@@ -98,7 +98,7 @@ async fn create_worktree(repo_path : String, pkg_path : String) -> WorktreeInfo 
   if !ok {
     fail("error [\{pkg_path}] - Failed to create git worktree at \{tmp_path}\n")
   }
-  WorktreeInfo::{ tmp_path, branch_name: branch, reused_branch }
+  WorktreeInfo::{ tmp_path, branch_name: branch, reused_branch, }
 }
 
 ///|

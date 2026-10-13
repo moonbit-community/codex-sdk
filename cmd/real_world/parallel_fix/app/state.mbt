@@ -8,7 +8,7 @@ async fn add_repository(
   url : String,
   task : String,
   task_title : String?,
-) -> Int? {
+) -> Int32? {
   let now = @async.now()
   let escaped_url = escape_sql(url)
   let escaped_task = escape_sql(task)
@@ -94,7 +94,7 @@ async fn get_incomplete_repos(db : @sqlite.Database) -> Array[RepositoryRecord] 
 
 ///|
 /// Mark a repository as completed
-async fn mark_completed(db : @sqlite.Database, repo_id : Int) -> Unit {
+async fn mark_completed(db : @sqlite.Database, repo_id : Int32) -> Unit {
   let now = @async.now()
   let sql = "UPDATE repositories SET completed = 1, updated_at = '\{now}' WHERE id = \{repo_id};"
   db.exec(sql) catch {
@@ -104,7 +104,7 @@ async fn mark_completed(db : @sqlite.Database, repo_id : Int) -> Unit {
 
 ///|
 /// Mark a repository as incomplete
-async fn mark_incomplete(db : @sqlite.Database, repo_id : Int) -> Unit {
+async fn mark_incomplete(db : @sqlite.Database, repo_id : Int32) -> Unit {
   let now = @async.now()
   let sql = "UPDATE repositories SET completed = 0, updated_at = '\{now}' WHERE id = \{repo_id};"
   db.exec(sql) catch {
@@ -116,8 +116,8 @@ async fn mark_incomplete(db : @sqlite.Database, repo_id : Int) -> Unit {
 /// Update PR number for a repository
 async fn update_pr_number(
   db : @sqlite.Database,
-  repo_id : Int,
-  pr_number : Int,
+  repo_id : Int32,
+  pr_number : Int32,
 ) -> Unit {
   let now = @async.now()
   let sql = "UPDATE repositories SET pr_number = \{pr_number}, updated_at = '\{now}' WHERE id = \{repo_id};"
@@ -130,7 +130,7 @@ async fn update_pr_number(
 /// Update target URL for a repository
 async fn update_target_url(
   db : @sqlite.Database,
-  repo_id : Int,
+  repo_id : Int32,
   target_url : String,
 ) -> Unit {
   let now = @async.now()
@@ -143,13 +143,13 @@ async fn update_target_url(
 
 ///|
 /// Get total repository count
-async fn total_count(db : @sqlite.Database) -> Int {
+async fn total_count(db : @sqlite.Database) -> Int32 {
   db.count("repositories")
 }
 
 ///|
 /// Count completed repositories
-async fn count_completed(db : @sqlite.Database) -> Int {
+async fn count_completed(db : @sqlite.Database) -> Int32 {
   let sql = "SELECT COUNT(*) FROM repositories WHERE completed = 1;"
   @strconv.parse_int(db.exec_string(sql).trim(chars=" \t\r\n")) catch {
     e => @error.reraise(e)
@@ -211,7 +211,7 @@ async fn get_all_repos(db : @sqlite.Database) -> Array[RepositoryRecord] {
 /// Save a codex session ID for a repository task
 async fn save_codex_session(
   db : @sqlite.Database,
-  repo_id : Int,
+  repo_id : Int32,
   session_id : String,
 ) -> Unit {
   let now = @async.now()
@@ -226,9 +226,9 @@ async fn save_codex_session(
 /// Update cached PR metadata for a repository
 async fn update_pr_cache(
   db : @sqlite.Database,
-  repo_id : Int,
+  repo_id : Int32,
   head_sha : String,
-  comment_count : Int,
+  comment_count : Int32,
 ) -> Unit {
   let now = @async.now()
   let escaped_head_sha = escape_sql(head_sha)

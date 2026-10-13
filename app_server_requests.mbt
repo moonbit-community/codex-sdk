@@ -153,7 +153,7 @@ pub extend AppAdditionalNetworkPermissions with Debug::{to_repr}
 pub impl ToJson for AppAdditionalNetworkPermissions with fn to_json(permissions) {
   {
     "enabled": match permissions.enabled {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
   }
@@ -193,17 +193,17 @@ pub impl ToJson for AppAdditionalFileSystemPermissions with fn to_json(
 ) {
   let obj : Map[String, Json] = {
     "read": match permissions.read {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
     "write": match permissions.write {
-      Some(value) => value.to_json()
+      Some(value) => Json(value)
       None => Json::null()
     },
   }
   app_put_uint64(obj, "globScanMaxDepth", permissions.glob_scan_max_depth)
   if permissions.entries is Some(entries) {
-    obj.set("entries", entries.to_json())
+    obj.set("entries", Json(entries))
   }
   Json::object(obj)
 }
@@ -293,9 +293,9 @@ pub extend AppFileSystemAccessMode with Debug::{to_repr}
 ///|
 pub impl ToJson for AppFileSystemAccessMode with fn to_json(access) {
   match access {
-    AppFileSystemReadAccess => "read".to_json()
-    AppFileSystemWriteAccess => "write".to_json()
-    AppFileSystemNoAccess => "none".to_json()
+    AppFileSystemReadAccess => Json("read")
+    AppFileSystemWriteAccess => Json("write")
+    AppFileSystemNoAccess => Json("none")
   }
 }
 
@@ -394,7 +394,7 @@ pub impl ToJson for AppFileSystemSpecialPath with fn to_json(special) {
       {
         "kind": "project_roots",
         "subpath": match subpath {
-          Some(value) => value.to_json()
+          Some(value) => Json(value)
           None => Json::null()
         },
       }
@@ -405,7 +405,7 @@ pub impl ToJson for AppFileSystemSpecialPath with fn to_json(special) {
         "kind": "unknown",
         "path": path,
         "subpath": match subpath {
-          Some(value) => value.to_json()
+          Some(value) => Json(value)
           None => Json::null()
         },
       }
@@ -461,8 +461,8 @@ pub extend AppPermissionGrantScope with Debug::{to_repr}
 ///|
 pub impl ToJson for AppPermissionGrantScope with fn to_json(scope) {
   match scope {
-    AppPermissionGrantTurn => "turn".to_json()
-    AppPermissionGrantSession => "session".to_json()
+    AppPermissionGrantTurn => Json("turn")
+    AppPermissionGrantSession => Json("session")
   }
 }
 
@@ -701,9 +701,9 @@ pub extend AppMcpServerElicitationAction with Debug::{to_repr}
 ///|
 pub impl ToJson for AppMcpServerElicitationAction with fn to_json(action) {
   match action {
-    AppMcpElicitationAccept => "accept".to_json()
-    AppMcpElicitationDecline => "decline".to_json()
-    AppMcpElicitationCancel => "cancel".to_json()
+    AppMcpElicitationAccept => Json("accept")
+    AppMcpElicitationDecline => Json("decline")
+    AppMcpElicitationCancel => Json("cancel")
   }
 }
 
@@ -827,8 +827,8 @@ pub extend AppMcpElicitationPrimitiveSchema with @json.FromJson::{from_json}
 pub(all) struct AppMcpElicitationStringSchema {
   title : String?
   description : String?
-  min_length : UInt?
-  max_length : UInt?
+  min_length : UInt32?
+  max_length : UInt32?
   format : AppMcpElicitationStringFormat?
   default : String?
 } derive(Debug)

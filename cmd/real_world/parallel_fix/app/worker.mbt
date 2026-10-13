@@ -15,7 +15,7 @@ priv struct PrMetadata {
   state : String
   branch_name : String
   head_sha : String
-  comment_count : Int
+  comment_count : Int32
 }
 
 ///|
@@ -271,7 +271,7 @@ pub async fn process_repository(
 
 ///|
 /// Get PR branch name from GitHub
-async fn get_pr_metadata(clone_path : String, pr_number : Int) -> PrMetadata {
+async fn get_pr_metadata(clone_path : String, pr_number : Int32) -> PrMetadata {
   let (status, stdout, stderr) = @process.collect_output(
     "gh",
     [
@@ -422,7 +422,6 @@ async fn checkout_branch(clone_path : String, branch_name : String) -> Unit {
           @error.reraise(e)
         }
       }
-
     }
   }
 
@@ -625,7 +624,7 @@ async fn create_pr_from_branch(
   repo : RepositoryRecord,
   branch_name : String,
   generate_pr_metadata : PrMetadataGenerator,
-) -> Int {
+) -> Int32 {
   let git_repo = @git.GitRepo::discover(clone_path) catch {
     e => @error.fail_with("Failed to discover repository", e)
   }
@@ -697,7 +696,6 @@ async fn ensure_repo_cloned(clone_path : String, url : String) -> Unit {
   let _ = @git.GitRepo::clone(url, clone_path) catch {
     e => @error.fail_with("Failed to clone repository", e)
   }
-
 }
 
 ///|
@@ -813,7 +811,7 @@ async fn ensure_gitignore_entries(
 
 ///|
 /// Get PR state from GitHub
-async fn get_pr_state(clone_path : String, pr_number : Int) -> String {
+async fn get_pr_state(clone_path : String, pr_number : Int32) -> String {
   let stdout = execute(
     "gh",
     ["pr", "view", pr_number.to_string(), "--json", "state", "--jq", ".state"],
@@ -830,7 +828,7 @@ async fn get_pr_state(clone_path : String, pr_number : Int) -> String {
 
 ///|
 /// Get PR comments for AI context
-async fn get_pr_comments(clone_path : String, pr_number : Int) -> String {
+async fn get_pr_comments(clone_path : String, pr_number : Int32) -> String {
   let stdout = execute(
     "gh",
     [

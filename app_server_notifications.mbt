@@ -454,9 +454,9 @@ pub extend AppRealtimeConversationVersion with @json.FromJson::{from_json}
 ///|
 pub(all) struct AppThreadRealtimeAudioChunk {
   data : String
-  sample_rate : UInt
-  num_channels : UInt
-  samples_per_channel : UInt?
+  sample_rate : UInt32
+  num_channels : UInt32
+  samples_per_channel : UInt32?
   item_id : String?
 } derive(Debug)
 
@@ -674,7 +674,7 @@ pub(all) enum AppGuardianApprovalReviewAction {
     target~ : String,
     host~ : String,
     protocol~ : AppNetworkApprovalProtocol,
-    port~ : UInt
+    port~ : UInt32
   )
   AppGuardianMcpToolCallAction(
     server~ : String,

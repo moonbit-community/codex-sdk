@@ -1,13 +1,13 @@
 ///|
 struct Task {
-  index : Int
+  index : Int32
   label : String
   prompt : String
 }
 
 ///|
 struct TaskResult {
-  index : Int
+  index : Int32
   label : String
   output : String
   error : String?
@@ -21,7 +21,7 @@ struct TaskInput {
 
 ///|
 /// Parse command line arguments
-fn parse_args(args : Array[String]) -> (Int, Int, String?) {
+fn parse_args(args : Array[String]) -> (Int32, Int32, String?) {
   let mut offset = 0
   let mut limit = -1
   let mut file : String? = None
@@ -66,8 +66,8 @@ async fn read_tasks(file : String?) -> Array[Task] raise Error {
 ///|
 /// Log progress to stderr
 async fn log_progress(
-  completed : Int,
-  total : Int,
+  completed : Int32,
+  total : Int32,
   label : String,
   success : Bool,
 ) -> Unit {
@@ -78,7 +78,7 @@ async fn log_progress(
 ///|
 /// Escape string for JSON output
 fn escape_json(s : String) -> String {
-  let result = StringBuilder::new()
+  let result = StringBuilder()
   for c in s {
     match c {
       '\\' => result.write_string("\\\\")
@@ -168,7 +168,7 @@ async fn main {
   )
   let codex = @codex.Codex::new()
   let results : Array[TaskResult] = []
-  let completed = @ref.new(0)
+  let completed = Ref(0)
   @async.with_task_group(fn(task_group) {
     let semaphore = @async.Semaphore::new(parallelism)
     for task in tasks {

@@ -23,7 +23,7 @@ pub enum ThreadItem {
     id~ : String,
     command~ : String,
     aggregated_output~ : String,
-    exit_code~ : Int?,
+    exit_code~ : Int32?,
     status~ : CommandExecutionStatus
   )
   /// A set of file changes by the agent. Emitted once the patch succeeds or fails.
@@ -126,7 +126,7 @@ pub impl ToJson for ThreadItem with fn to_json(item) {
         "status": status,
       }
       if prompt is Some(prompt) {
-        item.set("prompt", prompt.to_json())
+        item.set("prompt", Json(prompt))
       }
       Json::object(item)
     }
@@ -623,7 +623,7 @@ pub extend CollabAgentState with Debug::{to_repr}
 pub impl ToJson for CollabAgentState with fn to_json(state) {
   let obj : Map[String, Json] = { "status": state.status }
   if state.message is Some(message) {
-    obj.set("message", message.to_json())
+    obj.set("message", Json(message))
   }
   Json::object(obj)
 }

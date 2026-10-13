@@ -113,7 +113,7 @@ pub suberror Running
 pub fn[T, G] AsyncGenerator::new(
   f : async (async (T) -> Unit) -> Unit,
   taskgroup : @async.TaskGroup[G],
-  no_wait? : Bool = true,
+  no_wait~ : Bool = true,
 ) -> AsyncGenerator[T] {
   let in_ = @async.Queue::Queue(kind=Blocking(1))
   let out = @async.Queue::Queue(kind=Unbounded)
