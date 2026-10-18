@@ -55,7 +55,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     raise JsonDecodeError(
       (
         path,
-        "expected object containing 'type' field for Event, got \{@debug.to_repr(value)}",
+        "expected object containing 'type' field for Event, got \{@debug.Debug::to_repr(value)}",
       ),
     )
   }
@@ -63,7 +63,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "thread.started" => {
       guard obj is { "thread_id": String(thread_id), .. } else {
         raise JsonDecodeError(
-          (path, "expected ThreadStarted event, got \{@debug.to_repr(obj)}"),
+          (path, "expected ThreadStarted event, got \{@debug.Debug::to_repr(obj)}"),
         )
       }
       ThreadStarted(thread_id~)
@@ -72,7 +72,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "turn.completed" => {
       guard obj is { "usage": usage_json, .. } else {
         raise JsonDecodeError(
-          (path, "expected TurnCompleted event, got \{@debug.to_repr(obj)}"),
+          (path, "expected TurnCompleted event, got \{@debug.Debug::to_repr(obj)}"),
         )
       }
       let usage = @json.FromJson::from_json(usage_json, path.add_key("usage")) catch {
@@ -83,7 +83,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "turn.failed" => {
       guard obj is { "error": error_json, .. } else {
         raise JsonDecodeError(
-          (path, "expected TurnFailed event, got \{@debug.to_repr(obj)}"),
+          (path, "expected TurnFailed event, got \{@debug.Debug::to_repr(obj)}"),
         )
       }
       let error = @json.FromJson::from_json(error_json, path.add_key("error")) catch {
@@ -94,7 +94,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "item.started" | "item.updated" | "item.completed" => {
       guard obj is { "item": item_json, .. } else {
         raise JsonDecodeError(
-          (path, "expected Item event, got \{@debug.to_repr(obj)}"),
+          (path, "expected Item event, got \{@debug.Debug::to_repr(obj)}"),
         )
       }
       let item = @json.FromJson::from_json(item_json, path.add_key("item")) catch {
@@ -110,7 +110,7 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "error" => {
       guard obj is { "message": String(message), .. } else {
         raise JsonDecodeError(
-          (path, "expected ThreadErrorEvent, got \{@debug.to_repr(obj)}"),
+          (path, "expected ThreadErrorEvent, got \{@debug.Debug::to_repr(obj)}"),
         )
       }
       ThreadErrorEvent(message)

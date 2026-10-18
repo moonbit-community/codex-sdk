@@ -732,14 +732,14 @@ pub fn AppThreadResumeParams::new(
 pub impl ToJson for AppThreadResumeParams with fn to_json(params) {
   let obj : Map[String, Json] = { "threadId": params.thread_id }
   if params.model is Some(model) {
-    obj.set("model", model.to_json())
+    obj.set("model", ToJson::to_json(model))
   }
   if params.model_provider is Some(model_provider) {
-    obj.set("modelProvider", model_provider.to_json())
+    obj.set("modelProvider", ToJson::to_json(model_provider))
   }
   app_put_nullable_string(obj, "serviceTier", params.service_tier)
   if params.cwd is Some(cwd) {
-    obj.set("cwd", cwd.to_json())
+    obj.set("cwd", ToJson::to_json(cwd))
   }
   if params.approval_policy is Some(approval_policy) {
     obj.set("approvalPolicy", approval_policy.to_json())
@@ -751,13 +751,13 @@ pub impl ToJson for AppThreadResumeParams with fn to_json(params) {
     obj.set("sandbox", sandbox.to_json())
   }
   if params.config is Some(config) {
-    obj.set("config", config.to_json())
+    obj.set("config", ToJson::to_json(config))
   }
   if params.base_instructions is Some(base_instructions) {
-    obj.set("baseInstructions", base_instructions.to_json())
+    obj.set("baseInstructions", ToJson::to_json(base_instructions))
   }
   if params.developer_instructions is Some(developer_instructions) {
-    obj.set("developerInstructions", developer_instructions.to_json())
+    obj.set("developerInstructions", ToJson::to_json(developer_instructions))
   }
   if params.personality is Some(personality) {
     obj.set("personality", personality.to_json())
@@ -781,12 +781,12 @@ pub fn AppThreadLoadedListParams::new(
 
 ///|
 pub impl ToJson for AppThreadLoadedListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
-    obj.set("cursor", cursor.to_json())
+    obj.set("cursor", ToJson::to_json(cursor))
   }
   if params.limit is Some(limit) {
-    obj.set("limit", limit.to_json())
+    obj.set("limit", ToJson::to_json(limit))
   }
   Json::object(obj)
 }
@@ -899,9 +899,9 @@ pub fn AppSkillsListParams::new(
 
 ///|
 pub impl ToJson for AppSkillsListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.cwds is Some(cwds) {
-    obj.set("cwds", cwds.to_json())
+    obj.set("cwds", ToJson::to_json(cwds))
   }
   app_put_true(obj, "forceReload", params.force_reload)
   Json::object(obj)
@@ -1090,15 +1090,15 @@ pub fn AppListParams::new(
 
 ///|
 pub impl ToJson for AppListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
-    obj.set("cursor", cursor.to_json())
+    obj.set("cursor", ToJson::to_json(cursor))
   }
   if params.limit is Some(limit) {
-    obj.set("limit", limit.to_json())
+    obj.set("limit", ToJson::to_json(limit))
   }
   if params.thread_id is Some(thread_id) {
-    obj.set("threadId", thread_id.to_json())
+    obj.set("threadId", ToJson::to_json(thread_id))
   }
   app_put_true(obj, "forceRefetch", params.force_refetch)
   Json::object(obj)
@@ -1189,7 +1189,7 @@ pub fn AppConfigReadParams::new(
 pub impl ToJson for AppConfigReadParams with fn to_json(params) {
   let obj : Map[String, Json] = { "includeLayers": params.include_layers }
   if params.cwd is Some(cwd) {
-    obj.set("cwd", cwd.to_json())
+    obj.set("cwd", ToJson::to_json(cwd))
   }
   Json::object(obj)
 }
@@ -1229,7 +1229,7 @@ pub impl FromJson for AppConfigSnapshot with fn from_json(value, path) {
   guard value is Object(obj) else {
     raise JsonDecodeError((path, "expected config snapshot"))
   }
-  let additional : Map[String, Json] = {}
+  let additional : Map[String, Json] = Map([])
   obj.each((key, value) => {
     if !app_config_known_key(key) {
       additional.set(key, value)
@@ -1575,7 +1575,7 @@ pub impl FromJson for AppProfileV2 with fn from_json(value, path) {
   guard value is Object(obj) else {
     raise JsonDecodeError((path, "expected config profile"))
   }
-  let additional : Map[String, Json] = {}
+  let additional : Map[String, Json] = Map([])
   obj.each((key, value) => {
     if !app_profile_known_key(key) {
       additional.set(key, value)
@@ -1667,7 +1667,7 @@ pub impl FromJson for AppAnalyticsConfig with fn from_json(value, path) {
   guard value is Object(obj) else {
     raise JsonDecodeError((path, "expected analytics config"))
   }
-  let additional : Map[String, Json] = {}
+  let additional : Map[String, Json] = Map([])
   obj.each((key, value) => if key != "enabled" { additional.set(key, value) })
   guard value is { "enabled"? : enabled, .. } else {
     raise JsonDecodeError((path, "expected analytics config"))
@@ -1827,7 +1827,7 @@ pub impl FromJson for AppAppsConfig with fn from_json(value, path) {
   guard value is Object(obj) else {
     raise JsonDecodeError((path, "expected apps config"))
   }
-  let apps : Map[String, AppConnectorConfig] = {}
+  let apps : Map[String, AppConnectorConfig] = Map([])
   obj.each((key, app) => {
     if key != "_default" {
       apps.set(key, @json.from_json(app, path=path.add_key(key)))
@@ -2025,12 +2025,12 @@ pub fn AppThreadListParams::new(
 
 ///|
 pub impl ToJson for AppThreadListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
-    obj.set("cursor", cursor.to_json())
+    obj.set("cursor", ToJson::to_json(cursor))
   }
   if params.limit is Some(limit) {
-    obj.set("limit", limit.to_json())
+    obj.set("limit", ToJson::to_json(limit))
   }
   if params.sort_key is Some(sort_key) {
     obj.set("sortKey", sort_key.to_json())
@@ -2039,20 +2039,20 @@ pub impl ToJson for AppThreadListParams with fn to_json(params) {
     obj.set("sortDirection", sort_direction.to_json())
   }
   if params.model_providers is Some(model_providers) {
-    obj.set("modelProviders", model_providers.to_json())
+    obj.set("modelProviders", ToJson::to_json(model_providers))
   }
   if params.source_kinds is Some(source_kinds) {
-    obj.set("sourceKinds", source_kinds.to_json())
+    obj.set("sourceKinds", ToJson::to_json(source_kinds))
   }
   if params.archived is Some(archived) {
-    obj.set("archived", archived.to_json())
+    obj.set("archived", ToJson::to_json(archived))
   }
   if params.cwd is Some(cwd) {
     obj.set("cwd", cwd.to_json())
   }
   app_put_true(obj, "useStateDbOnly", params.use_state_db_only)
   if params.search_term is Some(search_term) {
-    obj.set("searchTerm", search_term.to_json())
+    obj.set("searchTerm", ToJson::to_json(search_term))
   }
   Json::object(obj)
 }
@@ -2066,8 +2066,8 @@ pub(all) enum AppThreadListCwd {
 ///|
 pub impl ToJson for AppThreadListCwd with fn to_json(cwd) {
   match cwd {
-    OneCwd(value) => value.to_json()
-    ManyCwds(values) => values.to_json()
+    OneCwd(value) => ToJson::to_json(value)
+    ManyCwds(values) => ToJson::to_json(values)
   }
 }
 
@@ -2080,8 +2080,8 @@ pub(all) enum AppThreadSortKey {
 ///|
 pub impl ToJson for AppThreadSortKey with fn to_json(key) {
   match key {
-    ThreadCreatedAt => "created_at".to_json()
-    ThreadUpdatedAt => "updated_at".to_json()
+    ThreadCreatedAt => ToJson::to_json("created_at")
+    ThreadUpdatedAt => ToJson::to_json("updated_at")
   }
 }
 
@@ -2094,8 +2094,8 @@ pub(all) enum AppSortDirection {
 ///|
 pub impl ToJson for AppSortDirection with fn to_json(direction) {
   match direction {
-    SortAsc => "asc".to_json()
-    SortDesc => "desc".to_json()
+    SortAsc => ToJson::to_json("asc")
+    SortDesc => ToJson::to_json("desc")
   }
 }
 
@@ -2116,16 +2116,16 @@ pub(all) enum AppThreadSourceKind {
 ///|
 pub impl ToJson for AppThreadSourceKind with fn to_json(kind) {
   match kind {
-    SourceCli => "cli".to_json()
-    SourceVscode => "vscode".to_json()
-    SourceExec => "exec".to_json()
-    SourceAppServer => "appServer".to_json()
-    SourceSubAgent => "subAgent".to_json()
-    SourceSubAgentReview => "subAgentReview".to_json()
-    SourceSubAgentCompact => "subAgentCompact".to_json()
-    SourceSubAgentThreadSpawn => "subAgentThreadSpawn".to_json()
-    SourceSubAgentOther => "subAgentOther".to_json()
-    SourceUnknown => "unknown".to_json()
+    SourceCli => ToJson::to_json("cli")
+    SourceVscode => ToJson::to_json("vscode")
+    SourceExec => ToJson::to_json("exec")
+    SourceAppServer => ToJson::to_json("appServer")
+    SourceSubAgent => ToJson::to_json("subAgent")
+    SourceSubAgentReview => ToJson::to_json("subAgentReview")
+    SourceSubAgentCompact => ToJson::to_json("subAgentCompact")
+    SourceSubAgentThreadSpawn => ToJson::to_json("subAgentThreadSpawn")
+    SourceSubAgentOther => ToJson::to_json("subAgentOther")
+    SourceUnknown => ToJson::to_json("unknown")
   }
 }
 
@@ -2189,16 +2189,16 @@ pub fn AppThreadStartParams::new(
 
 ///|
 pub impl ToJson for AppThreadStartParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.model is Some(model) {
-    obj.set("model", model.to_json())
+    obj.set("model", ToJson::to_json(model))
   }
   if params.model_provider is Some(model_provider) {
-    obj.set("modelProvider", model_provider.to_json())
+    obj.set("modelProvider", ToJson::to_json(model_provider))
   }
   app_put_nullable_string(obj, "serviceTier", params.service_tier)
   if params.cwd is Some(cwd) {
-    obj.set("cwd", cwd.to_json())
+    obj.set("cwd", ToJson::to_json(cwd))
   }
   if params.approval_policy is Some(approval_policy) {
     obj.set("approvalPolicy", approval_policy.to_json())
@@ -2210,22 +2210,22 @@ pub impl ToJson for AppThreadStartParams with fn to_json(params) {
     obj.set("sandbox", sandbox.to_json())
   }
   if params.config is Some(config) {
-    obj.set("config", config.to_json())
+    obj.set("config", ToJson::to_json(config))
   }
   if params.service_name is Some(service_name) {
-    obj.set("serviceName", service_name.to_json())
+    obj.set("serviceName", ToJson::to_json(service_name))
   }
   if params.base_instructions is Some(base_instructions) {
-    obj.set("baseInstructions", base_instructions.to_json())
+    obj.set("baseInstructions", ToJson::to_json(base_instructions))
   }
   if params.developer_instructions is Some(developer_instructions) {
-    obj.set("developerInstructions", developer_instructions.to_json())
+    obj.set("developerInstructions", ToJson::to_json(developer_instructions))
   }
   if params.personality is Some(personality) {
     obj.set("personality", personality.to_json())
   }
   if params.ephemeral is Some(ephemeral) {
-    obj.set("ephemeral", ephemeral.to_json())
+    obj.set("ephemeral", ToJson::to_json(ephemeral))
   }
   if params.session_start_source is Some(session_start_source) {
     obj.set("sessionStartSource", session_start_source.to_json())
@@ -2252,10 +2252,10 @@ pub(all) enum AppApprovalPolicy {
 ///|
 pub impl ToJson for AppApprovalPolicy with fn to_json(policy) {
   match policy {
-    AppApprovalUntrusted => "untrusted".to_json()
-    AppApprovalOnFailure => "on-failure".to_json()
-    AppApprovalOnRequest => "on-request".to_json()
-    AppApprovalNever => "never".to_json()
+    AppApprovalUntrusted => ToJson::to_json("untrusted")
+    AppApprovalOnFailure => ToJson::to_json("on-failure")
+    AppApprovalOnRequest => ToJson::to_json("on-request")
+    AppApprovalNever => ToJson::to_json("never")
     AppApprovalGranular(
       sandbox_approval~,
       rules~,
@@ -2326,9 +2326,9 @@ pub(all) enum AppApprovalsReviewer {
 ///|
 pub impl ToJson for AppApprovalsReviewer with fn to_json(reviewer) {
   match reviewer {
-    AppReviewerUser => "user".to_json()
-    AppReviewerAutoReview => "auto_review".to_json()
-    AppReviewerGuardianSubagent => "guardian_subagent".to_json()
+    AppReviewerUser => ToJson::to_json("user")
+    AppReviewerAutoReview => ToJson::to_json("auto_review")
+    AppReviewerGuardianSubagent => ToJson::to_json("guardian_subagent")
   }
 }
 
@@ -2352,9 +2352,9 @@ pub(all) enum AppPersonality {
 ///|
 pub impl ToJson for AppPersonality with fn to_json(personality) {
   match personality {
-    AppNoPersonality => "none".to_json()
-    AppFriendlyPersonality => "friendly".to_json()
-    AppPragmaticPersonality => "pragmatic".to_json()
+    AppNoPersonality => ToJson::to_json("none")
+    AppFriendlyPersonality => ToJson::to_json("friendly")
+    AppPragmaticPersonality => ToJson::to_json("pragmatic")
   }
 }
 
@@ -2367,17 +2367,17 @@ pub(all) enum AppThreadStartSource {
 ///|
 pub impl ToJson for AppThreadStartSource with fn to_json(source) {
   match source {
-    AppThreadStartup => "startup".to_json()
-    AppThreadClear => "clear".to_json()
+    AppThreadStartup => ToJson::to_json("startup")
+    AppThreadClear => ToJson::to_json("clear")
   }
 }
 
 ///|
 pub impl ToJson for SandboxMode with fn to_json(mode) {
   match mode {
-    ReadOnly => "read-only".to_json()
-    WorkspaceWrite => "workspace-write".to_json()
-    DangerFullAccess => "danger-full-access".to_json()
+    ReadOnly => ToJson::to_json("read-only")
+    WorkspaceWrite => ToJson::to_json("workspace-write")
+    DangerFullAccess => ToJson::to_json("danger-full-access")
   }
 }
 
@@ -2470,7 +2470,7 @@ pub impl ToJson for AppTurnStartParams with fn to_json(params) {
   }
   app_put_string(obj, "clientUserMessageId", params.client_user_message_id)
   if params.cwd is Some(cwd) {
-    obj.set("cwd", cwd.to_json())
+    obj.set("cwd", ToJson::to_json(cwd))
   }
   if params.approval_policy is Some(approval_policy) {
     obj.set("approvalPolicy", approval_policy.to_json())
@@ -2482,7 +2482,7 @@ pub impl ToJson for AppTurnStartParams with fn to_json(params) {
     obj.set("sandboxPolicy", sandbox_policy.to_json())
   }
   if params.model is Some(model) {
-    obj.set("model", model.to_json())
+    obj.set("model", ToJson::to_json(model))
   }
   app_put_nullable_string(obj, "serviceTier", params.service_tier)
   if params.effort is Some(effort) {
@@ -2550,10 +2550,10 @@ pub(all) enum AppImageDetail {
 ///|
 pub impl ToJson for AppImageDetail with fn to_json(detail) {
   match detail {
-    AppImageAuto => "auto".to_json()
-    AppImageLow => "low".to_json()
-    AppImageHigh => "high".to_json()
-    AppImageOriginal => "original".to_json()
+    AppImageAuto => ToJson::to_json("auto")
+    AppImageLow => ToJson::to_json("low")
+    AppImageHigh => ToJson::to_json("high")
+    AppImageOriginal => ToJson::to_json("original")
   }
 }
 
@@ -2577,8 +2577,8 @@ pub(all) enum AppNetworkAccess {
 ///|
 pub impl ToJson for AppNetworkAccess with fn to_json(access) {
   match access {
-    AppNetworkRestricted => "restricted".to_json()
-    AppNetworkEnabled => "enabled".to_json()
+    AppNetworkRestricted => ToJson::to_json("restricted")
+    AppNetworkEnabled => ToJson::to_json("enabled")
   }
 }
 
@@ -2687,15 +2687,15 @@ pub(all) enum AppReasoningEffort {
 ///|
 pub impl ToJson for AppReasoningEffort with fn to_json(effort) {
   match effort {
-    AppEffortNone => "none".to_json()
-    AppEffortMinimal => "minimal".to_json()
-    AppEffortLow => "low".to_json()
-    AppEffortMedium => "medium".to_json()
-    AppEffortHigh => "high".to_json()
-    AppEffortXhigh => "xhigh".to_json()
-    AppEffortMax => "max".to_json()
-    AppEffortUltra => "ultra".to_json()
-    AppEffortCustom(value) => value.to_json()
+    AppEffortNone => ToJson::to_json("none")
+    AppEffortMinimal => ToJson::to_json("minimal")
+    AppEffortLow => ToJson::to_json("low")
+    AppEffortMedium => ToJson::to_json("medium")
+    AppEffortHigh => ToJson::to_json("high")
+    AppEffortXhigh => ToJson::to_json("xhigh")
+    AppEffortMax => ToJson::to_json("max")
+    AppEffortUltra => ToJson::to_json("ultra")
+    AppEffortCustom(value) => ToJson::to_json(value)
   }
 }
 
@@ -2726,10 +2726,10 @@ pub(all) enum AppReasoningSummary {
 ///|
 pub impl ToJson for AppReasoningSummary with fn to_json(summary) {
   match summary {
-    AppSummaryAuto => "auto".to_json()
-    AppSummaryConcise => "concise".to_json()
-    AppSummaryDetailed => "detailed".to_json()
-    AppSummaryNone => "none".to_json()
+    AppSummaryAuto => ToJson::to_json("auto")
+    AppSummaryConcise => ToJson::to_json("concise")
+    AppSummaryDetailed => ToJson::to_json("detailed")
+    AppSummaryNone => ToJson::to_json("none")
   }
 }
 
@@ -3060,15 +3060,15 @@ pub fn AppModelListParams::new(
 
 ///|
 pub impl ToJson for AppModelListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   if params.cursor is Some(cursor) {
-    obj.set("cursor", cursor.to_json())
+    obj.set("cursor", ToJson::to_json(cursor))
   }
   if params.limit is Some(limit) {
-    obj.set("limit", limit.to_json())
+    obj.set("limit", ToJson::to_json(limit))
   }
   if params.include_hidden is Some(include_hidden) {
-    obj.set("includeHidden", include_hidden.to_json())
+    obj.set("includeHidden", ToJson::to_json(include_hidden))
   }
   Json::object(obj)
 }
@@ -3226,7 +3226,7 @@ pub impl ToJson for AppServerResponse with fn to_json(response) {
         "accessToken": access_token,
         "chatgptAccountId": chatgpt_account_id,
         "chatgptPlanType": match chatgpt_plan_type {
-          Some(value) => value.to_json()
+          Some(value) => ToJson::to_json(value)
           None => Json::null()
         },
       }
@@ -3467,8 +3467,8 @@ pub(all) enum AppNetworkPolicyRuleAction {
 ///|
 pub impl ToJson for AppNetworkPolicyRuleAction with fn to_json(action) {
   match action {
-    AppNetworkPolicyAllow => "allow".to_json()
-    AppNetworkPolicyDeny => "deny".to_json()
+    AppNetworkPolicyAllow => ToJson::to_json("allow")
+    AppNetworkPolicyDeny => ToJson::to_json("deny")
   }
 }
 
@@ -3505,10 +3505,10 @@ pub impl ToJson for AppCommandExecutionApprovalDecision with fn to_json(
   decision,
 ) {
   match decision {
-    AppCommandAccept => "accept".to_json()
-    AppCommandAcceptForSession => "acceptForSession".to_json()
-    AppCommandDecline => "decline".to_json()
-    AppCommandCancel => "cancel".to_json()
+    AppCommandAccept => ToJson::to_json("accept")
+    AppCommandAcceptForSession => ToJson::to_json("acceptForSession")
+    AppCommandDecline => ToJson::to_json("decline")
+    AppCommandCancel => ToJson::to_json("cancel")
     AppCommandAcceptWithExecpolicyAmendment(amendment) =>
       { "acceptWithExecpolicyAmendment": { "execpolicy_amendment": amendment } }
     AppCommandApplyNetworkPolicyAmendment(amendment) =>
@@ -3568,10 +3568,10 @@ pub(all) enum AppFileChangeApprovalDecision {
 ///|
 pub impl ToJson for AppFileChangeApprovalDecision with fn to_json(decision) {
   match decision {
-    AppFileChangeAccept => "accept".to_json()
-    AppFileChangeAcceptForSession => "acceptForSession".to_json()
-    AppFileChangeDecline => "decline".to_json()
-    AppFileChangeCancel => "cancel".to_json()
+    AppFileChangeAccept => ToJson::to_json("accept")
+    AppFileChangeAcceptForSession => ToJson::to_json("acceptForSession")
+    AppFileChangeDecline => ToJson::to_json("decline")
+    AppFileChangeCancel => ToJson::to_json("cancel")
   }
 }
 
@@ -3737,7 +3737,7 @@ async fn CodexAppConnection::send(
   self : CodexAppConnection,
   message : AppClientMessage,
 ) -> Unit {
-  self.outgoing.put(message.to_json())
+  self.outgoing.put(ToJson::to_json(message))
 }
 
 ///|
@@ -3788,7 +3788,7 @@ pub enum AppRequestId {
 ///|
 pub impl ToJson for AppRequestId with fn to_json(id) {
   match id {
-    StringId(value) => value.to_json()
+    StringId(value) => ToJson::to_json(value)
     IntId(value) => Json::number(value.to_double())
   }
 }
@@ -3856,7 +3856,7 @@ fn app_put_string(
   value : String?,
 ) -> Unit {
   if value is Some(value) {
-    obj.set(key, value.to_json())
+    obj.set(key, ToJson::to_json(value))
   }
 }
 
@@ -3870,7 +3870,7 @@ pub(all) enum AppNullableString {
 pub impl ToJson for AppNullableString with fn to_json(value) {
   match value {
     AppNullableStringNull => Json::null()
-    AppNullableStringValue(value) => value.to_json()
+    AppNullableStringValue(value) => ToJson::to_json(value)
   }
 }
 
@@ -3887,10 +3887,10 @@ fn app_put_nullable_string(
 
 ///|
 fn app_env_to_json(env : Map[String, String?]) -> Json {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   for key, value in env {
     match value {
-      Some(value) => obj.set(key, value.to_json())
+      Some(value) => obj.set(key, ToJson::to_json(value))
       None => obj.set(key, Json::null())
     }
   }
@@ -3900,21 +3900,21 @@ fn app_env_to_json(env : Map[String, String?]) -> Json {
 ///|
 fn app_put_bool(obj : Map[String, Json], key : String, value : Bool?) -> Unit {
   if value is Some(value) {
-    obj.set(key, value.to_json())
+    obj.set(key, ToJson::to_json(value))
   }
 }
 
 ///|
 fn app_put_true(obj : Map[String, Json], key : String, value : Bool?) -> Unit {
   if value is Some(true) {
-    obj.set(key, true.to_json())
+    obj.set(key, ToJson::to_json(true))
   }
 }
 
 ///|
 fn app_put_uint(obj : Map[String, Json], key : String, value : UInt?) -> Unit {
   if value is Some(value) {
-    obj.set(key, value.to_json())
+    obj.set(key, ToJson::to_json(value))
   }
 }
 
@@ -3950,7 +3950,7 @@ fn app_put_strings(
   value : Array[String]?,
 ) -> Unit {
   if value is Some(value) {
-    obj.set(key, value.to_json())
+    obj.set(key, ToJson::to_json(value))
   }
 }
 
@@ -4014,7 +4014,7 @@ pub impl ToJson for AppInitializeCapabilities with fn to_json(capabilities) {
     capabilities.opt_out_notification_methods,
   )
   if capabilities.extensions is Some(extensions) {
-    obj.set("extensions", extensions.to_json())
+    obj.set("extensions", ToJson::to_json(extensions))
   }
   Json::object(obj)
 }
@@ -4072,7 +4072,7 @@ pub impl ToJson for AppThreadForkParams with fn to_json(params) {
     obj.set("sandbox", value.to_json())
   }
   if params.config is Some(value) {
-    obj.set("config", value.to_json())
+    obj.set("config", ToJson::to_json(value))
   }
   app_put_string(obj, "baseInstructions", params.base_instructions)
   app_put_string(obj, "developerInstructions", params.developer_instructions)
@@ -4090,7 +4090,7 @@ pub(all) struct AppThreadMetadataGitInfoUpdateParams {
 
 ///|
 pub impl ToJson for AppThreadMetadataGitInfoUpdateParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_nullable_string(obj, "sha", params.sha)
   app_put_nullable_string(obj, "branch", params.branch)
   app_put_nullable_string(obj, "originUrl", params.origin_url)
@@ -4165,7 +4165,7 @@ pub(all) struct AppHooksListParams {
 
 ///|
 pub impl ToJson for AppHooksListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_strings(obj, "cwds", params.cwds)
   Json::object(obj)
 }
@@ -4202,7 +4202,7 @@ pub(all) struct AppMarketplaceUpgradeParams {
 
 ///|
 pub impl ToJson for AppMarketplaceUpgradeParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_string(obj, "marketplaceName", params.marketplace_name)
   Json::object(obj)
 }
@@ -4217,9 +4217,9 @@ pub(all) enum AppPluginListMarketplaceKind {
 ///|
 pub impl ToJson for AppPluginListMarketplaceKind with fn to_json(kind) {
   match kind {
-    AppPluginMarketplaceLocal => "local".to_json()
-    AppPluginMarketplaceWorkspaceDirectory => "workspace-directory".to_json()
-    AppPluginMarketplaceSharedWithMe => "shared-with-me".to_json()
+    AppPluginMarketplaceLocal => ToJson::to_json("local")
+    AppPluginMarketplaceWorkspaceDirectory => ToJson::to_json("workspace-directory")
+    AppPluginMarketplaceSharedWithMe => ToJson::to_json("shared-with-me")
   }
 }
 
@@ -4231,10 +4231,10 @@ pub(all) struct AppPluginListParams {
 
 ///|
 pub impl ToJson for AppPluginListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_strings(obj, "cwds", params.cwds)
   if params.marketplace_kinds is Some(value) {
-    obj.set("marketplaceKinds", value.to_json())
+    obj.set("marketplaceKinds", ToJson::to_json(value))
   }
   Json::object(obj)
 }
@@ -4397,7 +4397,7 @@ pub impl ToJson for AppReviewTarget with fn to_json(target) {
     AppReviewCommit(sha~, title~) => {
       let obj : Map[String, Json] = { "type": "commit", "sha": sha }
       match title {
-        Some(title) => obj.set("title", title.to_json())
+        Some(title) => obj.set("title", ToJson::to_json(title))
         None => obj.set("title", Json::null())
       }
       Json::object(obj)
@@ -4416,8 +4416,8 @@ pub(all) enum AppReviewDelivery {
 ///|
 pub impl ToJson for AppReviewDelivery with fn to_json(delivery) {
   match delivery {
-    AppReviewInline => "inline".to_json()
-    AppReviewDetached => "detached".to_json()
+    AppReviewInline => ToJson::to_json("inline")
+    AppReviewDetached => ToJson::to_json("detached")
   }
 }
 
@@ -4448,7 +4448,7 @@ pub(all) struct AppCursorLimitParams {
 
 ///|
 pub impl ToJson for AppCursorLimitParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_string(obj, "cursor", params.cursor)
   app_put_uint(obj, "limit", params.limit)
   Json::object(obj)
@@ -4490,8 +4490,8 @@ pub(all) enum AppMcpServerStatusDetail {
 ///|
 pub impl ToJson for AppMcpServerStatusDetail with fn to_json(detail) {
   match detail {
-    AppMcpServerStatusFull => "full".to_json()
-    AppMcpServerStatusToolsAndAuthOnly => "toolsAndAuthOnly".to_json()
+    AppMcpServerStatusFull => ToJson::to_json("full")
+    AppMcpServerStatusToolsAndAuthOnly => ToJson::to_json("toolsAndAuthOnly")
   }
 }
 
@@ -4504,7 +4504,7 @@ pub(all) struct AppMcpServerStatusListParams {
 
 ///|
 pub impl ToJson for AppMcpServerStatusListParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_string(obj, "cursor", params.cursor)
   app_put_uint(obj, "limit", params.limit)
   if params.detail is Some(value) {
@@ -4557,8 +4557,8 @@ pub(all) enum AppWindowsSandboxSetupMode {
 ///|
 pub impl ToJson for AppWindowsSandboxSetupMode with fn to_json(mode) {
   match mode {
-    AppWindowsSandboxElevated => "elevated".to_json()
-    AppWindowsSandboxUnelevated => "unelevated".to_json()
+    AppWindowsSandboxElevated => ToJson::to_json("elevated")
+    AppWindowsSandboxUnelevated => ToJson::to_json("unelevated")
   }
 }
 
@@ -4641,8 +4641,8 @@ pub(all) enum AppAddCreditsNudgeKind {
 ///|
 pub impl ToJson for AppAddCreditsNudgeKind with fn to_json(kind) {
   match kind {
-    AppNudgeCredits => "credits".to_json()
-    AppNudgeUsageLimit => "usage_limit".to_json()
+    AppNudgeCredits => ToJson::to_json("credits")
+    AppNudgeUsageLimit => ToJson::to_json("usage_limit")
   }
 }
 
@@ -4676,7 +4676,7 @@ pub impl ToJson for AppFeedbackUploadParams with fn to_json(params) {
   app_put_string(obj, "threadId", params.thread_id)
   app_put_strings(obj, "extraLogFiles", params.extra_log_files)
   if params.tags is Some(value) {
-    obj.set("tags", value.to_json())
+    obj.set("tags", ToJson::to_json(value))
   }
   Json::object(obj)
 }
@@ -4777,7 +4777,7 @@ pub(all) struct AppExternalAgentConfigDetectParams {
 
 ///|
 pub impl ToJson for AppExternalAgentConfigDetectParams with fn to_json(params) {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   app_put_true(obj, "includeHome", params.include_home)
   app_put_strings(obj, "cwds", params.cwds)
   Json::object(obj)
@@ -4809,15 +4809,15 @@ pub impl ToJson for AppExternalAgentConfigMigrationItemType with fn to_json(
   item_type,
 ) {
   match item_type {
-    AppMigrationAgentsMd => "AGENTS_MD".to_json()
-    AppMigrationConfig => "CONFIG".to_json()
-    AppMigrationSkills => "SKILLS".to_json()
-    AppMigrationPlugins => "PLUGINS".to_json()
-    AppMigrationMcpServerConfig => "MCP_SERVER_CONFIG".to_json()
-    AppMigrationSubagents => "SUBAGENTS".to_json()
-    AppMigrationHooks => "HOOKS".to_json()
-    AppMigrationCommands => "COMMANDS".to_json()
-    AppMigrationSessions => "SESSIONS".to_json()
+    AppMigrationAgentsMd => ToJson::to_json("AGENTS_MD")
+    AppMigrationConfig => ToJson::to_json("CONFIG")
+    AppMigrationSkills => ToJson::to_json("SKILLS")
+    AppMigrationPlugins => ToJson::to_json("PLUGINS")
+    AppMigrationMcpServerConfig => ToJson::to_json("MCP_SERVER_CONFIG")
+    AppMigrationSubagents => ToJson::to_json("SUBAGENTS")
+    AppMigrationHooks => ToJson::to_json("HOOKS")
+    AppMigrationCommands => ToJson::to_json("COMMANDS")
+    AppMigrationSessions => ToJson::to_json("SESSIONS")
   }
 }
 
@@ -4951,7 +4951,7 @@ pub(all) struct AppSessionMigration {
 pub impl ToJson for AppSessionMigration with fn to_json(migration) {
   let obj : Map[String, Json] = { "path": migration.path, "cwd": migration.cwd }
   match migration.title {
-    Some(title) => obj.set("title", title.to_json())
+    Some(title) => obj.set("title", ToJson::to_json(title))
     None => obj.set("title", Json::null())
   }
   Json::object(obj)
@@ -5026,8 +5026,8 @@ pub(all) enum AppMergeStrategy {
 ///|
 pub impl ToJson for AppMergeStrategy with fn to_json(strategy) {
   match strategy {
-    AppMergeReplace => "replace".to_json()
-    AppMergeUpsert => "upsert".to_json()
+    AppMergeReplace => ToJson::to_json("replace")
+    AppMergeUpsert => ToJson::to_json("upsert")
   }
 }
 
@@ -5106,7 +5106,7 @@ pub(all) struct AppFuzzyFileSearchParams {
 pub impl ToJson for AppFuzzyFileSearchParams with fn to_json(params) {
   let obj : Map[String, Json] = { "query": params.query, "roots": params.roots }
   match params.cancellation_token {
-    Some(value) => obj.set("cancellationToken", value.to_json())
+    Some(value) => obj.set("cancellationToken", ToJson::to_json(value))
     None => obj.set("cancellationToken", Json::null())
   }
   Json::object(obj)
@@ -10373,9 +10373,7 @@ pub impl FromJson for AppThreadItem with fn from_json(value, path) {
       AppThreadPlanItem(id~, text~)
     }
     "reasoning" => {
-      guard obj is { "summary"? : summary, "content"? : content, .. } else {
-        raise JsonDecodeError((path, "expected reasoning item"))
-      }
+      guard obj is { "summary"? : summary, "content"? : content, .. }
       AppThreadReasoningItem(
         id~,
         summary=match summary {
