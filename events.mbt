@@ -63,7 +63,10 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "thread.started" => {
       guard obj is { "thread_id": String(thread_id), .. } else {
         raise JsonDecodeError(
-          (path, "expected ThreadStarted event, got \{@debug.Debug::to_repr(obj)}"),
+          (
+            path,
+            "expected ThreadStarted event, got \{@debug.Debug::to_repr(obj)}",
+          ),
         )
       }
       ThreadStarted(thread_id~)
@@ -72,7 +75,10 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
     "turn.completed" => {
       guard obj is { "usage": usage_json, .. } else {
         raise JsonDecodeError(
-          (path, "expected TurnCompleted event, got \{@debug.Debug::to_repr(obj)}"),
+          (
+            path,
+            "expected TurnCompleted event, got \{@debug.Debug::to_repr(obj)}",
+          ),
         )
       }
       let usage = @json.FromJson::from_json(usage_json, path.add_key("usage")) catch {
@@ -123,16 +129,16 @@ pub impl @json.FromJson for Event with fn from_json(value, path) {
 /// Describes the usage of tokens during a turn.
 pub struct Usage {
   /// The number of input tokens used during the turn
-  input_tokens : Int
+  input_tokens : Int32
   /// The number of cached input tokens used during the turn
-  cached_input_tokens : Int
+  cached_input_tokens : Int32
   /// The number of input tokens written to the prompt cache during the turn.
   /// Older Codex versions omit this field; omitted values decode as zero.
-  cache_write_input_tokens : Int
+  cache_write_input_tokens : Int32
   /// The number of output tokens used during the turn
-  output_tokens : Int
+  output_tokens : Int32
   /// The number of reasoning output tokens used during the turn
-  reasoning_output_tokens : Int
+  reasoning_output_tokens : Int32
 } derive(Debug)
 
 ///|

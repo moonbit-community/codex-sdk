@@ -57,7 +57,7 @@ fn AppServerOptions::initialize_params(
 /// handshake, then closes the send side when the callback returns or raises.
 pub async fn[R] Codex::with_app_server(
   self : Codex,
-  options? : AppServerOptions = AppServerOptions::default(),
+  options~ : AppServerOptions = AppServerOptions::default(),
   request_handler? : async (AppServerRequest) -> AppServerResponse,
   body : async (CodexAppConnection) -> R,
 ) -> R {
@@ -77,7 +77,7 @@ pub async fn[R] Codex::with_app_server(
 fn[G] Codex::spawn_app_server(
   self : Codex,
   taskgroup : @async.TaskGroup[G],
-  options? : AppServerOptions = AppServerOptions::default(),
+  options~ : AppServerOptions = AppServerOptions::default(),
 ) -> CodexAppConnection raise Error {
   let executable_path = match options.executable_path_override {
     Some(path) => path
@@ -166,7 +166,7 @@ struct CodexAppConnection {
   events : @async.Queue[AppQueuedServerEvent]
   requests : @async.Queue[AppServerRequest]
   mut pending : Array[AppPendingRequest]
-  mut next_request_id : Int
+  mut next_request_id : Int32
   mut events_closed : Bool
 }
 
@@ -239,7 +239,7 @@ async fn CodexAppConnection::call(
 }
 
 ///|
-fn app_server_overload_retry_delay(attempt : Int) -> Int {
+fn app_server_overload_retry_delay(attempt : Int32) -> Int32 {
   match attempt {
     0 => 50
     1 => 100
@@ -768,13 +768,13 @@ pub impl ToJson for AppThreadResumeParams with fn to_json(params) {
 ///|
 pub struct AppThreadLoadedListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
 } derive(Debug)
 
 ///|
 pub fn AppThreadLoadedListParams::new(
   cursor? : String,
-  limit? : UInt,
+  limit? : UInt32,
 ) -> AppThreadLoadedListParams {
   { cursor, limit, }
 }
@@ -1073,7 +1073,7 @@ pub impl FromJson for AppSkillsListResponse with fn from_json(value, path) {
 ///|
 pub struct AppListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   thread_id : String?
   force_refetch : Bool?
 } derive(Debug)
@@ -1081,7 +1081,7 @@ pub struct AppListParams {
 ///|
 pub fn AppListParams::new(
   cursor? : String,
-  limit? : UInt,
+  limit? : UInt32,
   thread_id? : String,
   force_refetch? : Bool,
 ) -> AppListParams {
@@ -1985,7 +1985,7 @@ pub impl FromJson for AppModelProviderCapabilitiesReadResponse with fn from_json
 /// Parameters for the app-server `thread/list` request.
 pub struct AppThreadListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   sort_key : AppThreadSortKey?
   sort_direction : AppSortDirection?
   model_providers : Array[String]?
@@ -1999,7 +1999,7 @@ pub struct AppThreadListParams {
 ///|
 pub fn AppThreadListParams::new(
   cursor? : String,
-  limit? : UInt,
+  limit? : UInt32,
   sort_key? : AppThreadSortKey,
   sort_direction? : AppSortDirection,
   model_providers? : Array[String],
@@ -3044,7 +3044,7 @@ pub struct AppModelListParams {
   /// Opaque pagination cursor returned by a previous call.
   cursor : String?
   /// Optional page size; defaults to a server-side value.
-  limit : UInt?
+  limit : UInt32?
   /// Include models hidden from the default picker list.
   include_hidden : Bool?
 } derive(Debug)
@@ -3052,7 +3052,7 @@ pub struct AppModelListParams {
 ///|
 pub fn AppModelListParams::new(
   cursor? : String,
-  limit? : UInt,
+  limit? : UInt32,
   include_hidden? : Bool,
 ) -> AppModelListParams {
   { cursor, limit, include_hidden, }
@@ -3912,7 +3912,7 @@ fn app_put_true(obj : Map[String, Json], key : String, value : Bool?) -> Unit {
 }
 
 ///|
-fn app_put_uint(obj : Map[String, Json], key : String, value : UInt?) -> Unit {
+fn app_put_uint(obj : Map[String, Json], key : String, value : UInt32?) -> Unit {
   if value is Some(value) {
     obj.set(key, ToJson::to_json(value))
   }
@@ -3982,8 +3982,8 @@ pub(all) struct AppInitializeCapabilities {
 
 ///|
 pub fn AppInitializeCapabilities::new(
-  experimental_api? : Bool = false,
-  request_attestation? : Bool = false,
+  experimental_api~ : Bool = false,
+  request_attestation~ : Bool = false,
   mcp_server_openai_form_elicitation? : Bool,
   opt_out_notification_methods? : Array[String],
   extensions? : Map[String, Json],
@@ -4139,7 +4139,7 @@ pub impl ToJson for AppThreadApproveGuardianDeniedActionParams with fn to_json(
 ///|
 pub(all) struct AppThreadRollbackParams {
   thread_id : String
-  num_turns : UInt
+  num_turns : UInt32
 } derive(Debug)
 
 ///|
@@ -4218,7 +4218,8 @@ pub(all) enum AppPluginListMarketplaceKind {
 pub impl ToJson for AppPluginListMarketplaceKind with fn to_json(kind) {
   match kind {
     AppPluginMarketplaceLocal => ToJson::to_json("local")
-    AppPluginMarketplaceWorkspaceDirectory => ToJson::to_json("workspace-directory")
+    AppPluginMarketplaceWorkspaceDirectory =>
+      ToJson::to_json("workspace-directory")
     AppPluginMarketplaceSharedWithMe => ToJson::to_json("shared-with-me")
   }
 }
@@ -4443,7 +4444,7 @@ pub impl ToJson for AppReviewStartParams with fn to_json(params) {
 ///|
 pub(all) struct AppCursorLimitParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
 } derive(Debug)
 
 ///|
@@ -4498,7 +4499,7 @@ pub impl ToJson for AppMcpServerStatusDetail with fn to_json(detail) {
 ///|
 pub(all) struct AppMcpServerStatusListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   detail : AppMcpServerStatusDetail?
 } derive(Debug)
 
@@ -6720,7 +6721,7 @@ pub struct AppRateLimitSnapshot {
 
 ///|
 pub struct AppRateLimitWindow {
-  used_percent : Int
+  used_percent : Int32
   window_duration_mins : Int64?
   resets_at : Int64?
 } derive(Debug)
@@ -6956,7 +6957,7 @@ pub impl FromJson for AppFeedbackUploadResponse with fn from_json(value, path) {
 
 ///|
 pub struct AppCommandExecResponse {
-  exit_code : Int
+  exit_code : Int32
   stdout : String
   stderr : String
 } derive(Debug)
@@ -7381,8 +7382,8 @@ pub struct AppFuzzyFileSearchResult {
   path : String
   match_type : AppFuzzyFileSearchMatchType
   file_name : String
-  score : UInt
-  indices : ArrayView[UInt]?
+  score : UInt32
+  indices : ArrayView[UInt32]?
 } derive(Debug)
 
 ///|
@@ -9557,7 +9558,7 @@ pub enum AppSubAgentSource {
   AppSubAgentCompact
   AppSubAgentThreadSpawn(
     parent_thread_id~ : String,
-    depth~ : Int,
+    depth~ : Int32,
     agent_path~ : String?,
     agent_nickname~ : String?,
     agent_role~ : String?
@@ -9847,8 +9848,8 @@ pub impl FromJson for AppMessagePhase with fn from_json(value, path) {
 ///|
 pub struct AppMemoryCitationEntry {
   path : String
-  line_start : UInt
-  line_end : UInt
+  line_start : UInt32
+  line_end : UInt32
   note : String
 } derive(Debug)
 
@@ -10258,7 +10259,7 @@ pub enum AppThreadItem {
     status~ : AppThreadCommandExecutionStatus,
     command_actions~ : ArrayView[AppCommandAction],
     aggregated_output~ : String?,
-    exit_code~ : Int?,
+    exit_code~ : Int32?,
     duration_ms~ : Int64?
   )
   AppThreadFileChangeItem(
@@ -10674,15 +10675,15 @@ pub enum AppCodexErrorInfo {
   AppUsageLimitExceeded
   AppServerOverloaded
   AppCyberPolicy
-  AppHttpConnectionFailed(http_status_code~ : Int?)
-  AppResponseStreamConnectionFailed(http_status_code~ : Int?)
+  AppHttpConnectionFailed(http_status_code~ : Int32?)
+  AppResponseStreamConnectionFailed(http_status_code~ : Int32?)
   AppInternalServerError
   AppUnauthorized
   AppBadRequest
   AppThreadRollbackFailed
   AppSandboxError
-  AppResponseStreamDisconnected(http_status_code~ : Int?)
-  AppResponseTooManyFailedAttempts(http_status_code~ : Int?)
+  AppResponseStreamDisconnected(http_status_code~ : Int32?)
+  AppResponseTooManyFailedAttempts(http_status_code~ : Int32?)
   AppActiveTurnNotSteerable(turn_kind~ : AppNonSteerableTurnKind)
   AppCodexOtherError
 } derive(Debug)
@@ -11192,7 +11193,7 @@ fn app_collab_tool(
 fn app_codex_error_http_status_code(
   value : Json,
   path : @json.JsonPath,
-) -> Int? raise @json.JsonDecodeError {
+) -> Int32? raise @json.JsonDecodeError {
   guard value is { "httpStatusCode"? : http_status_code, .. } else {
     raise @json.JsonDecodeError((path, "expected codex error info payload"))
   }
@@ -11227,7 +11228,7 @@ fn app_optional_string(
 fn app_optional_int(
   value : Json?,
   path : @json.JsonPath,
-) -> Int? raise @json.JsonDecodeError {
+) -> Int32? raise @json.JsonDecodeError {
   match value {
     Some(Number(value, ..)) => Some(value.to_int())
     Some(Null) | None => None
@@ -11251,7 +11252,7 @@ fn app_optional_int64(
 fn app_optional_uint(
   value : Json?,
   path : @json.JsonPath,
-) -> UInt? raise @json.JsonDecodeError {
+) -> UInt32? raise @json.JsonDecodeError {
   match value {
     Some(Number(value, ..)) => Some(value.to_uint())
     Some(Null) | None => None

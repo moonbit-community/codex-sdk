@@ -46,7 +46,7 @@ priv struct CodexExec {
 ///
 /// # Arguments
 /// * `executable_path` - Optional path to the codex executable. Default to "codex".
-fn CodexExec::new(executable_path? : String = "codex") -> CodexExec {
+fn CodexExec::new(executable_path~ : String = "codex") -> CodexExec {
   // For simplicity, we assume "codex" is in PATH if not provided.
   { executable_path, }
 }
@@ -134,7 +134,9 @@ async fn[T] CodexExec::run(
   }
   if args.thread_options.web_search_mode is Some(mode) {
     command_args.push("--config")
-    command_args.push("web_search=\{ToJson::to_json(mode.to_string()).stringify()}")
+    command_args.push(
+      "web_search=\{ToJson::to_json(mode.to_string()).stringify()}",
+    )
   } else if args.thread_options.web_search_enabled is Some(true) {
     command_args.push("--config")
     command_args.push("web_search=\"live\"")

@@ -254,7 +254,7 @@ pub async fn GitRepo::checkout(self : GitRepo, branch_name : String) -> Bool {
 pub async fn GitRepo::commit(
   self : GitRepo,
   message : String,
-  add_all? : Bool = true,
+  add_all~ : Bool = true,
 ) -> Bool {
   if add_all {
     let add_status = @process.run("git", ["add", "-A"], cwd=self.path)
@@ -277,9 +277,9 @@ pub async fn GitRepo::commit(
 /// True if successful, false otherwise
 pub async fn GitRepo::push(
   self : GitRepo,
-  remote? : String = "origin",
+  remote~ : String = "origin",
   branch? : String,
-  set_upstream? : Bool = false,
+  set_upstream~ : Bool = false,
 ) -> Unit {
   let args = ["push"]
   if set_upstream {
@@ -369,7 +369,7 @@ pub async fn GitRepo::current_branch(self : GitRepo) -> String? {
 /// Default branch name or None if unable to determine
 pub async fn GitRepo::get_default_branch(
   self : GitRepo,
-  remote? : String = "origin",
+  remote~ : String = "origin",
 ) -> String? {
   let (pipe, process_write) = @process.read_from_process()
   let status = @process.run(
@@ -402,7 +402,7 @@ pub async fn GitRepo::get_default_branch(
 /// True if successful, false otherwise
 pub async fn GitRepo::fetch(
   self : GitRepo,
-  remote? : String = "origin",
+  remote~ : String = "origin",
   branch? : String,
 ) -> Bool {
   let args = ["fetch", remote]
@@ -423,7 +423,7 @@ pub async fn GitRepo::fetch(
 /// True if successful, false otherwise
 pub async fn GitRepo::pull(
   self : GitRepo,
-  remote? : String = "origin",
+  remote~ : String = "origin",
   branch? : String,
 ) -> Unit {
   let args = ["pull", remote]
@@ -496,7 +496,7 @@ pub async fn GitRepo::create_workspace(
   self : GitRepo,
   path : String,
   branch : String,
-  create_branch? : Bool = false,
+  create_branch~ : Bool = false,
 ) -> IsolatedWorkspace? {
   let args = if create_branch {
     ["worktree", "add", "-b", branch, path]
@@ -526,7 +526,7 @@ pub async fn[T] with_workspace(
   repo : GitRepo,
   path : String,
   branch : String,
-  create_branch? : Bool = false,
+  create_branch~ : Bool = false,
   work : async (IsolatedWorkspace) -> T,
 ) -> T {
   match repo.create_workspace(path, branch, create_branch~) {

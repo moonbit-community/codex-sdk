@@ -87,13 +87,13 @@ pub impl ToJson for AppThreadSectionAppearanceUpdate with fn to_json(update) {
 ///|
 pub(all) struct AppThreadSectionListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
 } derive(Debug, Default)
 
 ///|
 pub fn AppThreadSectionListParams::new(
   cursor? : String,
-  limit? : UInt,
+  limit? : UInt32,
 ) -> AppThreadSectionListParams {
   { cursor, limit, }
 }

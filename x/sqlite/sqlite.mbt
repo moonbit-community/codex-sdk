@@ -142,7 +142,7 @@ pub async fn Database::ensure(self : Database) -> Unit {
 
 ///|
 /// Get the number of rows from a table
-pub async fn Database::count(self : Database, table : String) -> Int {
+pub async fn Database::count(self : Database, table : String) -> Int32 {
   try {
     let sql = "SELECT COUNT(*) FROM \{table};"
     let count_str = self.exec_string(sql).trim(chars=" \t\n\r") catch {

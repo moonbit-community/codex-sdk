@@ -23,7 +23,7 @@ pub enum ThreadItem {
     id~ : String,
     command~ : String,
     aggregated_output~ : String,
-    exit_code~ : Int?,
+    exit_code~ : Int32?,
     status~ : CommandExecutionStatus
   )
   /// A set of file changes by the agent. Emitted once the patch succeeds or fails.
@@ -165,7 +165,10 @@ pub impl @json.FromJson for ThreadItem with fn from_json(value, path) {
           ..
         } else {
         raise JsonDecodeError(
-          (path, "expected CommandExecutionItem, got \{@debug.Debug::to_repr(obj)}"),
+          (
+            path,
+            "expected CommandExecutionItem, got \{@debug.Debug::to_repr(obj)}",
+          ),
         )
       }
       let exit_code = match exit_code {

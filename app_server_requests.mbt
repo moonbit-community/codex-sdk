@@ -689,8 +689,8 @@ pub impl FromJson for AppMcpElicitationPrimitiveSchema with fn from_json(
 pub(all) struct AppMcpElicitationStringSchema {
   title : String?
   description : String?
-  min_length : UInt?
-  max_length : UInt?
+  min_length : UInt32?
+  max_length : UInt32?
   format : AppMcpElicitationStringFormat?
   default : String?
 } derive(Debug)
