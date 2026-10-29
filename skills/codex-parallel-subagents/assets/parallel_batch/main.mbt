@@ -1,13 +1,13 @@
 ///|
 struct Task {
-  index : Int
+  index : Int32
   label : String
   prompt : String
 }
 
 ///|
 struct TaskResult {
-  index : Int
+  index : Int32
   label : String
   output : String
   error : String?
@@ -21,17 +21,17 @@ struct TaskInput {
 
 ///|
 /// Parse command line arguments
-fn parse_args(args : Array[String]) -> (Int, Int, String?) {
+fn parse_args(args : Array[String]) -> (Int32, Int32, String?) {
   let mut offset = 0
   let mut limit = -1
   let mut file : String? = None
   loop args[:] {
     ["--offset", val, .. rest] => {
-      offset = @strconv.parse_int(val) catch { _ => 0 }
+      offset = @string.parse_int(val) catch { _ => 0 }
       continue rest
     }
     ["--limit", val, .. rest] => {
-      limit = @strconv.parse_int(val) catch { _ => -1 }
+      limit = @string.parse_int(val) catch { _ => -1 }
       continue rest
     }
     ["--file", val, .. rest] => {
@@ -66,8 +66,8 @@ async fn read_tasks(file : String?) -> Array[Task] raise Error {
 ///|
 /// Log progress to stderr
 async fn log_progress(
-  completed : Int,
-  total : Int,
+  completed : Int32,
+  total : Int32,
   label : String,
   success : Bool,
 ) -> Unit {
@@ -128,7 +128,7 @@ async fn main {
   let (offset, limit, file) = parse_args(args)
   let workdir = env.get("CODEX_WORKDIR").unwrap_or(".")
   let parallelism_str = env.get("PARALLELISM").unwrap_or("2")
-  let parallelism = @strconv.parse_int(parallelism_str) catch { _ => 2 }
+  let parallelism = @string.parse_int(parallelism_str) catch { _ => 2 }
 
   // Read tasks from file or stdin
   let all_tasks = read_tasks(file) catch {

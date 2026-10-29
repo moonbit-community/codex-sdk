@@ -2,7 +2,7 @@
 package "moonbit-community/codex-example/real_world/shared"
 
 // Values
-pub async fn[A, B] for_all_tasks(Array[A], async (Int, A) -> B, parallelism? : Int) -> Array[B]
+pub async fn[A, B] for_all_tasks(Array[A], async (Int32, A) -> B, parallelism? : Int32) -> Array[B]
 
 // Errors
 

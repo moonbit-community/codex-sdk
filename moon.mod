@@ -1,10 +1,10 @@
 name = "moonbit-community/codex"
 
-version = "0.151.0"
+version = "0.151.1"
 
 import {
-  "moonbitlang/async@0.22.4",
-  "moonbitlang/x@0.4.38",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/x@0.5.6",
 }
 
 readme = "README.mbt.md"

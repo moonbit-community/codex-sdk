@@ -7,24 +7,20 @@ pub async fn initialize() -> Job
 // Errors
 pub suberror AppErrors {
   NeedHelp(String)
-}
-pub impl Show for AppErrors
+} derive(Show)
 
 pub suberror PlanError {
   InvalidJson(String)
   MissingPackages(Array[String])
-}
-pub impl Show for PlanError
+} derive(Show)
 
 pub suberror ReviewError {
   EmptyResponse
-}
-pub impl Show for ReviewError
+} derive(Show)
 
 pub suberror SummarizeError {
   EmptyResponse
-}
-pub impl Show for SummarizeError
+} derive(Show)
 
 // Types and methods
 pub struct GroupReview {
@@ -33,39 +29,37 @@ pub struct GroupReview {
   review : String
   success : Bool
   error : String
-}
-pub impl Show for GroupReview
+} derive(Show)
 
 pub struct Job {
   project_root : String
   output_dir : String
-  concurrency : Int
+  concurrency : Int32
   verbose : Bool
   files : Array[String]
+  custom_prompt : String
 }
 pub async fn Job::plan_start(Self, Array[PackageSummary]) -> PlanHandle
-pub async fn Job::review_start(Self, Int, PackageGroup) -> ReviewHandle
+pub async fn Job::review_start(Self, Int32, PackageGroup) -> ReviewHandle
 pub async fn Job::summarize_results(Self, Array[GroupReview]) -> Unit
-pub async fn Job::summarize_start(Self, Int) -> SummarizeHandle
+pub async fn Job::summarize_start(Self, Int32) -> SummarizeHandle
 
 pub struct PackageGroup {
   name : String
   packages : Array[String]
   rationale : String
-}
-pub impl Show for PackageGroup
+} derive(Show)
 
 pub struct PackageSummary {
   pkg_path : String
   file_path : String
   summary : String
-}
-pub impl Show for PackageSummary
+} derive(Show)
 
 pub struct PlanHandle {
   summaries : Array[PackageSummary]
   config : Job
-  mut attempt : Int
+  mut attempt : Int32
   mut last_error : String
 }
 pub async fn PlanHandle::error(Self, Error) -> Array[PackageGroup]
@@ -76,8 +70,8 @@ pub fn PlanHandle::validate(Self, String) -> Array[PackageGroup] raise PlanError
 pub struct ReviewHandle {
   group : PackageGroup
   config : Job
-  idx : Int
-  mut attempt : Int
+  idx : Int32
+  mut attempt : Int32
   content_sections : String
   mut last_error : String
 }
@@ -90,8 +84,8 @@ pub struct SummarizeHandle {
   file_path : String
   pkg_path : String
   config : Job
-  idx : Int
-  mut attempt : Int
+  idx : Int32
+  mut attempt : Int32
   content : String
   mut last_error : String
 }

@@ -1,6 +1,6 @@
 ///|
 test "parse started command execution with empty output" {
-  let event : Event = @json.from_json(
+  let event : @codex.Event = @json.from_json(
     @json.parse(
       (
         #|{
@@ -55,7 +55,7 @@ test "parse started command execution with empty output" {
 
 ///|
 test "parse declined command execution" {
-  let event : Event = @json.from_json(
+  let event : @codex.Event = @json.from_json(
     @json.parse(
       (
         #|{
@@ -84,7 +84,7 @@ test "parse declined command execution" {
 
 ///|
 test "parse completed collab tool call" {
-  let event : Event = @json.from_json(
+  let event : @codex.Event = @json.from_json(
     @json.parse(
       (
         #|{
@@ -148,7 +148,7 @@ test "parse completed collab tool call" {
 
 ///|
 test "parse in-progress file change" {
-  let event : Event = @json.from_json(
+  let event : @codex.Event = @json.from_json(
     @json.parse(
       (
         #|{
@@ -183,7 +183,7 @@ test "parse in-progress file change" {
 
 ///|
 test "parse in-progress mcp tool call with null result and error" {
-  let event : Event = @json.from_json(
+  let event : @codex.Event = @json.from_json(
     @json.parse(
       (
         #|{
@@ -215,7 +215,7 @@ test "parse in-progress mcp tool call with null result and error" {
 
 ///|
 test "parse turn completed usage with reasoning tokens" {
-  let event : Event = @json.from_json(
+  let event : @codex.Event = @json.from_json(
     @json.parse(
       (
         #|{
@@ -250,7 +250,7 @@ test "parse turn completed usage with reasoning tokens" {
 
 ///|
 test "parse turn completed usage with prompt cache writes" {
-  let event : Event = @json.from_json(
+  let event : @codex.Event = @json.from_json(
     @json.parse(
       (
         #|{
@@ -290,7 +290,7 @@ test "parse turn completed usage with prompt cache writes" {
 
 ///|
 test "parse failed mcp tool call with null result" {
-  let event : Event = @json.from_json(
+  let event : @codex.Event = @json.from_json(
     @json.parse(
       (
         #|{

@@ -16,7 +16,7 @@ pub struct Dag {
 ///|
 /// Options for running the DAG.
 pub struct RunOptions {
-  concurrency : Int
+  concurrency : Int32
   working_directory : String
   model : String?
 }
@@ -25,16 +25,16 @@ pub struct RunOptions {
 priv struct Graph {
   nodes : Map[String, DagNode]
   dependents : Map[String, Array[String]]
-  remaining : Map[String, Int]
+  remaining : Map[String, Int32]
 }
 
 ///|
 pub fn RunOptions::new(
   working_directory : String,
-  concurrency : Int,
+  concurrency : Int32,
   model? : String,
 ) -> RunOptions {
-  { concurrency, working_directory, model }
+  { concurrency, working_directory, model, }
 }
 
 ///|
@@ -175,7 +175,7 @@ fn build_graph(dag : Dag) -> Graph raise {
     nodes[node.id] = node
   }
   let dependents : Map[String, Array[String]] = {}
-  let remaining : Map[String, Int] = {}
+  let remaining : Map[String, Int32] = {}
   for node in dag.nodes {
     remaining[node.id] = node.deps.length()
     for dep in node.deps {
@@ -187,7 +187,7 @@ fn build_graph(dag : Dag) -> Graph raise {
       dependents[dep] = list
     }
   }
-  { nodes, dependents, remaining }
+  { nodes, dependents, remaining, }
 }
 
 ///|

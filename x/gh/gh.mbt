@@ -38,7 +38,7 @@ pub async fn ensure_available() -> Unit raise Error {
 ///|
 /// PR state information from GitHub
 pub struct PrInfo {
-  number : Int
+  number : Int32
   url : String
   state : String // OPEN, CLOSED, MERGED
   mergeable : String // MERGEABLE, CONFLICTING, UNKNOWN
@@ -55,9 +55,7 @@ pub async fn create_pr(
   base : String,
   head : String,
 ) -> String raise Error {
-  ensure_available() catch {
-    e => raise e
-  }
+  ensure_available()
   let (pipe, process_read) = @process.read_from_process()
   let (err_pipe, process_err) = @process.read_from_process()
   let status = @process.run(
@@ -82,7 +80,7 @@ pub async fn create_pr(
 ///|
 /// Extract PR number from GitHub PR URL
 /// Example: https://github.com/owner/repo/pull/123 -> Some(123)
-pub fn extract_pr_number(pr_url : StringView) -> Int? {
+pub fn extract_pr_number(pr_url : StringView) -> Int32? {
   let parts = pr_url.split("/").to_array()
   if parts.length() > 0 {
     let last = parts[parts.length() - 1].to_owned().trim(char_set=" \t\n\r")
@@ -99,7 +97,7 @@ pub fn extract_pr_number(pr_url : StringView) -> Int? {
 
 ///|
 /// Get PR state information from GitHub
-pub async fn get_pr_state(repo_path : String, pr_number : Int) -> PrInfo {
+pub async fn get_pr_state(repo_path : String, pr_number : Int32) -> PrInfo {
   let (status, stdout, stderr) = @process.collect_output(
     "gh",
     [
@@ -145,11 +143,9 @@ pub async fn get_pr_state(repo_path : String, pr_number : Int) -> PrInfo {
 /// Get PR review comments
 pub async fn get_pr_comments(
   repo_path : String,
-  pr_number : Int,
+  pr_number : Int32,
 ) -> String raise Error {
-  ensure_available() catch {
-    e => raise e
-  }
+  ensure_available()
   let (status, stdout, stderr) = @process.collect_output(
     "gh",
     ["pr", "view", pr_number.to_string(), "--comments"],

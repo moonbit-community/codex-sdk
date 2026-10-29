@@ -1,0 +1,99 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "multi_phase/app"
+
+// Values
+pub async fn[A, B] for_all_tasks(Array[A], async (Int32, A) -> B, parallelism? : Int32) -> Array[B]
+
+pub async fn initialize() -> Job
+
+// Errors
+pub suberror AppErrors {
+  NeedHelp(String)
+} derive(Show)
+
+pub suberror PlanError {
+  InvalidJson(String)
+  MissingItems(Array[String])
+} derive(Show)
+
+pub suberror ProcessError {
+  EmptyResponse
+} derive(Show)
+
+pub suberror SummarizeError {
+  EmptyResponse
+} derive(Show)
+
+// Types and methods
+pub struct GroupResult {
+  group_name : String
+  items : Array[String]
+  result : String
+  success : Bool
+  error : String
+} derive(Show)
+
+pub struct ItemGroup {
+  name : String
+  items : Array[String]
+  rationale : String
+} derive(Show)
+
+pub struct ItemSummary {
+  item : String
+  content : String
+  summary : String
+} derive(Show)
+
+pub struct Job {
+  project_root : String
+  items : Array[String]
+  parallelism : Int32
+  output_dir : String
+  verbose : Bool
+}
+pub async fn Job::plan_start(Self, Array[ItemSummary]) -> PlanHandle
+pub async fn Job::process_start(Self, Int32, ItemGroup) -> ProcessHandle
+pub async fn Job::summarize_results(Self, Array[GroupResult]) -> Unit
+pub async fn Job::summarize_start(Self, Int32) -> SummarizeHandle
+
+pub struct PlanHandle {
+  summaries : Array[ItemSummary]
+  config : Job
+  mut attempt : Int32
+  mut last_error : String
+}
+pub async fn PlanHandle::error(Self, Error) -> Array[ItemGroup]
+pub async fn PlanHandle::finish(Self, Array[ItemGroup]) -> Array[ItemGroup]
+pub fn PlanHandle::prompt(Self) -> String
+pub fn PlanHandle::validate(Self, String) -> Array[ItemGroup] raise PlanError
+
+pub struct ProcessHandle {
+  group : ItemGroup
+  config : Job
+  idx : Int32
+  mut attempt : Int32
+  content_sections : String
+  mut last_error : String
+}
+pub async fn ProcessHandle::error(Self, Error) -> GroupResult
+pub async fn ProcessHandle::finish(Self, String) -> GroupResult
+pub fn ProcessHandle::prompt(Self) -> String
+pub fn ProcessHandle::validate(Self, String) -> String raise ProcessError
+
+pub struct SummarizeHandle {
+  item : String
+  config : Job
+  idx : Int32
+  mut attempt : Int32
+  content : String
+  mut last_error : String
+}
+pub async fn SummarizeHandle::error(Self, Error) -> ItemSummary
+pub fn SummarizeHandle::finish(Self, String) -> ItemSummary
+pub fn SummarizeHandle::prompt(Self) -> String
+pub fn SummarizeHandle::validate(Self, String) -> String raise SummarizeError
+
+// Type aliases
+
+// Traits

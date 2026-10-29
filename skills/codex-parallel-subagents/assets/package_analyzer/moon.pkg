@@ -1,0 +1,10 @@
+import {
+  "moonbit-community/codex",
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/x/sys",
+}
+
+pkgtype(kind: "executable")

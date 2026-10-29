@@ -1,0 +1,8 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbit-community/codex",
+  "parallel_tasks/app",
+}
+
+pkgtype(kind: "executable")

@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbit-community/codex-example/real_world/dag_poc/app"
 
-import(
-  "moonbit-community/codex"
-)
+import {
+  "moonbit-community/codex",
+}
 
 // Values
 pub fn describe_dag(Dag) -> String
@@ -31,11 +31,11 @@ pub struct DagNode {
 }
 
 pub struct RunOptions {
-  concurrency : Int
+  concurrency : Int32
   working_directory : String
   model : String?
 }
-pub fn RunOptions::new(String, Int, model? : String) -> Self
+pub fn RunOptions::new(String, Int32, model? : String) -> Self
 
 // Type aliases
 

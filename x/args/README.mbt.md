@@ -23,7 +23,7 @@ errors:
 ```moonbit check
 ///|
 test "unknown arguments become positional" {
-  let result = parse(["--unknown", "-x", "normal"], flags=["verbose"])
+  let result = @args.parse(["--unknown", "-x", "normal"], flags=["verbose"])
   debug_inspect(
     result.positional,
     content="[\"--unknown\", \"-x\", \"normal\"]",
@@ -37,7 +37,7 @@ test "unknown arguments become positional" {
 ```moonbit check
 ///|
 test "basic usage example" {
-  let args = parse(
+  let args = @args.parse(
     ["--verbose", "-o", "output.txt", "input.txt"],
     flags=["verbose"],
     options=["o"],
@@ -55,7 +55,7 @@ test "basic usage example" {
 ```moonbit check
 ///|
 test "advanced usage example" {
-  let args = parse(
+  let args = @args.parse(
     ["-v", "--include", "src", "--include", "lib", "--output=file.txt"],
     flags=["verbose"],
     options=["output"],
@@ -89,7 +89,7 @@ test "advanced usage example" {
 ```moonbit check
 ///|
 test "basic flags and options" {
-  let result = parse(["--verbose", "-o", "file.txt"], flags=["verbose"], options=[
+  let result = @args.parse(["--verbose", "-o", "file.txt"], flags=["verbose"], options=[
     "o",
   ])
   debug_inspect(result.flags.get("verbose"), content="Some(true)")
@@ -102,7 +102,7 @@ test "basic flags and options" {
 ```moonbit check
 ///|
 test "collections repeated options" {
-  let result = parse(["--include", "src", "--include", "lib"], collections=[
+  let result = @args.parse(["--include", "src", "--include", "lib"], collections=[
     "include",
   ])
   debug_inspect(
@@ -117,7 +117,7 @@ test "collections repeated options" {
 ```moonbit check
 ///|
 test "aliases example" {
-  let result = parse(["-v"], flags=["verbose"], aliases={ "v": "verbose" })
+  let result = @args.parse(["-v"], flags=["verbose"], aliases={ "v": "verbose" })
   debug_inspect(result.flags.get("verbose"), content="Some(true)")
 }
 ```
@@ -127,7 +127,9 @@ test "aliases example" {
 ```moonbit check
 ///|
 test "negatable flags example" {
-  let result = parse(["--no-verbose"], flags=["verbose"], negatable=["verbose"])
+  let result = @args.parse(["--no-verbose"], flags=["verbose"], negatable=[
+    "verbose",
+  ])
   debug_inspect(result.flags.get("verbose"), content="Some(false)")
 }
 ```
@@ -137,7 +139,9 @@ test "negatable flags example" {
 ```moonbit check
 ///|
 test "double dash separator example" {
-  let result = parse(["--verbose", "--", "--not-a-flag"], flags=["verbose"])
+  let result = @args.parse(["--verbose", "--", "--not-a-flag"], flags=[
+    "verbose",
+  ])
   debug_inspect(result.flags.get("verbose"), content="Some(true)")
   debug_inspect(result.positional, content="[\"--not-a-flag\"]")
 }
@@ -148,7 +152,7 @@ test "double dash separator example" {
 ```moonbit check
 ///|
 test "key-value syntax example" {
-  let result = parse(["--output=file.txt"], options=["output"])
+  let result = @args.parse(["--output=file.txt"], options=["output"])
   debug_inspect(result.options.get("output"), content="Some(\"file.txt\")")
 }
 ```
@@ -158,7 +162,7 @@ test "key-value syntax example" {
 ```moonbit check
 ///|
 test "combined short flags example" {
-  let result = parse(["-vq"], flags=["v", "q"])
+  let result = @args.parse(["-vq"], flags=["v", "q"])
   debug_inspect(result.flags.get("v"), content="Some(true)")
   debug_inspect(result.flags.get("q"), content="Some(true)")
 }

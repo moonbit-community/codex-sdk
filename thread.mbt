@@ -90,8 +90,8 @@ fn Thread::new(
 pub async fn[G] Thread::run_streamed(
   self : Thread,
   prompt : String,
-  extra_input? : Input = [],
-  turn_options? : TurnOptions = { output_schema: None, },
+  extra_input~ : Input = [],
+  turn_options~ : TurnOptions = { output_schema: None, },
   taskgroup : @async.TaskGroup[G],
 ) -> StreamedTurn {
   {
@@ -162,8 +162,8 @@ async fn[G] Thread::run_streamed_internal(
 pub async fn Thread::run(
   self : Thread,
   prompt : String,
-  extra_input? : Input = [],
-  turn_options? : TurnOptions = { output_schema: None, },
+  extra_input~ : Input = [],
+  turn_options~ : TurnOptions = { output_schema: None, },
 ) -> Turn raise Error {
   @async.with_task_group(taskgroup => {
     let generator = self.run_streamed_internal(

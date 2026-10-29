@@ -1,7 +1,6 @@
 import {
   "moonbitlang/async/fs",
   "moonbitlang/async/process",
-  "moonbitlang/async/io",
   "moonbit-community/codex/x/error",
   "moonbitlang/core/string",
   "moonbitlang/core/json",

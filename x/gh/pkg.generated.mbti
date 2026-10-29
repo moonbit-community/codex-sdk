@@ -6,11 +6,11 @@ pub async fn create_pr(String, String, String, String, String) -> String
 
 pub async fn ensure_available() -> Unit
 
-pub fn extract_pr_number(StringView) -> Int?
+pub fn extract_pr_number(StringView) -> Int32?
 
-pub async fn get_pr_comments(String, Int) -> String
+pub async fn get_pr_comments(String, Int32) -> String
 
-pub async fn get_pr_state(String, Int) -> PrInfo
+pub async fn get_pr_state(String, Int32) -> PrInfo
 
 pub async fn is_available() -> Bool
 
@@ -20,7 +20,7 @@ pub async fn list_prs_for_branch(String, String) -> Array[PrInfo]
 
 // Types and methods
 pub struct PrInfo {
-  number : Int
+  number : Int32
   url : String
   state : String
   mergeable : String

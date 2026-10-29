@@ -371,17 +371,21 @@ async fn run_interactive_mode(arguments : Arguments) -> Unit {
           $|\{line}
           $|
         let turn = @async.with_task_group(taskgroup => {
-          taskgroup.add_defer(() => @async.protect_from_cancel(() => @stdio.stdout.write(b"\r")))
+          taskgroup.add_defer(() => {
+            @async.protect_from_cancel(() => @stdio.stdout.write(b"\r"))
+          })
           taskgroup.spawn_bg(
-            () => while true {
-              @async.sleep(500)
-              @stdio.stdout.write(b"\r\\")
-              @async.sleep(500)
-              @stdio.stdout.write(b"\r|")
-              @async.sleep(500)
-              @stdio.stdout.write(b"\r/")
-              @async.sleep(500)
-              @stdio.stdout.write(b"\r-")
+            () => {
+              while true {
+                @async.sleep(500)
+                @stdio.stdout.write(b"\r\\")
+                @async.sleep(500)
+                @stdio.stdout.write(b"\r|")
+                @async.sleep(500)
+                @stdio.stdout.write(b"\r/")
+                @async.sleep(500)
+                @stdio.stdout.write(b"\r-")
+              }
             },
             no_wait=true,
           )

@@ -21,8 +21,8 @@ pub(all) enum AppRealtimeOutputModality {
 ///|
 pub impl ToJson for AppRealtimeOutputModality with fn to_json(modality) {
   match modality {
-    AppRealtimeText => "text".to_json()
-    AppRealtimeAudio => "audio".to_json()
+    AppRealtimeText => ToJson::to_json("text")
+    AppRealtimeAudio => ToJson::to_json("audio")
   }
 }
 
@@ -52,25 +52,25 @@ pub(all) enum AppRealtimeVoice {
 ///|
 pub impl ToJson for AppRealtimeVoice with fn to_json(voice) {
   match voice {
-    AppRealtimeVoiceAlloy => "alloy".to_json()
-    AppRealtimeVoiceArbor => "arbor".to_json()
-    AppRealtimeVoiceAsh => "ash".to_json()
-    AppRealtimeVoiceBallad => "ballad".to_json()
-    AppRealtimeVoiceBreeze => "breeze".to_json()
-    AppRealtimeVoiceCedar => "cedar".to_json()
-    AppRealtimeVoiceCoral => "coral".to_json()
-    AppRealtimeVoiceCove => "cove".to_json()
-    AppRealtimeVoiceEcho => "echo".to_json()
-    AppRealtimeVoiceEmber => "ember".to_json()
-    AppRealtimeVoiceJuniper => "juniper".to_json()
-    AppRealtimeVoiceMaple => "maple".to_json()
-    AppRealtimeVoiceMarin => "marin".to_json()
-    AppRealtimeVoiceSage => "sage".to_json()
-    AppRealtimeVoiceShimmer => "shimmer".to_json()
-    AppRealtimeVoiceSol => "sol".to_json()
-    AppRealtimeVoiceSpruce => "spruce".to_json()
-    AppRealtimeVoiceVale => "vale".to_json()
-    AppRealtimeVoiceVerse => "verse".to_json()
+    AppRealtimeVoiceAlloy => ToJson::to_json("alloy")
+    AppRealtimeVoiceArbor => ToJson::to_json("arbor")
+    AppRealtimeVoiceAsh => ToJson::to_json("ash")
+    AppRealtimeVoiceBallad => ToJson::to_json("ballad")
+    AppRealtimeVoiceBreeze => ToJson::to_json("breeze")
+    AppRealtimeVoiceCedar => ToJson::to_json("cedar")
+    AppRealtimeVoiceCoral => ToJson::to_json("coral")
+    AppRealtimeVoiceCove => ToJson::to_json("cove")
+    AppRealtimeVoiceEcho => ToJson::to_json("echo")
+    AppRealtimeVoiceEmber => ToJson::to_json("ember")
+    AppRealtimeVoiceJuniper => ToJson::to_json("juniper")
+    AppRealtimeVoiceMaple => ToJson::to_json("maple")
+    AppRealtimeVoiceMarin => ToJson::to_json("marin")
+    AppRealtimeVoiceSage => ToJson::to_json("sage")
+    AppRealtimeVoiceShimmer => ToJson::to_json("shimmer")
+    AppRealtimeVoiceSol => ToJson::to_json("sol")
+    AppRealtimeVoiceSpruce => ToJson::to_json("spruce")
+    AppRealtimeVoiceVale => ToJson::to_json("vale")
+    AppRealtimeVoiceVerse => ToJson::to_json("verse")
   }
 }
 
@@ -158,7 +158,7 @@ pub impl ToJson for AppThreadRealtimeStartParams with fn to_json(params) {
     "threadId": params.thread_id,
     "outputModality": params.output_modality,
     "realtimeSessionId": match params.realtime_session_id {
-      Some(value) => value.to_json()
+      Some(value) => ToJson::to_json(value)
       None => Json::null()
     },
     "transport": match params.transport {
@@ -181,11 +181,11 @@ pub impl ToJson for AppThreadRealtimeAudioChunk with fn to_json(audio) {
     "sampleRate": audio.sample_rate,
     "numChannels": audio.num_channels,
     "samplesPerChannel": match audio.samples_per_channel {
-      Some(value) => value.to_json()
+      Some(value) => ToJson::to_json(value)
       None => Json::null()
     },
     "itemId": match audio.item_id {
-      Some(value) => value.to_json()
+      Some(value) => ToJson::to_json(value)
       None => Json::null()
     },
   }
@@ -307,7 +307,7 @@ pub(all) struct AppMockExperimentalMethodParams {
 pub impl ToJson for AppMockExperimentalMethodParams with fn to_json(params) {
   {
     "value": match params.value {
-      Some(value) => value.to_json()
+      Some(value) => ToJson::to_json(value)
       None => Json::null()
     },
   }

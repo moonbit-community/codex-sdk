@@ -23,7 +23,7 @@ pub enum ThreadItem {
     id~ : String,
     command~ : String,
     aggregated_output~ : String,
-    exit_code~ : Int?,
+    exit_code~ : Int32?,
     status~ : CommandExecutionStatus
   )
   /// A set of file changes by the agent. Emitted once the patch succeeds or fails.
@@ -123,7 +123,7 @@ pub impl ToJson for ThreadItem with fn to_json(item) {
         "status": status,
       }
       if prompt is Some(prompt) {
-        item.set("prompt", prompt.to_json())
+        item.set("prompt", ToJson::to_json(prompt))
       }
       Json::object(item)
     }
@@ -165,7 +165,10 @@ pub impl @json.FromJson for ThreadItem with fn from_json(value, path) {
           ..
         } else {
         raise JsonDecodeError(
-          (path, "expected CommandExecutionItem, got \{@debug.to_repr(obj)}"),
+          (
+            path,
+            "expected CommandExecutionItem, got \{@debug.Debug::to_repr(obj)}",
+          ),
         )
       }
       let exit_code = match exit_code {
@@ -175,7 +178,7 @@ pub impl @json.FromJson for ThreadItem with fn from_json(value, path) {
           raise JsonDecodeError(
             (
               path.add_key("exit_code"),
-              "expected integer or null for CommandExecutionItem.exit_code. Got: \{@debug.to_repr(v)}",
+              "expected integer or null for CommandExecutionItem.exit_code. Got: \{@debug.Debug::to_repr(v)}",
             ),
           )
       }
@@ -217,7 +220,7 @@ pub impl @json.FromJson for ThreadItem with fn from_json(value, path) {
           raise JsonDecodeError(
             (
               path.add_key("error"),
-              "expected null or error object with message string, got \{@debug.to_repr(error)}",
+              "expected null or error object with message string, got \{@debug.Debug::to_repr(error)}",
             ),
           )
         }
@@ -260,7 +263,7 @@ pub impl @json.FromJson for ThreadItem with fn from_json(value, path) {
           raise JsonDecodeError(
             (
               path.add_key("prompt"),
-              "expected string or null for CollabToolCallItem.prompt. Got: \{@debug.to_repr(v)}",
+              "expected string or null for CollabToolCallItem.prompt. Got: \{@debug.Debug::to_repr(v)}",
             ),
           )
       }
@@ -372,7 +375,7 @@ pub impl @json.FromJson for CommandExecutionStatus with fn from_json(
       raise JsonDecodeError(
         (
           path,
-          "expected string 'completed', 'in_progress', 'failed', or 'declined' for CommandExecutionStatus. Got \{@debug.to_repr(value)}",
+          "expected string 'completed', 'in_progress', 'failed', or 'declined' for CommandExecutionStatus. Got \{@debug.Debug::to_repr(value)}",
         ),
       )
   }
@@ -414,7 +417,7 @@ pub impl @json.FromJson for CollabToolCallStatus with fn from_json(value, path) 
       raise JsonDecodeError(
         (
           path,
-          "expected string 'completed', 'in_progress', or 'failed' for CollabToolCallStatus. Got \{@debug.to_repr(value)}",
+          "expected string 'completed', 'in_progress', or 'failed' for CollabToolCallStatus. Got \{@debug.Debug::to_repr(value)}",
         ),
       )
   }
@@ -464,7 +467,7 @@ pub impl @json.FromJson for CollabTool with fn from_json(value, path) {
       raise JsonDecodeError(
         (
           path,
-          "expected string 'spawn_agent', 'send_input', 'resume_agent', 'wait', or 'close_agent' for CollabTool. Got \{@debug.to_repr(value)}",
+          "expected string 'spawn_agent', 'send_input', 'resume_agent', 'wait', or 'close_agent' for CollabTool. Got \{@debug.Debug::to_repr(value)}",
         ),
       )
   }
@@ -522,7 +525,7 @@ pub impl @json.FromJson for CollabAgentStatus with fn from_json(value, path) {
       raise JsonDecodeError(
         (
           path,
-          "expected string 'pending_init', 'running', 'interrupted', 'completed', 'errored', 'shutdown', or 'not_found' for CollabAgentStatus. Got \{@debug.to_repr(value)}",
+          "expected string 'pending_init', 'running', 'interrupted', 'completed', 'errored', 'shutdown', or 'not_found' for CollabAgentStatus. Got \{@debug.Debug::to_repr(value)}",
         ),
       )
   }
@@ -539,7 +542,7 @@ pub struct CollabAgentState {
 pub impl ToJson for CollabAgentState with fn to_json(state) {
   let obj : Map[String, Json] = { "status": state.status }
   if state.message is Some(message) {
-    obj.set("message", message.to_json())
+    obj.set("message", ToJson::to_json(message))
   }
   Json::object(obj)
 }
@@ -556,7 +559,7 @@ pub impl @json.FromJson for CollabAgentState with fn from_json(value, path) {
       raise JsonDecodeError(
         (
           path.add_key("message"),
-          "expected string or null for CollabAgentState.message. Got: \{@debug.to_repr(v)}",
+          "expected string or null for CollabAgentState.message. Got: \{@debug.Debug::to_repr(v)}",
         ),
       )
   }
@@ -599,7 +602,7 @@ pub impl @json.FromJson for PatchChangeKind with fn from_json(value, path) {
       raise JsonDecodeError(
         (
           path,
-          "expected string 'add', 'delete', or 'update' for PatchChangeKind. Got \{@debug.to_repr(value)}",
+          "expected string 'add', 'delete', or 'update' for PatchChangeKind. Got \{@debug.Debug::to_repr(value)}",
         ),
       )
   }
@@ -641,7 +644,7 @@ pub impl @json.FromJson for PatchApplyStatus with fn from_json(value, path) {
       raise JsonDecodeError(
         (
           path,
-          "expected string 'in_progress', 'completed', or 'failed' for PatchApplyStatus. Got \{@debug.to_repr(value)}",
+          "expected string 'in_progress', 'completed', or 'failed' for PatchApplyStatus. Got \{@debug.Debug::to_repr(value)}",
         ),
       )
   }
@@ -683,7 +686,7 @@ pub impl @json.FromJson for McpToolCallStatus with fn from_json(value, path) {
       raise JsonDecodeError(
         (
           path,
-          "expected string 'completed', 'in_progress', or 'failed' for McpToolCallStatus. Got \{@debug.to_repr(value)}",
+          "expected string 'completed', 'in_progress', or 'failed' for McpToolCallStatus. Got \{@debug.Debug::to_repr(value)}",
         ),
       )
   }
@@ -721,7 +724,7 @@ pub impl FromJson for McpToolCallResult with fn from_json(value, path) {
     raise JsonDecodeError(
       (
         path,
-        "expected McpToolCallResult object with content and structured_content. Got \{@debug.to_repr(value)}",
+        "expected McpToolCallResult object with content and structured_content. Got \{@debug.Debug::to_repr(value)}",
       ),
     )
   }
