@@ -109,12 +109,12 @@ pub async fn run_non_run(command : ParsedCommand, codex : @codex.Codex) -> Unit 
 pub struct RunContext {
   work_dir : String
   data_dir : String
-  parallelism : Int
+  parallelism : Int32
   branch_prefix : String
   dry_run : Bool
   force : Bool
   db : @sqlite.Database
-  total : Int
+  total : Int32
   incomplete_repos : Array[RepositoryRecord]
 }
 
@@ -160,7 +160,7 @@ pub async fn prepare_run(
   let dry_run = parsed_args.flags.get("dry-run") is Some(true)
   let force = parsed_args.flags.get("force") is Some(true)
   let parallelism_str = parsed_args.options.get("parallelism").unwrap_or("4")
-  let parallelism = @strconv.parse_int(parallelism_str) catch {
+  let parallelism = @string.parse_int(parallelism_str) catch {
     e => @error.fail_with("Invalid parallelism value", e)
   }
   if parallelism <= 0 {
@@ -170,14 +170,14 @@ pub async fn prepare_run(
     .get("branch-prefix")
     .unwrap_or("ai-fix")
   let offset_str = parsed_args.options.get("offset").unwrap_or("0")
-  let offset = @strconv.parse_int(offset_str) catch {
+  let offset = @string.parse_int(offset_str) catch {
     e => @error.fail_with("Invalid offset value", e)
   }
   if offset < 0 {
     @error.fail("Offset must be a non-negative integer")
   }
   let limit_str = parsed_args.options.get("limit").unwrap_or("-1")
-  let limit = @strconv.parse_int(limit_str) catch {
+  let limit = @string.parse_int(limit_str) catch {
     e => @error.fail_with("Invalid limit value", e)
   }
   let db_path = "\{data_dir}/parallel-fix.db"
@@ -572,8 +572,8 @@ async fn cmd_status(args : ArrayView[String], data_dir : String) -> Unit {
 /// Fetch PR cache data (head sha and comment count).
 async fn get_pr_cache_snapshot(
   clone_path : String,
-  pr_number : Int,
-) -> (String, Int)? {
+  pr_number : Int32,
+) -> (String, Int32)? {
   let (status, stdout, _stderr) = @process.collect_output(
     "gh",
     [
@@ -596,7 +596,7 @@ async fn get_pr_cache_snapshot(
   guard output.split("|").collect() is [head_sha, count_str] else {
     return None
   }
-  let count = @strconv.parse_int(count_str) catch { _ => return None }
+  let count = @string.parse_int(count_str) catch { _ => return None }
   Some((head_sha.to_string(), count))
 }
 

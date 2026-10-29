@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/semaphore",
+  "moonbitlang/async/stdio",
+  "moonbitlang/x/sys",
+  "moonbit-community/codex",
+  "moonbit-community/codex/x/error",
+  "moonbit-community/codex-example/real_world/parallel_fix/app",
+}
+
+options(
+  "is-main": true,
+)

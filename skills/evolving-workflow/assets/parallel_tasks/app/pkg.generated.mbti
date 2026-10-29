@@ -1,0 +1,51 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "parallel_tasks/app"
+
+// Values
+pub async fn[A, B] for_all_tasks(Array[A], async (Int32, A) -> B, parallelism? : Int32) -> Array[B]
+
+pub async fn initialize() -> Job
+
+// Errors
+pub suberror AppErrors {
+  NeedHelp(String)
+} derive(Show)
+
+pub suberror ValidationError {
+  EmptyResponse
+} derive(Show)
+
+// Types and methods
+pub struct Job {
+  project_root : String
+  items : Array[String]
+  parallelism : Int32
+  output_dir : String
+  verbose : Bool
+}
+pub async fn Job::summarize(Self, Array[TaskResult]) -> Unit
+pub async fn Job::task_start(Self, Int32) -> TaskHandle
+
+pub struct TaskHandle {
+  item : String
+  config : Job
+  idx : Int32
+  mut attempt : Int32
+  content : String
+  mut last_error : String
+}
+pub async fn TaskHandle::error(Self, Error) -> TaskResult
+pub async fn TaskHandle::finish(Self) -> TaskResult
+pub fn TaskHandle::prompt(Self) -> String
+pub fn TaskHandle::validate(Self, String) -> Unit raise ValidationError
+
+pub struct TaskResult {
+  item : String
+  success : Bool
+  error : String
+}
+pub impl Show for TaskResult
+
+// Type aliases
+
+// Traits

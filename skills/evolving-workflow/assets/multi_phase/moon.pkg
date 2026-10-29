@@ -1,0 +1,10 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbit-community/codex",
+  "multi_phase/app",
+}
+
+options(
+  "is-main": true,
+)

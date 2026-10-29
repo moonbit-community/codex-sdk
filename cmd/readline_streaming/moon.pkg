@@ -1,0 +1,11 @@
+import {
+  "moonbit-community/codex",
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbitlang/async/io",
+  "moonbit-community/codex/generator",
+}
+
+options(
+  "is-main": true,
+)

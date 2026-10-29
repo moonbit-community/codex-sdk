@@ -36,7 +36,7 @@ pub struct ValidationResult {
   passed : Bool
   stdout : String
   stderr : String
-  exit_code : Int
+  exit_code : Int32
 }
 
 ///|
@@ -45,9 +45,9 @@ pub struct Diagnostic {
   /// File path where the issue occurred
   file : String
   /// Line number (1-indexed)
-  line : Int
+  line : Int32
   /// Column number (1-indexed, optional)
-  column : Int?
+  column : Int32?
   /// Diagnostic level: "error", "warning", "info"
   level : String
   /// The diagnostic message
@@ -122,7 +122,7 @@ pub fn parse_diagnostics(output : String) -> Array[Diagnostic] {
     }
     let file = parts[0]
     let line_num = @string.parse_int(parts[1]) catch { _ => continue }
-    let column : Int? = if parts.length() >= 3 {
+    let column : Int32? = if parts.length() >= 3 {
       Some(@string.parse_int(parts[2])) catch {
         _ => None
       }

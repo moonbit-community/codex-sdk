@@ -11,7 +11,7 @@ pub suberror AppErrors {
 pub struct Job {
   project_root : String
   items : Array[String]
-  parallelism : Int
+  parallelism : Int32
   output_dir : String
   verbose : Bool
 }
@@ -41,14 +41,14 @@ pub async fn initialize() -> Job {
 pub struct SummarizeHandle {
   item : String
   config : Job
-  idx : Int
-  mut attempt : Int
+  idx : Int32
+  mut attempt : Int32
   content : String // Cached content
   mut last_error : String
 }
 
 ///|
-pub async fn Job::summarize_start(config : Job, idx : Int) -> SummarizeHandle {
+pub async fn Job::summarize_start(config : Job, idx : Int32) -> SummarizeHandle {
   let item = config.items[idx]
   if config.verbose {
     let total = config.items.length()
@@ -135,7 +135,7 @@ pub async fn SummarizeHandle::error(
 pub struct PlanHandle {
   summaries : Array[ItemSummary]
   config : Job
-  mut attempt : Int
+  mut attempt : Int32
   mut last_error : String
 }
 
@@ -288,8 +288,8 @@ pub async fn PlanHandle::error(
 pub struct ProcessHandle {
   group : ItemGroup
   config : Job
-  idx : Int
-  mut attempt : Int
+  idx : Int32
+  mut attempt : Int32
   content_sections : String // Cached content for all items in group
   mut last_error : String
 }
@@ -297,7 +297,7 @@ pub struct ProcessHandle {
 ///|
 pub async fn Job::process_start(
   config : Job,
-  idx : Int,
+  idx : Int32,
   group : ItemGroup,
 ) -> ProcessHandle {
   @stdio.stdout.write("info [\{idx + 1}] - Processing group: \{group.name}\n")
@@ -472,8 +472,8 @@ fn extract_json_array(response : String) -> String {
   }
   // Fallback: find first [ and last ]
   let chars = response.to_array()
-  let mut start : Int? = None
-  let mut end : Int? = None
+  let mut start : Int32? = None
+  let mut end : Int32? = None
   for i, c in chars {
     if c == '[' && start is None {
       start = Some(i)

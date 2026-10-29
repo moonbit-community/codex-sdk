@@ -1,0 +1,8 @@
+import {
+  "moonbit-community/codex",
+  "moonbitlang/async",
+}
+
+options(
+  "is-main": true,
+)

@@ -10,7 +10,7 @@ pub async fn ensure() -> Unit
 type Database
 pub async fn Database::begin_transaction(Self) -> Unit
 pub async fn Database::commit(Self) -> Unit
-pub async fn Database::count(Self, String) -> Int
+pub async fn Database::count(Self, String) -> Int32
 pub async fn Database::ensure(Self) -> Unit
 pub async fn Database::exec(Self, String) -> Unit
 pub async fn Database::exec_file(Self, String) -> Unit

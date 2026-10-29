@@ -168,7 +168,7 @@ pub impl ToJson for AppThreadMemoryModeSetParams with fn to_json(params) {
 pub(all) struct AppThreadTurnsListParams {
   thread_id : String
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   sort_direction : AppSortDirection?
 } derive(Debug)
 

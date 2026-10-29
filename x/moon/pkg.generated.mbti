@@ -13,8 +13,8 @@ pub fn parse_diagnostics(String) -> Array[Diagnostic]
 // Types and methods
 pub struct Diagnostic {
   file : String
-  line : Int
-  column : Int?
+  line : Int32
+  column : Int32?
   level : String
   message : String
 }
@@ -39,7 +39,7 @@ pub struct ValidationResult {
   passed : Bool
   stdout : String
   stderr : String
-  exit_code : Int
+  exit_code : Int32
 }
 
 pub(all) enum Validator {

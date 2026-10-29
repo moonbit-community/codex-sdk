@@ -180,15 +180,15 @@ pub enum AppCodexErrorInfo {
   AppUsageLimitExceeded
   AppServerOverloaded
   AppCyberPolicy
-  AppHttpConnectionFailed(http_status_code~ : Int?)
-  AppResponseStreamConnectionFailed(http_status_code~ : Int?)
+  AppHttpConnectionFailed(http_status_code~ : Int32?)
+  AppResponseStreamConnectionFailed(http_status_code~ : Int32?)
   AppInternalServerError
   AppUnauthorized
   AppBadRequest
   AppThreadRollbackFailed
   AppSandboxError
-  AppResponseStreamDisconnected(http_status_code~ : Int?)
-  AppResponseTooManyFailedAttempts(http_status_code~ : Int?)
+  AppResponseStreamDisconnected(http_status_code~ : Int32?)
+  AppResponseTooManyFailedAttempts(http_status_code~ : Int32?)
   AppActiveTurnNotSteerable(turn_kind~ : AppNonSteerableTurnKind)
   AppCodexOtherError
 } derive(@debug.Debug)
@@ -250,7 +250,7 @@ pub(all) struct AppCommandExecResizeParams {
 pub impl ToJson for AppCommandExecResizeParams
 
 pub struct AppCommandExecResponse {
-  exit_code : Int
+  exit_code : Int32
   stdout : String
   stderr : String
 } derive(@debug.Debug)
@@ -474,7 +474,7 @@ pub impl @json.FromJson for AppCreditsSnapshot
 
 pub(all) struct AppCursorLimitParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
 } derive(@debug.Debug)
 pub impl ToJson for AppCursorLimitParams
 
@@ -741,8 +741,8 @@ pub struct AppFuzzyFileSearchResult {
   path : String
   match_type : AppFuzzyFileSearchMatchType
   file_name : String
-  score : UInt
-  indices : ArrayView[UInt]?
+  score : UInt32
+  indices : ArrayView[UInt32]?
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppFuzzyFileSearchResult
 
@@ -782,7 +782,7 @@ pub(all) enum AppGuardianApprovalReviewAction {
   AppGuardianCommandAction(source~ : AppGuardianCommandSource, command~ : String, cwd~ : String)
   AppGuardianExecveAction(source~ : AppGuardianCommandSource, program~ : String, argv~ : ArrayView[String], cwd~ : String)
   AppGuardianApplyPatchAction(cwd~ : String, files~ : ArrayView[String])
-  AppGuardianNetworkAccessAction(target~ : String, host~ : String, protocol~ : AppNetworkApprovalProtocol, port~ : UInt)
+  AppGuardianNetworkAccessAction(target~ : String, host~ : String, protocol~ : AppNetworkApprovalProtocol, port~ : UInt32)
   AppGuardianMcpToolCallAction(server~ : String, tool_name~ : String, connector_id~ : String?, connector_name~ : String?, tool_title~ : String?)
   AppGuardianRequestPermissionsAction(reason~ : String?, permissions~ : AppRequestPermissionProfile)
 } derive(@debug.Debug)
@@ -1016,11 +1016,11 @@ pub impl @json.FromJson for AppInputModality
 
 pub struct AppListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   thread_id : String?
   force_refetch : Bool?
 } derive(@debug.Debug)
-pub fn AppListParams::new(cursor? : String, limit? : UInt, thread_id? : String, force_refetch? : Bool) -> Self
+pub fn AppListParams::new(cursor? : String, limit? : UInt32, thread_id? : String, force_refetch? : Bool) -> Self
 pub impl ToJson for AppListParams
 
 pub struct AppListResponse {
@@ -1173,8 +1173,8 @@ pub impl @json.FromJson for AppMcpElicitationStringFormat
 pub(all) struct AppMcpElicitationStringSchema {
   title : String?
   description : String?
-  min_length : UInt?
-  max_length : UInt?
+  min_length : UInt32?
+  max_length : UInt32?
   format : AppMcpElicitationStringFormat?
   default : String?
 } derive(@debug.Debug)
@@ -1319,7 +1319,7 @@ pub impl ToJson for AppMcpServerStatusDetail
 
 pub(all) struct AppMcpServerStatusListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   detail : AppMcpServerStatusDetail?
 } derive(@debug.Debug)
 pub impl ToJson for AppMcpServerStatusListParams
@@ -1367,8 +1367,8 @@ pub impl @json.FromJson for AppMemoryCitation
 
 pub struct AppMemoryCitationEntry {
   path : String
-  line_start : UInt
-  line_end : UInt
+  line_start : UInt32
+  line_end : UInt32
   note : String
 } derive(@debug.Debug)
 pub impl @json.FromJson for AppMemoryCitationEntry
@@ -1436,10 +1436,10 @@ pub impl @json.FromJson for AppModelAvailabilityNux
 
 pub struct AppModelListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   include_hidden : Bool?
 } derive(@debug.Debug)
-pub fn AppModelListParams::new(cursor? : String, limit? : UInt, include_hidden? : Bool) -> Self
+pub fn AppModelListParams::new(cursor? : String, limit? : UInt32, include_hidden? : Bool) -> Self
 pub impl ToJson for AppModelListParams
 
 pub struct AppModelListResponse {
@@ -1775,7 +1775,7 @@ pub struct AppRateLimitSnapshot {
 pub impl @json.FromJson for AppRateLimitSnapshot
 
 pub struct AppRateLimitWindow {
-  used_percent : Int
+  used_percent : Int32
   window_duration_mins : Int64?
   resets_at : Int64?
 } derive(@debug.Debug)
@@ -2241,7 +2241,7 @@ pub impl ToJson for AppSortDirection
 pub enum AppSubAgentSource {
   AppSubAgentReview
   AppSubAgentCompact
-  AppSubAgentThreadSpawn(parent_thread_id~ : String, depth~ : Int, agent_path~ : String?, agent_nickname~ : String?, agent_role~ : String?)
+  AppSubAgentThreadSpawn(parent_thread_id~ : String, depth~ : Int32, agent_path~ : String?, agent_nickname~ : String?, agent_role~ : String?)
   AppSubAgentMemoryConsolidation
   AppSubAgentOther(String)
 } derive(@debug.Debug)
@@ -2484,7 +2484,7 @@ pub enum AppThreadItem {
   AppThreadAgentMessageItem(id~ : String, text~ : String, phase~ : AppMessagePhase?, memory_citation~ : AppMemoryCitation?)
   AppThreadPlanItem(id~ : String, text~ : String)
   AppThreadReasoningItem(id~ : String, summary~ : ArrayView[String], content~ : ArrayView[String])
-  AppThreadCommandExecutionItem(id~ : String, command~ : String, cwd~ : String, process_id~ : String?, source~ : AppThreadCommandExecutionSource, status~ : AppThreadCommandExecutionStatus, command_actions~ : ArrayView[AppCommandAction], aggregated_output~ : String?, exit_code~ : Int?, duration_ms~ : Int64?)
+  AppThreadCommandExecutionItem(id~ : String, command~ : String, cwd~ : String, process_id~ : String?, source~ : AppThreadCommandExecutionSource, status~ : AppThreadCommandExecutionStatus, command_actions~ : ArrayView[AppCommandAction], aggregated_output~ : String?, exit_code~ : Int32?, duration_ms~ : Int64?)
   AppThreadFileChangeItem(id~ : String, changes~ : ArrayView[AppThreadFileUpdateChange], status~ : AppThreadPatchApplyStatus)
   AppThreadMcpToolCallItem(id~ : String, server~ : String, tool~ : String, status~ : AppThreadMcpToolCallStatus, arguments~ : Json, mcp_app_resource_uri~ : String?, result~ : AppThreadMcpToolCallResult?, error~ : AppThreadMcpToolCallError?, duration_ms~ : Int64?)
   AppThreadDynamicToolCallItem(id~ : String, tool_namespace~ : String?, tool~ : String, arguments~ : Json, status~ : AppThreadDynamicToolCallStatus, content_items~ : ArrayView[AppDynamicToolCallOutputContentItem]?, success~ : Bool?, duration_ms~ : Int64?)
@@ -2516,7 +2516,7 @@ pub impl ToJson for AppThreadListCwd
 
 pub struct AppThreadListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   sort_key : AppThreadSortKey?
   sort_direction : AppSortDirection?
   model_providers : Array[String]?
@@ -2526,7 +2526,7 @@ pub struct AppThreadListParams {
   use_state_db_only : Bool?
   search_term : String?
 } derive(@debug.Debug)
-pub fn AppThreadListParams::new(cursor? : String, limit? : UInt, sort_key? : AppThreadSortKey, sort_direction? : AppSortDirection, model_providers? : Array[String], source_kinds? : Array[AppThreadSourceKind], archived? : Bool, cwd? : AppThreadListCwd, use_state_db_only? : Bool, search_term? : String) -> Self
+pub fn AppThreadListParams::new(cursor? : String, limit? : UInt32, sort_key? : AppThreadSortKey, sort_direction? : AppSortDirection, model_providers? : Array[String], source_kinds? : Array[AppThreadSourceKind], archived? : Bool, cwd? : AppThreadListCwd, use_state_db_only? : Bool, search_term? : String) -> Self
 pub impl ToJson for AppThreadListParams
 
 pub struct AppThreadListResponse {
@@ -2538,9 +2538,9 @@ pub impl @json.FromJson for AppThreadListResponse
 
 pub struct AppThreadLoadedListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
 } derive(@debug.Debug)
-pub fn AppThreadLoadedListParams::new(cursor? : String, limit? : UInt) -> Self
+pub fn AppThreadLoadedListParams::new(cursor? : String, limit? : UInt32) -> Self
 pub impl ToJson for AppThreadLoadedListParams
 
 pub struct AppThreadLoadedListResponse {
@@ -2639,9 +2639,9 @@ pub impl ToJson for AppThreadRealtimeAppendTextParams
 
 pub(all) struct AppThreadRealtimeAudioChunk {
   data : String
-  sample_rate : UInt
-  num_channels : UInt
-  samples_per_channel : UInt?
+  sample_rate : UInt32
+  num_channels : UInt32
+  samples_per_channel : UInt32?
   item_id : String?
 } derive(@debug.Debug)
 pub impl ToJson for AppThreadRealtimeAudioChunk
@@ -2701,7 +2701,7 @@ pub impl @json.FromJson for AppThreadResumeResponse
 
 pub(all) struct AppThreadRollbackParams {
   thread_id : String
-  num_turns : UInt
+  num_turns : UInt32
 } derive(@debug.Debug)
 pub impl ToJson for AppThreadRollbackParams
 
@@ -2744,9 +2744,9 @@ pub impl ToJson for AppThreadSectionDeleteParams
 
 pub(all) struct AppThreadSectionListParams {
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
 } derive(Default, @debug.Debug)
-pub fn AppThreadSectionListParams::new(cursor? : String, limit? : UInt) -> Self
+pub fn AppThreadSectionListParams::new(cursor? : String, limit? : UInt32) -> Self
 pub impl ToJson for AppThreadSectionListParams
 
 pub struct AppThreadSectionListResponse {
@@ -2865,7 +2865,7 @@ pub impl @json.FromJson for AppThreadTokenUsage
 pub(all) struct AppThreadTurnsListParams {
   thread_id : String
   cursor : String?
-  limit : UInt?
+  limit : UInt32?
   sort_direction : AppSortDirection?
 } derive(@debug.Debug)
 pub impl ToJson for AppThreadTurnsListParams
@@ -3513,7 +3513,7 @@ pub struct ThreadError {
 pub enum ThreadItem {
   AgentMessageItem(id~ : String, text~ : String)
   ReasoningItem(id~ : String, text~ : String)
-  CommandExecutionItem(id~ : String, command~ : String, aggregated_output~ : String, exit_code~ : Int?, status~ : CommandExecutionStatus)
+  CommandExecutionItem(id~ : String, command~ : String, aggregated_output~ : String, exit_code~ : Int32?, status~ : CommandExecutionStatus)
   FileChangeItem(id~ : String, changes~ : Array[FileUpdateChange], status~ : PatchApplyStatus)
   McpToolCallItem(id~ : String, server~ : String, tool~ : String, status~ : McpToolCallStatus, arguments~ : Json?, result~ : Result[McpToolCallResult, String]?)
   CollabToolCallItem(id~ : String, tool~ : CollabTool, sender_thread_id~ : String, receiver_thread_ids~ : Array[String], prompt~ : String?, agents_states~ : Map[String, CollabAgentState], status~ : CollabToolCallStatus)
@@ -3544,11 +3544,11 @@ type TurnOptions derive(Default)
 pub fn TurnOptions::new(output_schema? : Json) -> Self
 
 pub struct Usage {
-  input_tokens : Int
-  cached_input_tokens : Int
-  cache_write_input_tokens : Int
-  output_tokens : Int
-  reasoning_output_tokens : Int
+  input_tokens : Int32
+  cached_input_tokens : Int32
+  cache_write_input_tokens : Int32
+  output_tokens : Int32
+  reasoning_output_tokens : Int32
 } derive(@debug.Debug)
 pub impl ToJson for Usage
 pub impl @json.FromJson for Usage

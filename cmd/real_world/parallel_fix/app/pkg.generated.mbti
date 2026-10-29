@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "moonbit-community/codex-example/real_world/parallel_fix/app"
 
-import(
-  "moonbit-community/codex"
-  "moonbit-community/codex/x/sqlite"
-)
+import {
+  "moonbit-community/codex",
+  "moonbit-community/codex/x/sqlite",
+}
 
 // Values
 pub fn commit_message_prompt(RepositoryRecord, String) -> String
@@ -54,26 +54,26 @@ pub struct ParsedCommand {
 }
 
 pub struct RepositoryRecord {
-  id : Int
+  id : Int32
   url : String
   task : String
   task_title : String?
   target_url : String
-  pr_number : Int?
+  pr_number : Int32?
   last_pr_head_sha : String?
-  last_pr_comment_count : Int?
+  last_pr_comment_count : Int32?
   completed : Bool
 }
 
 pub struct RunContext {
   work_dir : String
   data_dir : String
-  parallelism : Int
+  parallelism : Int32
   branch_prefix : String
   dry_run : Bool
   force : Bool
   db : @sqlite.Database
-  total : Int
+  total : Int32
   incomplete_repos : Array[RepositoryRecord]
 }
 

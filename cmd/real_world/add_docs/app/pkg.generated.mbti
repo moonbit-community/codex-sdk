@@ -7,22 +7,20 @@ pub async fn initialize() -> Job
 // Errors
 pub suberror AppErrors {
   NeedHelp(String)
-}
-pub impl Show for AppErrors
+} derive(Show)
 
 pub suberror ValidationError {
   TaskNotCompleted
-}
-pub impl Show for ValidationError
+} derive(Show)
 
 // Types and methods
 pub struct Job {
   project_root : String
   packages : Array[String]
-  parallelism : Int
+  parallelism : Int32
 }
 pub async fn Job::summarize(Self, Array[TaskResult]) -> Unit
-pub async fn Job::task_start(Self, Int) -> TaskHandle
+pub async fn Job::task_start(Self, Int32) -> TaskHandle
 
 pub struct TaskEnv {
   worktree_path : String
@@ -31,10 +29,10 @@ pub struct TaskEnv {
 pub struct TaskHandle {
   pkg_path : String
   config : Job
-  idx : Int
+  idx : Int32
   mut status : TaskStatus
   mut worktree : WorktreeInfo?
-  mut attempt : Int
+  mut attempt : Int32
 }
 pub async fn TaskHandle::error(Self, Error) -> TaskResult
 pub async fn TaskHandle::finish(Self, String?) -> TaskResult
@@ -53,15 +51,13 @@ pub enum TaskStatus {
   Running
   WorktreeCreated(WorktreeInfo)
   Completed
-}
-pub impl Show for TaskStatus
+} derive(Show)
 
 pub struct WorktreeInfo {
   tmp_path : String
   branch_name : String
   reused_branch : Bool
-}
-pub impl Show for WorktreeInfo
+} derive(Show)
 
 // Type aliases
 

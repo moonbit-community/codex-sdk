@@ -46,7 +46,7 @@ priv struct CodexExec {
 ///
 /// # Arguments
 /// * `executable_path` - Optional path to the codex executable. Default to "codex".
-fn CodexExec::new(executable_path? : String = "codex") -> CodexExec {
+fn CodexExec::new(executable_path~ : String = "codex") -> CodexExec {
   // For simplicity, we assume "codex" is in PATH if not provided.
   { executable_path, }
 }

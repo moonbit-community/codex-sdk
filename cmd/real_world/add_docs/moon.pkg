@@ -1,0 +1,12 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbit-community/codex",
+  "moonbit-community/codex-example/real_world/add_docs/app",
+  "moonbit-community/codex-example/real_world/shared",
+}
+
+options(
+  "is-main": true,
+  link: { "native": { "cc-flags": "-g -fsanitize=address" } },
+)

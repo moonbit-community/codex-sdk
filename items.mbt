@@ -23,7 +23,7 @@ pub enum ThreadItem {
     id~ : String,
     command~ : String,
     aggregated_output~ : String,
-    exit_code~ : Int?,
+    exit_code~ : Int32?,
     status~ : CommandExecutionStatus
   )
   /// A set of file changes by the agent. Emitted once the patch succeeds or fails.
