@@ -234,9 +234,7 @@ pub impl FromJson for AppResponseItem with fn from_json(value, path) {
       )
     }
     "web_search_call" => {
-      guard obj is { "status"? : status, "action"? : action, .. } else {
-        raise JsonDecodeError((path, "expected web search response item"))
-      }
+      guard obj is { "status"? : status, "action"? : action, .. }
       AppResponseWebSearchCall(
         status=app_optional_string(status, path.add_key("status")),
         action=match action {
@@ -276,11 +274,7 @@ pub impl FromJson for AppResponseItem with fn from_json(value, path) {
       AppResponseCompaction(encrypted_content~)
     }
     "context_compaction" => {
-      guard obj is { "encrypted_content"? : encrypted_content, .. } else {
-        raise JsonDecodeError(
-          (path, "expected context compaction response item"),
-        )
-      }
+      guard obj is { "encrypted_content"? : encrypted_content, .. }
       AppResponseContextCompaction(
         encrypted_content=app_optional_string(
           encrypted_content,

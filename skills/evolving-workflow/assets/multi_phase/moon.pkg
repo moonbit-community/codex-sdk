@@ -5,6 +5,4 @@ import {
   "multi_phase/app",
 }
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")

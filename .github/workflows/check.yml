@@ -10,13 +10,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
+        channel: [latest, nightly]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: install-ubuntu
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- '${{ matrix.channel }}'
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
       - name: install-windows
         if: ${{ matrix.os == 'windows-latest' }}
@@ -35,6 +36,9 @@ jobs:
       - name: moon check
         run: |
           moon check
+
+      - name: Check command examples
+        run: moon -C cmd check
 
       - name: moon test
         run: |

@@ -7,6 +7,4 @@ import {
   "moonbit-community/codex-example/real_world/dag_poc/app",
 }
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")

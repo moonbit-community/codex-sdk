@@ -20,9 +20,9 @@ async test "app-server session e2e talks to real app-server" {
     let mut stream_closed_before_terminal = false
     let mut saw_turn_started = false
     let mut saw_agent_message = false
-    Codex::new(
-      options=CodexOptions::new(
-        codex_path_override?=@sys.get_env_var("CODEX_SDK_E2E_CODEX_PATH"),
+    @codex.Codex::new(
+      options=@codex.CodexOptions::new(
+        codex_path_override?=@env.get_env_var("CODEX_SDK_E2E_CODEX_PATH"),
       ),
     ).with_app_server_session(
       request_handler=fn(request) raise {
@@ -62,16 +62,16 @@ async test "app-server session e2e talks to real app-server" {
         }
         let _threads = session.thread_list()
         let thread = session.start_thread(
-          params=AppThreadStartParams::new(
+          params=@codex.AppThreadStartParams::new(
             ephemeral=true,
-            model?=@sys.get_env_var("CODEX_SDK_E2E_MODEL"),
+            model?=@env.get_env_var("CODEX_SDK_E2E_MODEL"),
           ),
         )
         assert_true(thread.id().length() > 0)
         let turn = thread.run_streamed(
           [AppInputText(text="hello")],
-          options=AppTurnStartOptions::new(
-            model?=@sys.get_env_var("CODEX_SDK_E2E_MODEL"),
+          options=@codex.AppTurnStartOptions::new(
+            model?=@env.get_env_var("CODEX_SDK_E2E_MODEL"),
           ),
         )
         let mut saw_terminal = false

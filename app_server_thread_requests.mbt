@@ -61,10 +61,10 @@ pub impl ToJson for AppNullableInt64 with fn to_json(value) {
 ///|
 pub impl ToJson for AppThreadGoalStatus with fn to_json(status) {
   match status {
-    AppThreadGoalActive => "active".to_json()
-    AppThreadGoalPaused => "paused".to_json()
-    AppThreadGoalBudgetLimited => "budgetLimited".to_json()
-    AppThreadGoalComplete => "complete".to_json()
+    AppThreadGoalActive => ToJson::to_json("active")
+    AppThreadGoalPaused => ToJson::to_json("paused")
+    AppThreadGoalBudgetLimited => ToJson::to_json("budgetLimited")
+    AppThreadGoalComplete => ToJson::to_json("complete")
   }
 }
 
@@ -81,7 +81,7 @@ pub impl ToJson for AppThreadGoalSetParams with fn to_json(params) {
   let obj : Map[String, Json] = {
     "threadId": params.thread_id,
     "objective": match params.objective {
-      Some(value) => value.to_json()
+      Some(value) => ToJson::to_json(value)
       None => Json::null()
     },
     "status": match params.status {
@@ -148,8 +148,8 @@ pub(all) enum AppThreadMemoryMode {
 ///|
 pub impl ToJson for AppThreadMemoryMode with fn to_json(mode) {
   match mode {
-    AppThreadMemoryEnabled => "enabled".to_json()
-    AppThreadMemoryDisabled => "disabled".to_json()
+    AppThreadMemoryEnabled => ToJson::to_json("enabled")
+    AppThreadMemoryDisabled => ToJson::to_json("disabled")
   }
 }
 
@@ -177,11 +177,11 @@ pub impl ToJson for AppThreadTurnsListParams with fn to_json(params) {
   {
     "threadId": params.thread_id,
     "cursor": match params.cursor {
-      Some(value) => value.to_json()
+      Some(value) => ToJson::to_json(value)
       None => Json::null()
     },
     "limit": match params.limit {
-      Some(value) => value.to_json()
+      Some(value) => ToJson::to_json(value)
       None => Json::null()
     },
     "sortDirection": match params.sort_direction {

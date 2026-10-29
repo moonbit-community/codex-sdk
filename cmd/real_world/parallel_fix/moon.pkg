@@ -8,6 +8,4 @@ import {
   "moonbit-community/codex-example/real_world/parallel_fix/app",
 }
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")

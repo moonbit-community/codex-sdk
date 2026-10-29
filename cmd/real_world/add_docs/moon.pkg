@@ -6,7 +6,8 @@ import {
   "moonbit-community/codex-example/real_world/shared",
 }
 
+pkgtype(kind: "executable")
+
 options(
-  "is-main": true,
   link: { "native": { "cc-flags": "-g -fsanitize=address" } },
 )
